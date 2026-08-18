@@ -1,0 +1,406 @@
+/// REGISTRO ///
+
+El usuario comienza el registro
+        ↓
+¿Elige registro normal o Google?
+        ↓
+   ┌────┴────┐
+   ↓         ↓
+NORMAL      GOOGLE
+   ↓         ↓
+Ingresa     Google autentica
+datos       al usuario
+   ↓         ↓
+Se crea     ¿Existe una cuenta
+la cuenta   con ese email?
+   ↓         ↓
+           NO ────────────────┐
+           ↓                  ↓
+      Se crea cuenta      SÍ
+      vinculada a Google    ↓
+           ↓             ¿La cuenta
+           │             ya tiene Google?
+           │                ↓       ↓
+           │               SÍ       NO
+           │                ↓        ↓
+           │             Login    Se vincula
+           │             normal   Google a la
+           │                        cuenta existente
+           │                           ↓
+           └───────────────────────────┘
+                       ↓
+                 Email verificado
+                 mediante Google
+                       ↓
+                 Login automático
+
+
+/// REGISTRO NORMAL ///
+
+Usuario introduce:
+- nombre
+- email
+- contraseña
+        ↓
+¿El email ya existe?
+        ↓
+   ┌────┴────┐
+   ↓         ↓
+  NO         SÍ
+   ↓         ↓
+Crear       ¿La cuenta fue
+cuenta      creada con Google?
+   ↓         ↓
+   │        SÍ
+   │         ↓
+   │   Detectar cuenta existente
+   │         ↓
+   │   Informar al usuario
+   │         ↓
+   │   Enviar código al email
+   │         ↓
+   │   Usuario introduce:
+   │   - código
+   │   - contraseña
+   │   - confirmar contraseña
+   │         ↓
+   │   ¿Código correcto?
+   │      ↓          ↓
+   │     NO          SÍ
+   │      ↓          ↓
+   │   +1 intento   Añadir contraseña
+   │                  ↓
+   │             Mantener el resto
+   │             de los datos intactos
+   │                  ↓
+   │             Código eliminado
+   │                  ↓
+   │             Login con email/password
+   │
+   └───────────────────────────────────┐
+                                       ↓
+                              Verificación de email
+                                       ↓
+                              Código de 6 dígitos
+                                       ↓
+                              ¿Código correcto?
+                                  ↓          ↓
+                                 NO          SÍ
+                                  ↓          ↓
+                            +1 intento    email_verified_at
+                                           ↓
+                                      Código eliminado
+                                           ↓
+                                        Dashboard
+
+
+/// LOGIN ///
+
+comienza login
+      ↓
+startedAt
+      ↓
+¿cuenta bloqueada?
+   ↓             ↓
+  NO             SÍ
+   ↓             ↓
+Auth::attempt   ¿ya pasó la hora?
+   ↓             ↓
+             SÍ → reset → continúa
+             NO → espera hasta el objetivo → rechaza
+   ↓
+¿contraseña correcta?
+   ↓             ↓
+  NO             SÍ
+   ↓             ↓
++1 intento      attempts = 0
+   ↓
+¿llegó a 20?
+   ↓
+bloquea 1 hora
+   ↓
+genera token de desbloqueo
+   ↓
+guarda únicamente el hash del token
+   ↓
+envía enlace al correo
+   ↓
+tiempo de respuesta objetivo
+
+
+/// DESBLOQUEO POR CORREO ///
+
+Usuario alcanza 20 intentos fallidos
+        ↓
+Cuenta bloqueada durante 1 hora
+        ↓
+Se genera token aleatorio
+        ↓
+Se guarda únicamente el hash
+        ↓
+Se envía enlace al email
+        ↓
+Usuario hace click
+        ↓
+Se recibe el token
+        ↓
+Se genera su hash
+        ↓
+¿Existe el token?
+   ↓             ↓
+  NO             SÍ
+   ↓             ↓
+Rechazar      ¿Está expirado?
+                 ↓        ↓
+                SÍ        NO
+                 ↓         ↓
+              Eliminar   Desbloquear
+              token      cuenta
+                           ↓
+                    login_attempts = 0
+                           ↓
+                    login_locked_until = null
+                           ↓
+                       Token eliminado
+                           ↓
+                      Volver al login
+
+
+/// CÓDIGOS DE VERIFICACIÓN ///
+
+Código de email
+      ↓
+Se genera código aleatorio de 6 dígitos
+      ↓
+Se guarda en la base de datos
+      ↓
+Se envía al email
+      ↓
+¿Se recibió correctamente?
+   ↓                 ↓
+  SÍ                 NO
+   ↓                 ↓
+Activar cooldown    Eliminar código
+de envío            generado
+   ↓                 ↓
+Código válido       No activar cooldown
+durante 5 minutos
+      ↓
+¿Código correcto?
+   ↓             ↓
+  NO             SÍ
+   ↓             ↓
++1 intento     completar operación
+   ↓
+¿Llegó al límite?
+   ↓
+Eliminar código
+      ↓
+Rechazar
+
+
+/// PASSWORD SETUP PARA CUENTAS GOOGLE ///
+
+Usuario intenta registrarse normalmente
+con un email que ya pertenece a una
+cuenta creada con Google
+        ↓
+Sistema detecta:
+- email existente
+- google_id presente
+- password = null
+        ↓
+Se informa al usuario
+        ↓
+Se solicita código por email
+        ↓
+Cooldown de envío
+        ↓
+Código válido durante 5 minutos
+        ↓
+Usuario introduce:
+- código
+- contraseña
+- confirmar contraseña
+        ↓
+¿Código correcto?
+   ↓             ↓
+  NO             SÍ
+   ↓             ↓
++1 intento     añadir contraseña
+   ↓             ↓
+¿5 intentos?   eliminar código
+   ↓             ↓
+Eliminar       mantener datos
+código         de la cuenta
+                    ↓
+              Login disponible
+              por Google o email/password
+
+
+/// PROTECCIÓN DE CÓDIGOS ///
+
+Cada código:
+- tiene una duración limitada
+- tiene un contador de intentos
+- se elimina al utilizarse correctamente
+- se elimina al expirar
+- se elimina al alcanzar el límite
+- no se reutiliza
+
+Antes de contar un intento:
+
+buscar código
+      ↓
+¿existe?
+   ↓       ↓
+ NO       SÍ
+ ↓         ↓
+error   ¿expiró?
+           ↓      ↓
+          SÍ      NO
+          ↓       ↓
+       eliminar  ¿attempts >= 5?
+                  ↓          ↓
+                 SÍ          NO
+                 ↓           ↓
+              eliminar   incrementar attempts
+                              ↓
+                       comprobar código
+                              ↓
+                       ¿correcto?
+                         ↓       ↓
+                        NO       SÍ
+                        ↓         ↓
+                       error   completar operación
+
+
+/// TIEMPO DE RESPUESTA ///
+
+Cada operación sensible registra:
+
+startedAt = comienzo de la operación
+        ↓
+se ejecuta toda la lógica
+        ↓
+se genera un objetivo aleatorio
+entre 2 y 2.5 segundos
+        ↓
+se calcula cuánto tiempo ya transcurrió
+        ↓
+¿ya superó el objetivo?
+   ↓             ↓
+  SÍ             NO
+   ↓             ↓
+responder     esperar tiempo restante
+inmediatamente      ↓
+                    ↓
+                  responder
+
+
+/// SESIONES ///
+
+Login correcto
+      ↓
+Auth::attempt()
+      ↓
+sesión autenticada
+      ↓
+regenerar ID de sesión
+      ↓
+continuar al dashboard
+
+
+Logout
+   ↓
+Auth::logout()
+   ↓
+invalidar sesión
+   ↓
+regenerar token CSRF
+   ↓
+volver al inicio
+
+
+Google Login
+   ↓
+Google autentica
+   ↓
+buscar usuario por email
+   ↓
+crear / vincular / recuperar cuenta
+   ↓
+Auth::login()
+   ↓
+regenerar ID de sesión
+   ↓
+dashboard
+
+
+/// ESTRUCTURA DE LAS CUENTAS ///
+
+CUENTA NORMAL
+    │
+    ├── email
+    ├── password
+    └── verificación por código
+            ↓
+       email + password
+
+
+CUENTA GOOGLE
+    │
+    ├── email
+    ├── google_id
+    └── password = null inicialmente
+            ↓
+       Google Login
+
+
+CUENTA GOOGLE + PASSWORD
+    │
+    ├── email
+    ├── google_id
+    └── password
+            ↓
+       Google Login
+            +
+       Email + Password
+
+
+/// PROTECCIONES DEL LOGIN ///
+
+Login
+ ↓
+comprobar bloqueo
+ ↓
+comprobar contraseña
+ ↓
+contador de intentos
+ ↓
+20 intentos fallidos
+ ↓
+bloqueo 1 hora
+ ↓
+enlace de desbloqueo por email
+ ↓
+tiempo de respuesta aleatorio
+
+
+/// PROTECCIONES GENERALES ///
+
+- Regeneración del ID de sesión después del login
+- Invalidación de sesión al cerrar sesión
+- Regeneración del token CSRF
+- Cookies de sesión HttpOnly
+- Cookies Secure en HTTPS
+- Códigos de un solo uso
+- Códigos con expiración
+- Límite de intentos
+- Cooldown de envío
+- Bloqueo temporal de cuentas
+- Tokens de desbloqueo almacenados mediante hash
+- Enlaces de desbloqueo de un solo uso
+- Contraseñas almacenadas mediante hash
+- No revelar si una cuenta existe en operaciones sensibles
+- Tiempo de respuesta controlado en operaciones sensibles

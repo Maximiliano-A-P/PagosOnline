@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
+use App\Models\User;    
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
@@ -25,11 +25,17 @@ class SocialiteController extends Controller
         try {
             $googleUser = Socialite::driver('google')->user();
 
-            $user = User::where('email', $googleUser->getEmail())->first();
+            $user = User::where(
+                'email',
+                $googleUser->getEmail()
+            )->first();
 
             if (!$user) {
-                // No existe una cuenta con ese email.
-                // Creamos una nueva cuenta vinculada a Google.
+                /*
+                 * No existe una cuenta con ese email.
+                 *
+                 * Creamos una nueva cuenta vinculada a Google.
+                 */
                 $user = User::create([
                     'name' => $googleUser->getName(),
                     'email' => $googleUser->getEmail(),
@@ -38,17 +44,25 @@ class SocialiteController extends Controller
                     'email_verified_at' => now(),
                 ]);
             } elseif (!$user->google_id) {
-                // Ya existe una cuenta tradicional con ese email.
-                // Vinculamos Google a esa misma cuenta.
+                /*
+                 * Ya existe una cuenta tradicional con ese email.
+                 *
+                 * Vinculamos Google a esa misma cuenta.
+                 */
                 $user->update([
                     'google_id' => $googleUser->getId(),
                     'email_verified_at' => now(),
                 ]);
             }
 
-            // Iniciamos sesión automáticamente en la plataforma.
+            /*
+             * Iniciamos sesión automáticamente en la plataforma.
+             */
             Auth::login($user);
 
+            /*
+             * Regeneramos la sesión después del login.
+             */
             request()->session()->regenerate();
 
             return redirect()->route('dashboard');
@@ -56,7 +70,10 @@ class SocialiteController extends Controller
         } catch (Exception $e) {
             return redirect()
                 ->route('login')
-                ->with('error', 'Ocurrió un error al iniciar sesión con Google. Inténtalo nuevamente.');
+                ->with(
+                    'error',
+                    'Ocurrió un error al iniciar sesión con Google. Inténtalo nuevamente.'
+                );
         }
     }
 }

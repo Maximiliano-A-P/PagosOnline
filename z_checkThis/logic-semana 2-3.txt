@@ -1,0 +1,515 @@
+==================================================================
+MAPA DE ESTRUCTURA DE BASE DE DATOS
+==================================================================
+
+┌──────────────────────┐
+│       clients        │
+├──────────────────────┤
+│ id                   │
+│ created_at           │
+│ updated_at           │
+│ name                 │
+│ document             │
+└──────────┬───────────┘
+           │
+           │ 1
+           ▼
+┌──────────────────────┐
+│   client_services    │
+├──────────────────────┤
+│ id                   │
+│ created_at           │
+│ updated_at           │
+│ client_id            │
+│ service_id           │
+└──────────┬───────────┘
+           │
+           │ N
+           ▼
+┌──────────────────────┐
+│       services       │
+├──────────────────────┤
+│ id                   │
+│ created_at           │
+│ updated_at           │
+│ service              │
+│ price                │
+│ due_day              │
+│ overdue_price        │
+│ period               │
+└──────────┬───────────┘
+           │
+           │ 0..N (opcional, service_id puede ser NULL)
+           ▼
+┌──────────────────────────────────┐
+│             invoices             │
+├──────────────────────────────────┤
+│ id                               │
+│ created_at                       │
+│ updated_at                       │
+│ issued_at                        │
+│ client_name                      │
+│ client_document                  │
+│ service_id                       │
+│ service_name                     │
+│ price                            │
+│ due_date                         │
+│ overdue_price                    │
+│ payment_status                   │
+│ amount_paid                      │
+│ paid_at                          │
+│ payment_method                   │
+│ paid_by                          │
+│                                  │
+│ ---- DATOS ARCA ----             │
+│ arca_status                      │
+│ arca_cae                         │
+│ arca_cae_expires_at              │
+│ arca_invoice_type                │
+│ arca_point_of_sale               │
+│ arca_invoice_number              │
+│ arca_qr                          │
+└──────────────┬───────────────────┘
+               │
+               │ 0..1 (paid_by, opcional)
+               ▼
+     ┌──────────────────────┐
+     │         users         │
+     ├──────────────────────┤
+     │ ...                  │
+     │ (tabla externa,      │
+     │  no forma parte de   │
+     │  estas migraciones)  │
+     └──────────────────────┘
+
+
+┌──────────────────────────────────┐
+│           arca_config            │
+├──────────────────────────────────┤
+│ id                               │
+│ created_at                       │
+│ updated_at                       │
+│ cuit                             │
+│ certificate_path                 │
+│ private_key_path                 │
+│ token                            │
+│ token_expires_at                 │
+└──────────────────────────────────┘
+   (tabla de configuración global,
+    sin relaciones con otras tablas)
+
+
+==================================================================
+FIN DEL MAPA DE ESTRUCTURA
+==================================================================
+
+
+
+/// PANEL ADMIN - Flujos ///
+
+Usuario autenticado
+        ↓
+Accede a /admin
+        ↓
+AdminMiddleware
+        ↓
+¿Usuario autenticado?
+   ↓              ↓
+ NO              SÍ
+ ↓                ↓
+403          ¿is_admin = true?
+                ↓          ↓
+               NO          SÍ
+               ↓            ↓
+              403       Panel admin
+                            │
+          ┌─────────────────┼─────────────────┐
+          ↓                 ↓                 ↓
+      CLIENTES          SERVICIOS        CLIENTES × SERVICIOS
+          │                 │                 │
+          │                 │                 │
+          ↓                 ↓                 ↓
+      listar            listar            listar relaciones
+      crear             crear             asignar servicio
+      editar            editar            quitar servicio
+      eliminar          eliminar
+          │                 │
+          │                 │
+          ↓                 ↓
+    Las facturas       Los servicios
+    existentes         eliminados no
+    permanecen         afectan facturas
+    intactas
+
+
+/// CLIENTES ///
+
+Admin accede a Clientes
+        ↓
+¿Busca?
+   ↓          ↓
+ NO          SÍ
+ ↓            ↓
+Todos      Buscar por:
+           - nombre
+           - documento
+        ↓
+      Listado
+        ↓
+   ┌────┼─────┐
+   ↓    ↓     ↓
+Crear Editar Eliminar
+   ↓    ↓     ↓
+Validar datos
+   ↓
+name
+document
+   ↓
+Crear / actualizar cliente
+
+
+Eliminar cliente
+        ↓
+Eliminar relaciones
+cliente ↔ servicios
+        ↓
+Eliminar cliente
+        ↓
+Facturas existentes
+permanecen intactas
+porque contienen sus
+propios datos históricos
+
+
+/// SERVICIOS ///
+
+Admin accede a Servicios
+        ↓
+Listado
+        ↓
+   ┌────┼─────┐
+   ↓    ↓     ↓
+Crear Editar Eliminar
+   ↓
+Validar:
+- service
+- price
+- due_day
+- overdue_price
+- period
+        ↓
+Crear / actualizar servicio
+
+
+period:
+1  → mensual
+3  → trimestral
+6  → semestral
+12 → anual
+
+
+/// CLIENTES × SERVICIOS ///
+
+Admin selecciona un cliente
+        ↓
+Muestra sus servicios asignados
+        ↓
+   ┌───────────────┴───────────────┐
+   ↓                               ↓
+ASIGNAR                         QUITAR
+   ↓                               ↓
+Seleccionar servicio           Seleccionar servicio
+   ↓                               ↓
+Validar service_id             Validar service_id
+   ↓                               ↓
+syncWithoutDetaching           detach
+   ↓                               ↓
+Agregar relación               Quitar relación
+   │                               │
+   └───────────────┬───────────────┘
+                   ↓
+              Facturas existentes
+                 NO se eliminan
+
+
+/// FACTURAS — CONSULTA ///
+
+Admin accede a Facturas
+        ↓
+Listado de invoices
+        ↓
+¿Busca?
+   ↓          ↓
+ NO          SÍ
+ ↓            ↓
+Listado      Buscar por:
+             - nombre cliente
+             - documento
+             - servicio
+        ↓
+¿Filtra por estado?
+   ↓          ↓
+ NO          SÍ
+ ↓            ↓
+           Filtrar:
+           pending / paid
+        ↓
+Facturas más recientes primero
+        ↓
+Seleccionar factura
+        ↓
+Ver factura
+
+
+/// CREACIÓN DE FACTURA HISTÓRICA ///
+
+Admin accede a:
+ /admin/invoices/create
+        ↓
+Ingresar:
+- fecha de emisión
+- nombre del cliente
+- documento
+- servicio asociado
+- nombre del servicio
+- precio
+- precio vencido
+- fecha de vencimiento
+- estado
+- importe pagado
+- fecha de pago
+- método de pago
+        ↓
+¿Servicio asociado?
+   ↓              ↓
+ SÍ              NO
+ ↓                ↓
+Guardar         service_id = null
+service_id           │
+   └──────────┬───────┘
+              ↓
+        Guardar datos
+        históricos
+              ↓
+        Crear invoice
+              ↓
+        ARCA = null
+
+
+/// GENERACIÓN DE FACTURAS PERIÓDICAS ///
+
+Admin ejecuta manualmente
+la generación desde el panel
+        ↓
+Obtener todos los clientes
+con sus servicios
+        ↓
+Para cada cliente
+y cada servicio
+        ↓
+Buscar última factura
+del cliente + service_id
+        ↓
+¿Existe factura?
+   ↓              ↓
+ NO              SÍ
+ ↓                ↓
+Generar        Obtener fecha
+primera         de última factura
+factura              ↓
+                  Calcular meses
+                  transcurridos
+                       ↓
+                ¿meses >= period?
+                   ↓          ↓
+                  NO          SÍ
+                  ↓            ↓
+              No generar    Generar
+                            factura
+                               ↓
+                     Copiar datos actuales
+                     del cliente y servicio
+                               ↓
+                         payment_status
+                           = pending
+                               ↓
+                         Siguiente cliente
+                         / servicio
+
+
+/// GENERACIÓN MANUAL DE FACTURAS ///
+
+Admin accede al panel
+        ↓
+Puede actualizar primero
+los precios de los servicios
+        ↓
+Ejecuta generación manual
+        ↓
+Sistema genera únicamente
+las facturas que correspondan
+según el period del servicio
+        ↓
+Resultado:
+"Se generaron X factura(s)
+ correctamente."
+
+
+/// PAGO MANUAL ///
+
+Factura pendiente
+        ↓
+Admin selecciona
+"Registrar pago"
+        ↓
+¿Factura ya pagada?
+   ↓              ↓
+ SÍ              NO
+ ↓                ↓
+Mostrar error   Mostrar formulario
+                 ↓
+              Ingresar:
+              - importe pagado
+              - fecha de pago
+              - método de pago
+                 ↓
+              Registrar pago
+                 ↓
+          payment_status = paid
+                 ↓
+             amount_paid
+                 ↓
+               paid_at
+                 ↓
+          payment_method
+                 ↓
+             paid_by
+                 ↓
+       ID del administrador
+       que registró el pago
+
+
+/// FACTURA + PAGO ///
+
+Factura creada
+        ↓
+payment_status = pending
+        ↓
+   ┌───────────────┴───────────────┐
+   ↓                               ↓
+PAGO ONLINE                    PAGO PRESENCIAL
+   ↓                               ↓
+Proceso de pago                Admin registra pago
+   ↓                               ↓
+Pago confirmado                payment_status = paid
+   │                               │
+   └───────────────┬───────────────┘
+                   ↓
+             Datos del pago
+                   ↓
+              paid_at
+              amount_paid
+              payment_method
+              paid_by
+
+
+/// ARCA — CONFIGURACIÓN ///
+
+Admin accede a:
+ /admin/arca
+        ↓
+Obtener configuración existente
+        ↓
+¿Existe configuración?
+   ↓              ↓
+ SÍ              NO
+ ↓                ↓
+Editar          Crear configuración
+   └────────┬──────────┘
+            ↓
+Validar:
+- cuit
+- certificate_path
+- private_key_path
+            ↓
+Guardar configuración ARCA
+
+
+/// ARCA — DATOS DE LA FACTURA ///
+
+Invoice
+   │
+   └── DATOS ARCA
+          │
+          ├── arca_status
+          ├── arca_cae
+          ├── arca_cae_expires_at
+          ├── arca_invoice_type
+          ├── arca_point_of_sale
+          ├── arca_invoice_number
+          └── arca_qr
+
+
+/// ELIMINACIÓN DE FACTURAS ///
+
+Admin selecciona factura
+        ↓
+Eliminar invoice
+        ↓
+Factura eliminada
+
+
+/// ESTRUCTURA GENERAL DEL PANEL ///
+
+                         PANEL ADMIN
+                              │
+              ┌───────────────┼────────────────┐
+              ↓               ↓                ↓
+          CLIENTES        SERVICIOS       CLIENTES × SERVICIOS
+              │               │                │
+              └───────────────┼────────────────┘
+                              ↓
+                          FACTURAS
+                              │
+             ┌────────────────┼────────────────┐
+             ↓                ↓                ↓
+          Crear            Generar          Registrar
+        histórica         periódicas          pago
+             │                │                │
+             └────────────────┼────────────────┘
+                              ↓
+                          INVOICES
+                              │
+                              ↓
+                            ARCA
+                              │
+                    ┌─────────┴─────────┐
+                    ↓                   ↓
+              Configuración       Datos de factura
+
+
+
+13. ORDEN DE TRABAJO
+====================
+
+1. MIGRACIONES
+   ↓
+2. MODELOS + RELACIONES
+   ↓
+3. MIDDLEWARE ADMIN
+   ↓
+4. CONTROLADORES ADMIN
+   ↓
+5. RUTAS WEB.PHP
+   ↓
+6. VISTAS DEL PANEL ADMIN
+   ↓
+7. FACTURAS MANUALES
+   ↓
+8. REGISTRO DE PAGOS MANUALES
+   ↓
+9. PAGOS ONLINE
+   ↓
+10. ARCA
+   ↓
+11. QR + COMPROBANTE + ENVÍO

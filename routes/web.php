@@ -1,51 +1,231 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\PasswordSetupController;
 use App\Http\Controllers\LoginUnlockController;
 
+// Admin
+use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\ClientController;
+use App\Http\Controllers\Admin\ServiceController;
+use App\Http\Controllers\Admin\ClientServiceController;
+use App\Http\Controllers\Admin\InvoiceController;
+use App\Http\Controllers\Admin\ArcaConfigController;
+
+
+// ==========================================================
+// Principal
+// ==========================================================
 
 Route::get('/', function () {
     return view('welcome');
 });
 
+
+// ==========================================================
+// Dashboard
+// ==========================================================
+
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth'])->name('dashboard');
 
+
+// ==========================================================
+// Perfil
+// ==========================================================
+
 Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::get('/profile', [
+        ProfileController::class,
+        'edit'
+    ])->name('profile.edit');
+
+    Route::patch('/profile', [
+        ProfileController::class,
+        'update'
+    ])->name('profile.update');
+
+    Route::delete('/profile', [
+        ProfileController::class,
+        'destroy'
+    ])->name('profile.destroy');
 });
+
+
+// ==========================================================
+// Autenticación Breeze
+// ==========================================================
 
 require __DIR__.'/auth.php';
 
 
-// //////Socialite//////
-Route::get('/auth/google', [SocialiteController::class, 'redirectToGoogle'])
-    ->name('google.login');
+// ==========================================================
+// Panel Admin
+// ==========================================================
 
-Route::get('/auth/google/callback', [SocialiteController::class, 'handleGoogleCallback']);
+Route::middleware(['auth', 'admin'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+
+        // Dashboard
+        Route::get('/', [
+            AdminDashboardController::class,
+            'index'
+        ])->name('dashboard');
 
 
-// //////Configuración de contraseña para cuentas creadas con Google//////
+        // ==================================================
+        // Clientes
+        // ==================================================
 
-Route::get('/password/setup', [PasswordSetupController::class, 'show'])
-    ->name('password.setup');
+        Route::resource(
+            'clients',
+            ClientController::class
+        )->except(['show']);
 
-Route::post('/password/setup/send', [PasswordSetupController::class, 'sendCode'])
-    ->name('password.setup.send');
 
-Route::get('/password/setup/verify', [PasswordSetupController::class, 'showVerifyForm'])
-    ->name('password.setup.verify');
+        // ==================================================
+        // Servicios
+        // ==================================================
 
-Route::post('/password/setup/verify', [PasswordSetupController::class, 'verifyCode'])
-    ->name('password.setup.verify.code');
+        Route::resource(
+            'services',
+            ServiceController::class
+        )->except(['show']);
 
-//////Desbloqueo de cuenta//////
 
-Route::get('/login/unlock/{token}', [LoginUnlockController::class, 'unlock'])
-    ->name('login.unlock');
+        // ==================================================
+        // Clientes x Servicios
+        // ==================================================
+
+        Route::get(
+            '/client-services',
+            [ClientServiceController::class, 'index']
+        )->name('client-services.index');
+
+        Route::get(
+            '/client-services/{client}/create',
+            [ClientServiceController::class, 'create']
+        )->name('client-services.create');
+
+        Route::post(
+            '/client-services/{client}',
+            [ClientServiceController::class, 'store']
+        )->name('client-services.store');
+
+        Route::delete(
+            '/client-services/{client}',
+            [ClientServiceController::class, 'destroy']
+        )->name('client-services.destroy');
+
+
+        // ==================================================
+        // Facturas
+        // ==================================================
+
+        // Listar, crear factura histórica, ver y eliminar
+        Route::resource(
+            'invoices',
+            InvoiceController::class
+        )->only([
+            'index',
+            'create',
+            'store',
+            'show',
+            'destroy',
+        ]);
+
+        // Generar todas las facturas periódicas que correspondan
+        Route::post(
+            '/invoices/generate',
+            [InvoiceController::class, 'generate']
+        )->name('invoices.generate');
+
+        // Formulario para registrar pago manual
+        Route::get(
+            '/invoices/{invoice}/payment',
+            [InvoiceController::class, 'payment']
+        )->name('invoices.payment');
+
+        // Registrar pago manual
+        Route::post(
+            '/invoices/{invoice}/pay',
+            [InvoiceController::class, 'registerPayment']
+        )->name('invoices.pay');
+
+
+        // ==================================================
+        // Configuración ARCA
+        // ==================================================
+
+        Route::get(
+            '/arca',
+            [ArcaConfigController::class, 'edit']
+        )->name('arca.edit');
+
+        Route::put(
+            '/arca',
+            [ArcaConfigController::class, 'update']
+        )->name('arca.update');
+    });
+
+
+// ==========================================================
+// Google Socialite
+// ==========================================================
+
+Route::get(
+    '/auth/google',
+    [SocialiteController::class, 'redirectToGoogle']
+)->name('google.login');
+
+Route::get(
+    '/auth/google/callback',
+    [SocialiteController::class, 'handleGoogleCallback']
+);
+
+
+// ==========================================================
+// Configuración de contraseña
+// ==========================================================
+
+Route::get(
+    '/password/setup',
+    [PasswordSetupController::class,
+    'show']
+)->name('password.setup');
+
+Route::post(
+    '/password/setup/send',
+    [PasswordSetupController::class,
+    'sendCode']
+)->name('password.setup.send');
+
+Route::get(
+    '/password/setup/verify',
+    [PasswordSetupController::class,
+    'showVerifyForm']
+)->name('password.setup.verify');
+
+Route::post(
+    '/password/setup/verify',
+    [PasswordSetupController::class,
+    'verifyCode']
+)->name('password.setup.verify.code');
+
+
+// ==========================================================
+// Desbloqueo de cuenta
+// ==========================================================
+
+Route::get(
+    '/login/unlock/{token}',
+    [LoginUnlockController::class,
+    'unlock']
+)->name('login.unlock');

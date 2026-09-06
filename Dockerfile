@@ -14,10 +14,7 @@ WORKDIR /var/www/html
 
 
 # ==========================================================
-# Copiamos primero los archivos de npm
-#
-# Esto permite aprovechar la caché de Docker cuando
-# package.json y package-lock.json no cambian.
+# Copiamos los archivos de npm
 # ==========================================================
 
 COPY package.json package-lock.json ./
@@ -114,21 +111,26 @@ WORKDIR /var/www/html
 
 
 # ==========================================================
-# Copiamos Composer primero
+# Copiamos los archivos de Composer
 # ==========================================================
 
 COPY composer.json composer.lock ./
 
 
 # ==========================================================
-# Instalamos dependencias PHP
+# Instalamos dependencias PHP sin ejecutar scripts
+#
+# Los scripts de Composer de Laravel necesitan que artisan
+# ya exista. Por eso primero instalamos las dependencias
+# y posteriormente copiamos la aplicación.
 # ==========================================================
 
 RUN composer install \
     --no-dev \
     --no-interaction \
     --prefer-dist \
-    --optimize-autoloader
+    --optimize-autoloader \
+    --no-scripts
 
 
 # ==========================================================
@@ -136,6 +138,15 @@ RUN composer install \
 # ==========================================================
 
 COPY . .
+
+
+# ==========================================================
+# Ejecutamos los scripts de Composer ahora que artisan
+# ya existe dentro del contenedor.
+# ==========================================================
+
+RUN composer dump-autoload \
+    --optimize
 
 
 # ==========================================================

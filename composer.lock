@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ed1e9b6d09d8829ee2a3936d156866de",
+    "content-hash": "f298b20f96fb7289532f8cb6d2f8a62c",
     "packages": [
         {
             "name": "brick/math",
@@ -2311,16 +2311,16 @@
         },
         {
             "name": "mercadopago/dx-php",
-            "version": "3.13.0",
+            "version": "3.15.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/mercadopago/sdk-php.git",
-                "reference": "4f61e342e3ca3caa9aa6e28d54819fd16a05b851"
+                "reference": "8891e268a652e5e61207c10a5d3502e03759a3bc"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/mercadopago/sdk-php/zipball/4f61e342e3ca3caa9aa6e28d54819fd16a05b851",
-                "reference": "4f61e342e3ca3caa9aa6e28d54819fd16a05b851",
+                "url": "https://api.github.com/repos/mercadopago/sdk-php/zipball/8891e268a652e5e61207c10a5d3502e03759a3bc",
+                "reference": "8891e268a652e5e61207c10a5d3502e03759a3bc",
                 "shasum": ""
             },
             "require": {
@@ -2329,7 +2329,7 @@
             "require-dev": {
                 "friendsofphp/php-cs-fixer": "^3.22",
                 "phpunit/phpunit": "^11.0",
-                "squizlabs/php_codesniffer": "3.*",
+                "squizlabs/php_codesniffer": ">=3.13.6",
                 "symfony/console": "^7.0"
             },
             "type": "library",
@@ -2346,9 +2346,9 @@
             "homepage": "https://github.com/mercadopago/sdk-php",
             "support": {
                 "issues": "https://github.com/mercadopago/sdk-php/issues",
-                "source": "https://github.com/mercadopago/sdk-php/tree/3.13.0"
+                "source": "https://github.com/mercadopago/sdk-php/tree/3.15.0"
             },
-            "time": "2026-08-04T23:26:15+00:00"
+            "time": "2026-08-25T23:59:20+00:00"
         },
         {
             "name": "monolog/monolog",

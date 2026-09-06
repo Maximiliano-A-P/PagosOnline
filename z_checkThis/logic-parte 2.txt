@@ -489,7 +489,73 @@ Factura eliminada
 
 
 
-13. ORDEN DE TRABAJO
+
+/// PAGO ONLINE ///
+
+Usuario inicia sesión
+        ↓
+Dashboard
+        ↓
+Ingresa documento
+        ↓
+¿Existe el documento?
+        ↓
+   ┌────┴────┐
+   ↓         ↓
+  NO         SÍ
+   ↓         ↓
+Informar   Agregar documento
+error          ↓
+               ↓
+       "Documentos agregados"
+               ↓
+       Buscar facturas del
+       documento agregado
+               ↓
+       ¿Hay facturas pendientes?
+               ↓
+          ┌────┴────┐
+          ↓         ↓
+         NO         SÍ
+          ↓         ↓
+      Informar    Mostrar factura
+                   ↓
+          ┌────────┴────────┐
+          ↓                 ↓
+       IMPRIMIR           PAGAR
+          ↓                 ↓
+       Generar PDF     Mercado Pago
+                            ↓
+                       Crear pago
+                            ↓
+                    Usuario paga
+                            ↓
+                    Mercado Pago
+                            ↓
+                     ¿Pago aprobado?
+                       ↓          ↓
+                      NO          SÍ
+                      ↓            ↓
+                   Mantener      Registrar
+                   pendiente       pago
+                                    ↓
+                             payment_status
+                                = paid
+                                    ↓
+                              paid_at
+                                    ↓
+                              amount_paid
+                                    ↓
+                           payment_method
+                                    ↓
+                                  paid_by
+                                    ↓
+                                  ARCA
+
+
+
+
+ORDEN DE TRABAJO
 ====================
 
 1. MIGRACIONES
@@ -513,3 +579,55 @@ Factura eliminada
 10. ARCA
    ↓
 11. QR + COMPROBANTE + ENVÍO
+
+
+
+Usuario
+   ↓
+Pagar
+   ↓
+DashboardInvoiceController
+   ↓
+verifica documento
+   ↓
+MercadoPagoService
+   ↓
+Preference
+   ↓
+Mercado Pago
+   ↓
+usuario paga
+   ↓
+Webhook
+   ↓
+MercadoPagoWebhookController
+   ↓
+valida x-signature
+   ↓
+consulta payment_id a Mercado Pago
+   ↓
+verifica:
+- external_reference
+- invoice
+- estado approved
+- importe
+   ↓
+invoice = paid
+
+
+
+
+
+
+
+Render
+  ↓
+Docker
+  ↓
+NGINX
+  ↓
+PHP-FPM
+  ↓
+Laravel
+  ↓
+PostgreSQL

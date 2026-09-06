@@ -22,6 +22,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
         ]);
+
+        /*
+         * Excluir la ruta del webhook de Mercado Pago
+         * de la verificación CSRF.
+         */
+        $middleware->validateCsrfTokens(except: [
+            'mercadopago/webhook',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

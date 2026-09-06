@@ -31,4 +31,12 @@ class Client extends Model
     {
         return $this->hasMany(ClientService::class);
     }
+
+    /**
+     * Usuarios que tienen acceso a este cliente.
+     */
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'client_user');
+    }
 }

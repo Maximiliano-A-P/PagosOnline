@@ -30,6 +30,10 @@ class Invoice extends Model
         'payment_method',
         'paid_by',
 
+        // Datos Mercado Pago
+        'mercadopago_preference_id',
+        'mercadopago_payment_id',
+
         // Datos ARCA
         'arca_status',
         'arca_cae',
@@ -43,7 +47,7 @@ class Invoice extends Model
     protected function casts(): array
     {
         return [
-            'issued_at' => 'datetime',
+            'issued_at' => 'date',
 
             // Datos del cliente
             'client_document' => 'integer',
@@ -57,7 +61,7 @@ class Invoice extends Model
             'due_date' => 'date',
             'overdue_price' => 'decimal:2',
             'amount_paid' => 'decimal:2',
-            'paid_at' => 'datetime',
+            'paid_at' => 'date',
 
             // Datos ARCA
             'arca_cae_expires_at' => 'datetime',

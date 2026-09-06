@@ -15,6 +15,11 @@ use App\Http\Controllers\Admin\ClientServiceController;
 use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Admin\ArcaConfigController;
 
+// Dashboard
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DashboardInvoiceController;
+use App\Http\Controllers\MercadoPagoWebhookController;
+
 
 // ==========================================================
 // Principal
@@ -29,9 +34,68 @@ Route::get('/', function () {
 // Dashboard
 // ==========================================================
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth'])->name('dashboard');
+Route::middleware(['auth'])
+    ->group(function () {
+
+        Route::get(
+            '/dashboard',
+            [DashboardController::class, 'index']
+        )->name('dashboard');
+
+
+        // ==================================================
+        // Documentos del dashboard
+        // ==================================================
+
+        Route::post(
+            '/dashboard/documents',
+            [DashboardController::class, 'storeDocument']
+        )->name('dashboard.documents.store');
+
+
+        Route::delete(
+            '/dashboard/documents/{document}',
+            [DashboardController::class, 'destroyDocument']
+        )->name('dashboard.documents.destroy');
+
+
+        // ==================================================
+        // Facturas del dashboard
+        // ==================================================
+
+        Route::get(
+            '/dashboard/invoices/{invoice}/pay',
+            [DashboardInvoiceController::class, 'pay']
+        )->name('dashboard.invoices.pay');
+
+
+        Route::get(
+            '/dashboard/invoices/{invoice}/pdf',
+            function ($invoice) {
+                /*
+                 * Generación del PDF se implementará posteriormente.
+                 */
+                abort(501, 'Generación de PDF todavía no implementada.');
+            }
+        )->name('dashboard.invoices.pdf');
+
+
+        Route::get(
+            '/dashboard/invoices/history',
+            [DashboardInvoiceController::class, 'history']
+        )->name('dashboard.invoices.history');
+
+    });
+
+
+// ==========================================================
+// Webhook Mercado Pago
+// ==========================================================
+
+Route::post(
+    '/mercadopago/webhook',
+    [MercadoPagoWebhookController::class, 'handle']
+)->name('mercadopago.webhook');
 
 
 // ==========================================================
@@ -129,7 +193,6 @@ Route::middleware(['auth', 'admin'])
         // Facturas
         // ==================================================
 
-        // Listar, crear factura histórica, ver y eliminar
         Route::resource(
             'invoices',
             InvoiceController::class
@@ -141,17 +204,20 @@ Route::middleware(['auth', 'admin'])
             'destroy',
         ]);
 
+
         // Generar todas las facturas periódicas que correspondan
         Route::post(
             '/invoices/generate',
             [InvoiceController::class, 'generate']
         )->name('invoices.generate');
 
+
         // Formulario para registrar pago manual
         Route::get(
             '/invoices/{invoice}/payment',
             [InvoiceController::class, 'payment']
         )->name('invoices.payment');
+
 
         // Registrar pago manual
         Route::post(
@@ -173,6 +239,7 @@ Route::middleware(['auth', 'admin'])
             '/arca',
             [ArcaConfigController::class, 'update']
         )->name('arca.update');
+
     });
 
 
@@ -182,12 +249,14 @@ Route::middleware(['auth', 'admin'])
 
 Route::get(
     '/auth/google',
-    [SocialiteController::class, 'redirectToGoogle']
+    [SocialiteController::class,
+    'redirectToGoogle']
 )->name('google.login');
 
 Route::get(
     '/auth/google/callback',
-    [SocialiteController::class, 'handleGoogleCallback']
+    [SocialiteController::class,
+    'handleGoogleCallback']
 );
 
 

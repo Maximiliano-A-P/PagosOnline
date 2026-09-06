@@ -1,0 +1,117 @@
+Laravel se encarga de WSAA
+
+La configuración y autenticación ante WSAA quedan exclusivamente en Laravel:
+
+LARAVEL
+│
+├── Configuración ARCA
+│   ├── CUIT
+│   ├── certificado
+│   └── clave privada
+│
+├── WSAA
+│   ├── generar solicitud
+│   ├── firmarla
+│   ├── autenticarse
+│   ├── obtener Token
+│   ├── obtener Sign
+│   └── renovar/cachear Token + Sign
+│
+└── Cuando necesita emitir
+            │
+            │ Token + Sign
+            │ + datos de factura
+            ▼
+       API ARCA
+            │
+            └── WSFE
+                 ├── consultar último comprobante
+                 ├── preparar comprobante
+                 ├── solicitar CAE
+                 └── recibir respuesta
+                        │
+                        ▼
+                      ARCA
+La API no toca WSAA
+
+La API recibe de Laravel las credenciales temporales necesarias para realizar la operación de WSFE:
+
+Laravel
+   │
+   │ Token + Sign
+   │ datos de factura
+   ▼
+┌─────────────────────┐
+│       API ARCA      │
+│                     │
+│       WSFE          │
+│                     │
+│ consultar último    │
+│ comprobante         │
+│        ↓            │
+│ preparar factura    │
+│        ↓            │
+│ solicitar CAE       │
+└──────────┬──────────┘
+           │
+           ▼
+          ARCA
+           │
+           ▼
+┌─────────────────────┐
+│       API ARCA      │
+│                     │
+│ CAE / rechazo       │
+│ número comprobante  │
+│ errores             │
+└──────────┬──────────┘
+           │
+           ▼
+         Laravel
+El plan queda dividido así
+ARCA
+│
+├── 1. Cliente HTTP/SOAP para ARCA
+│       → API ARCA
+│
+├── 2. WSAA
+│      ├── generar solicitud       → LARAVEL
+│      ├── firmarla                → LARAVEL
+│      ├── autenticarse            → LARAVEL
+│      └── obtener Token + Sign     → LARAVEL
+│
+├── 3. Cache/renovación del Token
+│       → LARAVEL
+│
+├── 4. WSFE
+│      ├── consultar último comprobante → API ARCA
+│      ├── preparar comprobante        → API ARCA
+│      └── solicitar CAE               → API ARCA
+│
+├── 5. Definir tipos de comprobante
+│       → LARAVEL
+│
+├── 6. Definir datos fiscales del cliente
+│       → LARAVEL
+│
+├── 7. Configurar punto de venta
+│       → LARAVEL
+│
+├── 8. Guardar respuesta ARCA
+│       → LARAVEL
+│
+├── 9. Manejo de errores/rechazos
+│       → API devuelve el resultado
+│         Laravel decide qué hacer
+│
+├── 10. Reintentos
+│       → LARAVEL
+│
+├── 11. Generación del QR
+│       → LARAVEL
+│
+├── 12. Generación del comprobante
+│       → LARAVEL
+│
+└── 13. Envío por email
+        → LARAVEL

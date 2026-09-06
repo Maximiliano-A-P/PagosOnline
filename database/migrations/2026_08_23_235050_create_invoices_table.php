@@ -146,6 +146,27 @@ return new class extends Migration
 
             /*
              * =====================================================
+             * DATOS MERCADO PAGO
+             * =====================================================
+             *
+             * preference_id identifica la preferencia de pago
+             * creada en Mercado Pago para esta factura.
+             *
+             * payment_id identifica el pago concreto realizado
+             * en Mercado Pago.
+             *
+             * Ambos campos son NULL mientras la factura no haya
+             * iniciado o completado un pago mediante Mercado Pago.
+             */
+            $table->string('mercadopago_preference_id')
+                ->nullable();
+
+            $table->string('mercadopago_payment_id')
+                ->nullable();
+
+
+            /*
+             * =====================================================
              * DATOS ARCA
              * =====================================================
              */

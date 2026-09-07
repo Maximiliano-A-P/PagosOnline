@@ -13,6 +13,17 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         /*
+         * Confiar en el proxy de Render.
+         *
+         * Render termina la conexión HTTPS en su balanceador
+         * y reenvía el tráfico a nuestro contenedor como HTTP.
+         * Sin esto, Laravel cree que la conexión no es segura
+         * y genera URLs de assets, cookies y redirects con
+         * http:// en vez de https://.
+         */
+        $middleware->trustProxies(at: '*');
+
+        /*
          * Alias para el middleware de administrador.
          *
          * Luego podremos proteger rutas utilizando:

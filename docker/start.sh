@@ -58,6 +58,24 @@ php artisan view:cache
 
 
 # ==========================================================
+# Migrar base de datos
+#
+# --force es obligatorio en producción: sin él, Laravel pide
+# confirmación interactiva y el proceso queda colgado/falla.
+# ==========================================================
+
+php artisan migrate --force
+
+
+# ==========================================================
+# Seedear datos iniciales (idempotente: usa updateOrCreate,
+# seguro de correr en cada deploy)
+# ==========================================================
+
+php artisan db:seed --force
+
+
+# ==========================================================
 # Iniciar Supervisor
 #
 # Supervisor mantendrá funcionando:

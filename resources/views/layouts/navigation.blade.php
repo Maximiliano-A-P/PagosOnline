@@ -32,7 +32,7 @@
                     <x-nav-link
                         :href="route('dashboard')"
                         :active="request()->routeIs('dashboard')"
-                        class="text-[3vh]"
+                        class="text-[14px]"
                     >
                         {{ __('Dashboard') }}
                     </x-nav-link>
@@ -45,7 +45,7 @@
                         <x-nav-link
                             :href="route('admin.dashboard')"
                             :active="request()->routeIs('admin.*')"
-                            class="text-[3vh]"
+                            class="text-[14px]"
                         >
                             {{ __('Admin') }}
                         </x-nav-link>
@@ -68,7 +68,7 @@
                         <button
                             class="inline-flex items-center px-3 py-2
                                    border border-transparent
-                                   text-[3vh]
+                                   text-[14px]
                                    leading-4 font-medium
                                    rounded-md
                                    text-gray-500
@@ -112,7 +112,7 @@
 
                         <x-dropdown-link
                             :href="route('profile.edit')"
-                            class="text-[3vh]"
+                            class="text-[14px]"
                         >
                             {{ __('Profile') }}
                         </x-dropdown-link>
@@ -126,7 +126,7 @@
 
                             <x-dropdown-link
                                 :href="route('logout')"
-                                class="text-[3vh]"
+                                class="text-[14px]"
                                 onclick="event.preventDefault();
                                             this.closest('form').submit();"
                             >
@@ -223,7 +223,7 @@
             <x-responsive-nav-link
                 :href="route('dashboard')"
                 :active="request()->routeIs('dashboard')"
-                class="text-[3vh]"
+                class="text-[14px]"
             >
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
@@ -236,7 +236,7 @@
                 <x-responsive-nav-link
                     :href="route('admin.dashboard')"
                     :active="request()->routeIs('admin.*')"
-                    class="text-[3vh]"
+                    class="text-[14px]"
                 >
                     {{ __('Admin') }}
                 </x-responsive-nav-link>
@@ -253,7 +253,7 @@
             <div class="px-4">
 
                 <div
-                    class="font-medium text-[4vh]
+                    class="font-medium text-[16px]
                            text-gray-800
                            dark:text-gray-200"
                 >
@@ -261,7 +261,7 @@
                 </div>
 
                 <div
-                    class="font-medium text-[3vh]
+                    class="font-medium text-[14px]
                            text-gray-500"
                 >
                     {{ Auth::user()->email }}
@@ -274,7 +274,7 @@
 
                 <x-responsive-nav-link
                     :href="route('profile.edit')"
-                    class="text-[3vh]"
+                    class="text-[14px]"
                 >
                     {{ __('Profile') }}
                 </x-responsive-nav-link>
@@ -288,7 +288,7 @@
 
                     <x-responsive-nav-link
                         :href="route('logout')"
-                        class="text-[3vh]"
+                        class="text-[14px]"
                         onclick="event.preventDefault();
                                     this.closest('form').submit();"
                     >

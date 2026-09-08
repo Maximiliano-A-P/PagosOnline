@@ -55,22 +55,25 @@ class MercadoPagoWebhookController extends Controller
         $xSignature = $request->header('x-signature');
         $xRequestId = $request->header('x-request-id');
 
-        Log::info('Mercado Pago Webhook - diagnóstico de firma', [
-            'has_x_signature' => !empty($xSignature),
-            'has_x_request_id' => !empty($xRequestId),
-            'x_request_id' => $xRequestId,
-            'data_id' => $paymentId,
-            'webhook_secret_configured' => !empty(
-                config('services.mercadopago.webhook_secret')
-            ),
-            'x_signature_format' => $xSignature
-                ? preg_replace(
-                    '/=(?:[^,]+)/',
-                    '=***',
-                    $xSignature
-                )
-                : null,
-        ]);
+        Log::channel('stderr')->info(
+            'MERCADO PAGO WEBHOOK FIRMA',
+            [
+                'has_signature' => !empty($xSignature),
+                'has_request_id' => !empty($xRequestId),
+                'request_id' => $xRequestId,
+                'data_id' => $paymentId,
+                'webhook_secret_configured' => !empty(
+                    config('services.mercadopago.webhook_secret')
+                ),
+                'signature' => $xSignature
+                    ? preg_replace(
+                        '/(ts|v1)=[^,]+/',
+                        '$1=***',
+                        $xSignature
+                    )
+                    : null,
+            ]
+        );
 
         if (
             !$xSignature

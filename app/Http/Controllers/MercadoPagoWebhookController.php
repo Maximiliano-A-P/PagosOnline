@@ -54,8 +54,11 @@ class MercadoPagoWebhookController extends Controller
             Log::channel('stderr')->error(
                 'MERCADO PAGO - PAYMENT ID NO RECIBIDO',
                 [
-                    'query' => $request->query(),
-                    'body' => $request->all(),
+                    'query' =>
+                        $request->query(),
+
+                    'body' =>
+                        $request->all(),
                 ]
             );
 
@@ -150,10 +153,12 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * Validamos la firma.
+         * ==========================================================
+         * VALIDACIÓN DE FIRMA
+         * ==========================================================
          *
-         * Actualmente la firma válida se obtiene
-         * con la forma oficial usando data.id.
+         * La firma actualmente se valida correctamente
+         * utilizando la forma oficial con data.id.
          */
         if (
             !$mercadoPagoService->validateWebhookSignature(
@@ -240,17 +245,27 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * Guardamos algunos datos del Payment en logs
-         * para diagnosticar el siguiente error.
+         * ==========================================================
+         * DIAGNÓSTICO DEL OBJETO PAYMENT
+         * ==========================================================
          *
-         * No registramos datos sensibles.
+         * El objetivo es descubrir cómo expone realmente
+         * el SDK las propiedades del Payment.
+         *
+         * No registramos credenciales ni tokens.
          */
         Log::channel('stderr')->info(
-            'MERCADO PAGO - PAYMENT CONSULTADO',
+            'MERCADO PAGO - PAYMENT RAW DIAGNOSTICO',
             [
+                'class' =>
+                    get_class($payment),
+
+                'properties' =>
+                    get_object_vars($payment),
+
                 'payment_id' =>
                     isset($payment->id)
-                        ? (string) $payment->id
+                        ? $payment->id
                         : null,
 
                 'status' =>
@@ -259,11 +274,20 @@ class MercadoPagoWebhookController extends Controller
                 'external_reference' =>
                     $payment->externalReference ?? null,
 
+                'external_reference_snake' =>
+                    $payment->external_reference ?? null,
+
                 'transaction_amount' =>
                     $payment->transactionAmount ?? null,
 
+                'transaction_amount_snake' =>
+                    $payment->transaction_amount ?? null,
+
                 'date_approved' =>
                     $payment->dateApproved ?? null,
+
+                'date_approved_snake' =>
+                    $payment->date_approved ?? null,
             ]
         );
 
@@ -300,6 +324,7 @@ class MercadoPagoWebhookController extends Controller
          */
         $externalReference =
             $payment->externalReference
+            ?? $payment->external_reference
             ?? null;
 
         if (!$externalReference) {
@@ -311,6 +336,9 @@ class MercadoPagoWebhookController extends Controller
 
                     'payment_status' =>
                         $payment->status ?? null,
+
+                    'available_properties' =>
+                        get_object_vars($payment),
                 ]
             );
 
@@ -433,6 +461,7 @@ class MercadoPagoWebhookController extends Controller
         $transactionAmount =
             (float) (
                 $payment->transactionAmount
+                ?? $payment->transaction_amount
                 ?? 0
             );
 
@@ -473,15 +502,18 @@ class MercadoPagoWebhookController extends Controller
          * FECHA DE PAGO
          * ==========================================================
          */
+        $dateApproved =
+            $payment->dateApproved
+            ?? $payment->date_approved
+            ?? null;
+
         $paidAt = null;
 
-        if (!empty($payment->dateApproved)) {
+        if (!empty($dateApproved)) {
             $paidAt =
                 date(
                     'Y-m-d',
-                    strtotime(
-                        $payment->dateApproved
-                    )
+                    strtotime($dateApproved)
                 );
         }
 
@@ -532,10 +564,6 @@ class MercadoPagoWebhookController extends Controller
             ]
         );
 
-        /*
-         * Mercado Pago considera recibida correctamente
-         * la notificación cuando devolvemos HTTP 200.
-         */
         return response()->json([
             'message' =>
                 'Pago procesado correctamente.',

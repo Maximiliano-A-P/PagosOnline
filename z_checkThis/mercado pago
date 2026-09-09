@@ -1,0 +1,40 @@
+Con esto el comportamiento queda:
+
+```text
+Webhook
+   │
+   ├── data.id ──► validador oficial SDK
+   │                  │
+   │                  ├── coincide → 200 / procesa pago
+   │                  │
+   │                  └── no coincide
+   │
+   └── notification.id ──► HMAC alternativo
+                              │
+                              ├── coincide → 200 / procesa pago
+                              │
+                              └── no coincide → 401
+```
+
+Y **no estamos aceptando una firma simplemente porque `live_mode` sea `true` o `false`**. El `live_mode` queda completamente fuera del cálculo. Eso es correcto porque la documentación actual sigue definiendo `live_mode` como indicador del modo y, por separado, define la autenticación mediante HMAC.
+
+En la próxima prueba, lo decisivo en Render será encontrar:
+
+```text
+MERCADO PAGO - FIRMA NO COINCIDE CON DATA.ID
+```
+
+y después:
+
+```text
+MERCADO PAGO - PRUEBA FIRMA CON NOTIFICATION.ID
+hashes_match: true
+```
+
+o, si tampoco funciona:
+
+```text
+MERCADO PAGO - FIRMA INVALIDA EN AMBAS FORMAS
+```
+
+Eso nos permite descartar o confirmar esta hipótesis sin tocar el resto del procesamiento del pago.

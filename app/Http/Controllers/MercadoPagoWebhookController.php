@@ -50,6 +50,21 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
+         * ==========================================================
+         * ID DE LA NOTIFICACIÓN
+         * ==========================================================
+         *
+         * En una notificación Webhook tenemos:
+         *
+         * body.id     -> ID único de la notificación
+         * data.id     -> ID del recurso notificado (payment)
+         *
+         * Necesitamos ambos para probar las dos variantes
+         * de validación de firma.
+         */
+        $notificationId = $request->input('id');
+
+        /*
          * Validamos el origen de la notificación.
          */
         $xSignature = $request->header('x-signature');
@@ -58,20 +73,36 @@ class MercadoPagoWebhookController extends Controller
         Log::channel('stderr')->info(
             'MERCADO PAGO WEBHOOK FIRMA',
             [
-                'has_signature' => !empty($xSignature),
-                'has_request_id' => !empty($xRequestId),
-                'request_id' => $xRequestId,
-                'data_id' => $paymentId,
-                'webhook_secret_configured' => !empty(
-                    config('services.mercadopago.webhook_secret')
-                ),
-                'signature' => $xSignature
-                    ? preg_replace(
-                        '/(ts|v1)=[^,]+/',
-                        '$1=***',
-                        $xSignature
-                    )
-                    : null,
+                'has_signature' =>
+                    !empty($xSignature),
+
+                'has_request_id' =>
+                    !empty($xRequestId),
+
+                'request_id' =>
+                    $xRequestId,
+
+                'data_id' =>
+                    $paymentId,
+
+                'notification_id' =>
+                    $notificationId,
+
+                'webhook_secret_configured' =>
+                    !empty(
+                        config(
+                            'services.mercadopago.webhook_secret'
+                        )
+                    ),
+
+                'signature' =>
+                    $xSignature
+                        ? preg_replace(
+                            '/(ts|v1)=[^,]+/',
+                            '$1=***',
+                            $xSignature
+                        )
+                        : null,
             ]
         );
 
@@ -80,19 +111,40 @@ class MercadoPagoWebhookController extends Controller
             || !$xRequestId
         ) {
             return response()->json([
-                'message' => 'Firma de Webhook no recibida.',
+                'message' =>
+                    'Firma de Webhook no recibida.',
             ], 401);
         }
 
+        /*
+         * ==========================================================
+         * VALIDACIÓN DE FIRMA
+         * ==========================================================
+         *
+         * Primero se prueba:
+         *
+         *     data.id
+         *
+         * y si falla:
+         *
+         *     notification.id
+         *
+         * La validación solo continúa si una de las dos
+         * produce una HMAC válida.
+         */
         if (
             !$mercadoPagoService->validateWebhookSignature(
                 $xSignature,
                 $xRequestId,
-                (string) $paymentId
+                (string) $paymentId,
+                $notificationId !== null
+                    ? (string) $notificationId
+                    : null
             )
         ) {
             return response()->json([
-                'message' => 'Firma de Webhook inválida.',
+                'message' =>
+                    'Firma de Webhook inválida.',
             ], 401);
         }
 
@@ -106,6 +158,7 @@ class MercadoPagoWebhookController extends Controller
             $payment = $mercadoPagoService->getPayment(
                 (string) $paymentId
             );
+
         } catch (\Throwable $e) {
 
             /*
@@ -116,14 +169,20 @@ class MercadoPagoWebhookController extends Controller
             Log::error(
                 'No se pudo consultar el pago de Mercado Pago.',
                 [
-                    'payment_id' => (string) $paymentId,
-                    'message' => $e->getMessage(),
-                    'exception' => get_class($e),
+                    'payment_id' =>
+                        (string) $paymentId,
+
+                    'message' =>
+                        $e->getMessage(),
+
+                    'exception' =>
+                        get_class($e),
                 ]
             );
 
             return response()->json([
-                'message' => 'No se pudo consultar el pago.',
+                'message' =>
+                    'No se pudo consultar el pago.',
             ], 500);
         }
 
@@ -135,12 +194,14 @@ class MercadoPagoWebhookController extends Controller
             Log::error(
                 'Mercado Pago no devolvió información del pago.',
                 [
-                    'payment_id' => (string) $paymentId,
+                    'payment_id' =>
+                        (string) $paymentId,
                 ]
             );
 
             return response()->json([
-                'message' => 'No se pudo obtener el pago.',
+                'message' =>
+                    'No se pudo obtener el pago.',
             ], 500);
         }
 
@@ -150,18 +211,23 @@ class MercadoPagoWebhookController extends Controller
          */
         if (
             isset($payment->id)
-            && (string) $payment->id !== (string) $paymentId
+            && (string) $payment->id
+                !== (string) $paymentId
         ) {
             Log::warning(
                 'El payment_id recibido no coincide con el pago consultado.',
                 [
-                    'webhook_payment_id' => (string) $paymentId,
-                    'api_payment_id' => (string) $payment->id,
+                    'webhook_payment_id' =>
+                        (string) $paymentId,
+
+                    'api_payment_id' =>
+                        (string) $payment->id,
                 ]
             );
 
             return response()->json([
-                'message' => 'El pago recibido no coincide con el pago consultado.',
+                'message' =>
+                    'El pago recibido no coincide con el pago consultado.',
             ], 400);
         }
 
@@ -178,7 +244,8 @@ class MercadoPagoWebhookController extends Controller
 
         if (!$externalReference) {
             return response()->json([
-                'message' => 'La referencia externa no existe.',
+                'message' =>
+                    'La referencia externa no existe.',
             ], 400);
         }
 
@@ -192,7 +259,8 @@ class MercadoPagoWebhookController extends Controller
             )
         ) {
             return response()->json([
-                'message' => 'La referencia externa no es válida.',
+                'message' =>
+                    'La referencia externa no es válida.',
             ], 400);
         }
 
@@ -205,7 +273,8 @@ class MercadoPagoWebhookController extends Controller
 
         if (!$invoice) {
             return response()->json([
-                'message' => 'Factura no encontrada.',
+                'message' =>
+                    'Factura no encontrada.',
             ], 404);
         }
 
@@ -216,7 +285,8 @@ class MercadoPagoWebhookController extends Controller
          */
         if ($invoice->payment_status === 'paid') {
             return response()->json([
-                'message' => 'La factura ya estaba pagada.',
+                'message' =>
+                    'La factura ya estaba pagada.',
             ]);
         }
 
@@ -229,7 +299,8 @@ class MercadoPagoWebhookController extends Controller
             !== 'approved'
         ) {
             return response()->json([
-                'message' => 'El pago todavía no está aprobado.',
+                'message' =>
+                    'El pago todavía no está aprobado.',
             ]);
         }
 
@@ -245,21 +316,30 @@ class MercadoPagoWebhookController extends Controller
 
         if (
             abs(
-                $transactionAmount - $invoiceAmount
+                $transactionAmount
+                - $invoiceAmount
             ) > 0.01
         ) {
             Log::warning(
                 'El importe del pago no coincide con la factura.',
                 [
-                    'invoice_id' => $invoice->id,
-                    'payment_id' => (string) $paymentId,
-                    'invoice_amount' => $invoiceAmount,
-                    'transaction_amount' => $transactionAmount,
+                    'invoice_id' =>
+                        $invoice->id,
+
+                    'payment_id' =>
+                        (string) $paymentId,
+
+                    'invoice_amount' =>
+                        $invoiceAmount,
+
+                    'transaction_amount' =>
+                        $transactionAmount,
                 ]
             );
 
             return response()->json([
-                'message' => 'El importe del pago no coincide con la factura.',
+                'message' =>
+                    'El importe del pago no coincide con la factura.',
             ], 400);
         }
 
@@ -274,7 +354,9 @@ class MercadoPagoWebhookController extends Controller
         if (!empty($payment->dateApproved)) {
             $paidAt = date(
                 'Y-m-d',
-                strtotime($payment->dateApproved)
+                strtotime(
+                    $payment->dateApproved
+                )
             );
         }
 
@@ -290,12 +372,23 @@ class MercadoPagoWebhookController extends Controller
          * Guardamos el resultado confirmado del pago.
          */
         $invoice->update([
-            'payment_status' => 'paid',
-            'amount_paid' => $transactionAmount,
-            'paid_at' => $paidAt,
-            'payment_method' => 'mercadopago',
-            'paid_by' => null,
-            'mercadopago_payment_id' => (string) $paymentId,
+            'payment_status' =>
+                'paid',
+
+            'amount_paid' =>
+                $transactionAmount,
+
+            'paid_at' =>
+                $paidAt,
+
+            'payment_method' =>
+                'mercadopago',
+
+            'paid_by' =>
+                null,
+
+            'mercadopago_payment_id' =>
+                (string) $paymentId,
         ]);
 
         /*
@@ -303,7 +396,8 @@ class MercadoPagoWebhookController extends Controller
          * la notificación cuando devolvemos HTTP 200.
          */
         return response()->json([
-            'message' => 'Pago procesado correctamente.',
+            'message' =>
+                'Pago procesado correctamente.',
         ], 200);
     }
 }

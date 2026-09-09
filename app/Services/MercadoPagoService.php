@@ -55,8 +55,6 @@ class MercadoPagoService
                  *
                  * URL pública utilizada por Mercado Pago
                  * para enviar las notificaciones.
-                 *
-                 * Se mantiene comentada durante el diagnóstico.
                  */
                 /*
                 'notification_url' => config(
@@ -68,10 +66,6 @@ class MercadoPagoService
                  * ======================================================
                  * FORMA REAL DE DEBUG - 09/2026
                  * ======================================================
-                 *
-                 * Durante el diagnóstico enviamos las notificaciones
-                 * directamente al endpoint de debug para poder observar
-                 * exactamente qué está enviando Mercado Pago.
                  */
                 'notification_url' =>
                     'https://pagosonline.onrender.com/mercadopago/webhook',
@@ -172,24 +166,25 @@ class MercadoPagoService
      * en una notificación Webhook.
      *
      * PRIMERA OPCIÓN:
-     * Utiliza el validador oficial incluido en el SDK,
-     * utilizando data.id.
+     * Validador oficial del SDK utilizando data.id.
      *
-     * SEGUNDA OPCIÓN / FALLBACK EXPERIMENTAL:
-     * Si la forma oficial falla, se prueba utilizando
-     * el id de la notificación presente en el body.
+     * SEGUNDA OPCIÓN:
+     * Variante experimental utilizando notification.id.
      *
-     * En ambos casos:
+     * TERCERA PRUEBA:
+     * Repetimos manualmente la fórmula oficial usando
+     * explícitamente el data_id recibido desde el query string.
+     *
+     * En todos los casos se utiliza:
      *
      * HMAC-SHA256(secret, manifest)
-     *
-     * El secret nunca se registra.
      */
     public function validateWebhookSignature(
         ?string $xSignature,
         ?string $xRequestId,
         ?string $dataId,
-        ?string $notificationId
+        ?string $notificationId,
+        ?string $queryDataId = null
     ): bool {
         $secret = config(
             'services.mercadopago.webhook_secret'
@@ -198,29 +193,40 @@ class MercadoPagoService
         Log::channel('stderr')->info(
             'MERCADO PAGO - INICIO VALIDACION FIRMA',
             [
-                'has_signature' => !empty($xSignature),
-                'has_request_id' => !empty($xRequestId),
-                'has_data_id' => !empty($dataId),
-                'has_notification_id' => !empty($notificationId),
+                'has_signature' =>
+                    !empty($xSignature),
 
-                'secret_configured' => !empty($secret),
+                'has_request_id' =>
+                    !empty($xRequestId),
 
-                'secret_length' => $secret
-                    ? strlen($secret)
-                    : 0,
+                'has_data_id' =>
+                    !empty($dataId),
 
-                /*
-                 * Huella de la clave secreta.
-                 *
-                 * No registra la clave.
-                 */
-                'secret_fingerprint' => $secret
-                    ? substr(
-                        hash('sha256', $secret),
-                        0,
-                        12
-                    )
-                    : null,
+                'has_notification_id' =>
+                    !empty($notificationId),
+
+                'has_query_data_id' =>
+                    !empty($queryDataId),
+
+                'secret_configured' =>
+                    !empty($secret),
+
+                'secret_length' =>
+                    $secret
+                        ? strlen($secret)
+                        : 0,
+
+                'secret_fingerprint' =>
+                    $secret
+                        ? substr(
+                            hash(
+                                'sha256',
+                                $secret
+                            ),
+                            0,
+                            12
+                        )
+                        : null,
             ]
         );
 
@@ -285,16 +291,13 @@ class MercadoPagoService
 
             /*
              * ======================================================
-             * FORMA DE LA DOCUMENTACIÓN - 09/2026
+             * PRIMERA PRUEBA
+             * FORMA OFICIAL DEL SDK
              * ======================================================
-             *
-             * El SDK oficial utiliza:
              *
              * id:<data.id>;
              * request-id:<x-request-id>;
              * ts:<timestamp>;
-             *
-             * Primero intentamos exactamente esta implementación.
              */
 
             try {
@@ -313,44 +316,35 @@ class MercadoPagoService
 
             } catch (InvalidWebhookSignatureException $e) {
 
-                /*
-                 * La forma oficial falló.
-                 *
-                 * Continuamos con la segunda variante experimental.
-                 */
-
                 Log::channel('stderr')->warning(
                     'MERCADO PAGO - FIRMA NO COINCIDE CON DATA.ID',
                     [
-                        'data_id' => $dataId,
-                        'notification_id' => $notificationId,
-                        'timestamp' => $timestamp,
+                        'data_id' =>
+                            $dataId,
+
+                        'notification_id' =>
+                            $notificationId,
+
+                        'timestamp' =>
+                            $timestamp,
                     ]
                 );
             }
 
             /*
              * ======================================================
-             * FORMA ALTERNATIVA / FALLBACK - 09/2026
+             * SEGUNDA PRUEBA
+             * VARIANTE EXPERIMENTAL CON NOTIFICATION.ID
              * ======================================================
-             *
-             * Probamos:
-             *
-             * id:<notification.id>;
-             * request-id:<x-request-id>;
-             * ts:<timestamp>;
-             *
-             * Esta variante se prueba únicamente si la forma
-             * documentada con data.id no coincide.
              */
 
-            $manifestParts = [];
+            $manifestNotificationParts = [];
 
             if (
                 $notificationId !== null
                 && trim($notificationId) !== ''
             ) {
-                $manifestParts[] =
+                $manifestNotificationParts[] =
                     'id:' . trim($notificationId);
             }
 
@@ -358,7 +352,7 @@ class MercadoPagoService
                 $xRequestId !== null
                 && trim($xRequestId) !== ''
             ) {
-                $manifestParts[] =
+                $manifestNotificationParts[] =
                     'request-id:' . trim($xRequestId);
             }
 
@@ -366,31 +360,25 @@ class MercadoPagoService
                 $timestamp !== null
                 && trim($timestamp) !== ''
             ) {
-                $manifestParts[] =
+                $manifestNotificationParts[] =
                     'ts:' . trim($timestamp);
             }
 
-            $manifest = implode(
-                ';',
-                $manifestParts
-            ) . ';';
+            $notificationManifest =
+                implode(
+                    ';',
+                    $manifestNotificationParts
+                ) . ';';
 
-            /*
-             * Calculamos HMAC-SHA256 utilizando
-             * exactamente el mismo secret.
-             */
-            $computedHash = hash_hmac(
+            $notificationHash = hash_hmac(
                 'sha256',
-                $manifest,
+                $notificationManifest,
                 $secret
             );
 
-            /*
-             * Comparamos contra el v1 recibido.
-             */
-            $hashesMatch =
+            $notificationMatches =
                 hash_equals(
-                    $computedHash,
+                    $notificationHash,
                     $receivedHash
                 );
 
@@ -406,15 +394,9 @@ class MercadoPagoService
                     'timestamp' =>
                         $timestamp,
 
-                    /*
-                     * El manifest no contiene secretos.
-                     */
                     'manifest' =>
-                        $manifest,
+                        $notificationManifest,
 
-                    /*
-                     * Huella del v1 recibido.
-                     */
                     'received_hash_fingerprint' =>
                         substr(
                             hash(
@@ -425,25 +407,22 @@ class MercadoPagoService
                             16
                         ),
 
-                    /*
-                     * Huella de nuestra firma calculada.
-                     */
                     'computed_hash_fingerprint' =>
                         substr(
                             hash(
                                 'sha256',
-                                $computedHash
+                                $notificationHash
                             ),
                             0,
                             16
                         ),
 
                     'hashes_match' =>
-                        $hashesMatch,
+                        $notificationMatches,
                 ]
             );
 
-            if ($hashesMatch) {
+            if ($notificationMatches) {
                 Log::channel('stderr')->warning(
                     'MERCADO PAGO - FIRMA VALIDA CON NOTIFICATION.ID',
                     [
@@ -457,14 +436,149 @@ class MercadoPagoService
             }
 
             /*
-             * Ninguna de las dos formas coincidió.
+             * ======================================================
+             * TERCERA PRUEBA
+             * DATA.ID TOMADO EXPLICITAMENTE DEL QUERY STRING
+             * ======================================================
+             *
+             * PHP/Laravel puede representar:
+             *
+             * ?data.id=123
+             *
+             * como:
+             *
+             * data_id=123
+             *
+             * en los parámetros de la petición.
+             *
+             * Por eso repetimos manualmente la misma fórmula
+             * oficial, pero utilizando exclusivamente
+             * el valor obtenido del query string.
+             */
+
+            $queryDataId =
+                $queryDataId !== null
+                ? trim($queryDataId)
+                : null;
+
+            $manualParts = [];
+
+            if (
+                $queryDataId !== null
+                && $queryDataId !== ''
+            ) {
+                $manualParts[] =
+                    'id:' . $queryDataId;
+            }
+
+            if (
+                $xRequestId !== null
+                && trim($xRequestId) !== ''
+            ) {
+                $manualParts[] =
+                    'request-id:' . trim($xRequestId);
+            }
+
+            if (
+                $timestamp !== null
+                && trim($timestamp) !== ''
+            ) {
+                $manualParts[] =
+                    'ts:' . trim($timestamp);
+            }
+
+            $manualManifest =
+                implode(
+                    ';',
+                    $manualParts
+                ) . ';';
+
+            $manualHash = hash_hmac(
+                'sha256',
+                $manualManifest,
+                $secret
+            );
+
+            $manualMatches =
+                hash_equals(
+                    $manualHash,
+                    $receivedHash
+                );
+
+            Log::channel('stderr')->warning(
+                'MERCADO PAGO - TERCERA PRUEBA DATA.ID QUERY',
+                [
+                    'query_data_id' =>
+                        $queryDataId,
+
+                    'data_id_normalizado' =>
+                        $dataId,
+
+                    'notification_id' =>
+                        $notificationId,
+
+                    'timestamp' =>
+                        $timestamp,
+
+                    'manifest' =>
+                        $manualManifest,
+
+                    'received_hash_fingerprint' =>
+                        substr(
+                            hash(
+                                'sha256',
+                                $receivedHash
+                            ),
+                            0,
+                            16
+                        ),
+
+                    'computed_hash_fingerprint' =>
+                        substr(
+                            hash(
+                                'sha256',
+                                $manualHash
+                            ),
+                            0,
+                            16
+                        ),
+
+                    'hashes_match' =>
+                        $manualMatches,
+                ]
+            );
+
+            if ($manualMatches) {
+                Log::channel('stderr')->warning(
+                    'MERCADO PAGO - FIRMA VALIDA CON DATA.ID QUERY',
+                    [
+                        'message' =>
+                            'La fórmula oficial coincide '
+                            . 'al utilizar directamente el '
+                            . 'data_id del query string.',
+                    ]
+                );
+
+                return true;
+            }
+
+            /*
+             * Ninguna de las pruebas coincidió.
              */
             Log::channel('stderr')->warning(
-                'MERCADO PAGO - FIRMA INVALIDA EN AMBAS FORMAS',
+                'MERCADO PAGO - FIRMA INVALIDA EN TODAS LAS PRUEBAS',
                 [
-                    'data_id' => $dataId,
-                    'notification_id' => $notificationId,
-                    'timestamp' => $timestamp,
+                    'data_id' =>
+                        $dataId,
+
+                    'query_data_id' =>
+                        $queryDataId,
+
+                    'notification_id' =>
+                        $notificationId,
+
+                    'timestamp' =>
+                        $timestamp,
                 ]
             );
 
@@ -475,10 +589,20 @@ class MercadoPagoService
             Log::channel('stderr')->error(
                 'MERCADO PAGO - ERROR VALIDANDO FIRMA',
                 [
-                    'data_id' => $dataId,
-                    'notification_id' => $notificationId,
-                    'message' => $e->getMessage(),
-                    'exception' => get_class($e),
+                    'data_id' =>
+                        $dataId,
+
+                    'query_data_id' =>
+                        $queryDataId,
+
+                    'notification_id' =>
+                        $notificationId,
+
+                    'message' =>
+                        $e->getMessage(),
+
+                    'exception' =>
+                        get_class($e),
                 ]
             );
 

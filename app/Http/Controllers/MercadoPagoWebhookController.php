@@ -20,9 +20,6 @@ class MercadoPagoWebhookController extends Controller
         /*
          * Solo procesamos notificaciones relacionadas
          * con pagos.
-         *
-         * Mercado Pago puede enviar el tipo de evento
-         * en el body o como query parameter.
          */
         $type =
             $request->input('type')
@@ -35,17 +32,34 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * Mercado Pago puede enviar el payment_id
-         * dentro del body o como query parameter.
+         * Mercado Pago envía el payment_id mediante:
+         *
+         * ?data.id=...
+         *
+         * PHP/Laravel puede exponer ese parámetro como:
+         *
+         * data_id
+         *
+         * Por eso se contemplan ambas formas.
          */
-        $paymentId =
-            $request->input('data.id')
-            ?? $request->query('data.id')
+        $queryDataId =
+            $request->query('data.id')
             ?? $request->query('data_id');
+
+        /*
+         * También contemplamos un data.id presente en el body.
+         */
+        $bodyDataId =
+            $request->input('data.id');
+
+        $paymentId =
+            $bodyDataId
+            ?? $queryDataId;
 
         if (!$paymentId) {
             return response()->json([
-                'message' => 'Payment ID no recibido.',
+                'message' =>
+                    'Payment ID no recibido.',
             ], 400);
         }
 
@@ -54,21 +68,20 @@ class MercadoPagoWebhookController extends Controller
          * ID DE LA NOTIFICACIÓN
          * ==========================================================
          *
-         * En una notificación Webhook tenemos:
-         *
          * body.id     -> ID único de la notificación
-         * data.id     -> ID del recurso notificado (payment)
-         *
-         * Necesitamos ambos para probar las dos variantes
-         * de validación de firma.
+         * data.id     -> ID del recurso notificado
          */
-        $notificationId = $request->input('id');
+        $notificationId =
+            $request->input('id');
 
         /*
          * Validamos el origen de la notificación.
          */
-        $xSignature = $request->header('x-signature');
-        $xRequestId = $request->header('x-request-id');
+        $xSignature =
+            $request->header('x-signature');
+
+        $xRequestId =
+            $request->header('x-request-id');
 
         Log::channel('stderr')->info(
             'MERCADO PAGO WEBHOOK FIRMA',
@@ -84,6 +97,12 @@ class MercadoPagoWebhookController extends Controller
 
                 'data_id' =>
                     $paymentId,
+
+                'query_data_id' =>
+                    $queryDataId,
+
+                'body_data_id' =>
+                    $bodyDataId,
 
                 'notification_id' =>
                     $notificationId,
@@ -121,24 +140,22 @@ class MercadoPagoWebhookController extends Controller
          * VALIDACIÓN DE FIRMA
          * ==========================================================
          *
-         * Primero se prueba:
-         *
-         *     data.id
-         *
-         * y si falla:
-         *
-         *     notification.id
-         *
-         * La validación solo continúa si una de las dos
-         * produce una HMAC válida.
+         * 1. Validador oficial con data.id.
+         * 2. Variante experimental con notification.id.
+         * 3. Reproducción manual usando query data_id.
          */
         if (
             !$mercadoPagoService->validateWebhookSignature(
                 $xSignature,
                 $xRequestId,
-                (string) $paymentId,
+                $paymentId !== null
+                    ? (string) $paymentId
+                    : null,
                 $notificationId !== null
                     ? (string) $notificationId
+                    : null,
+                $queryDataId !== null
+                    ? (string) $queryDataId
                     : null
             )
         ) {
@@ -155,17 +172,13 @@ class MercadoPagoWebhookController extends Controller
          * mediante el Webhook.
          */
         try {
-            $payment = $mercadoPagoService->getPayment(
-                (string) $paymentId
-            );
+            $payment =
+                $mercadoPagoService->getPayment(
+                    (string) $paymentId
+                );
 
         } catch (\Throwable $e) {
 
-            /*
-             * Si Mercado Pago no puede ser consultado
-             * temporalmente, devolvemos 500 para que la
-             * notificación pueda ser reenviada.
-             */
             Log::error(
                 'No se pudo consultar el pago de Mercado Pago.',
                 [
@@ -234,9 +247,6 @@ class MercadoPagoWebhookController extends Controller
         /*
          * Obtenemos la referencia externa que corresponde
          * a nuestra factura.
-         *
-         * Al crear la Preference utilizamos el ID de la
-         * factura como external_reference.
          */
         $externalReference =
             $payment->externalReference
@@ -250,8 +260,7 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * La referencia externa debe contener un ID numérico
-         * correspondiente a una factura de nuestro sistema.
+         * La referencia externa debe contener un ID numérico.
          */
         if (
             !ctype_digit(
@@ -267,9 +276,10 @@ class MercadoPagoWebhookController extends Controller
         /*
          * Buscamos la factura correspondiente.
          */
-        $invoice = Invoice::find(
-            (int) $externalReference
-        );
+        $invoice =
+            Invoice::find(
+                (int) $externalReference
+            );
 
         if (!$invoice) {
             return response()->json([
@@ -279,9 +289,8 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * Si la factura ya fue pagada, no volvemos a procesarla.
-         *
-         * Esto hace que el Webhook sea idempotente.
+         * Si la factura ya fue pagada,
+         * no volvemos a procesarla.
          */
         if ($invoice->payment_status === 'paid') {
             return response()->json([
@@ -291,8 +300,8 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * Solo un pago aprobado puede marcar la factura
-         * como pagada.
+         * Solo un pago aprobado puede marcar
+         * la factura como pagada.
          */
         if (
             ($payment->status ?? null)
@@ -308,11 +317,14 @@ class MercadoPagoWebhookController extends Controller
          * Verificamos que el importe recibido coincida
          * con el importe de nuestra factura.
          */
-        $transactionAmount = (float) (
-            $payment->transactionAmount ?? 0
-        );
+        $transactionAmount =
+            (float) (
+                $payment->transactionAmount
+                ?? 0
+            );
 
-        $invoiceAmount = (float) $invoice->price;
+        $invoiceAmount =
+            (float) $invoice->price;
 
         if (
             abs(
@@ -345,27 +357,26 @@ class MercadoPagoWebhookController extends Controller
 
         /*
          * Obtenemos la fecha de aprobación del pago.
-         *
-         * La columna paid_at actualmente guarda solamente
-         * la fecha.
          */
         $paidAt = null;
 
         if (!empty($payment->dateApproved)) {
-            $paidAt = date(
-                'Y-m-d',
-                strtotime(
-                    $payment->dateApproved
-                )
-            );
+            $paidAt =
+                date(
+                    'Y-m-d',
+                    strtotime(
+                        $payment->dateApproved
+                    )
+                );
         }
 
         /*
-         * Si Mercado Pago no proporciona una fecha de
-         * aprobación válida, utilizamos la fecha actual.
+         * Si Mercado Pago no proporciona una fecha
+         * válida, utilizamos la fecha actual.
          */
         if (!$paidAt) {
-            $paidAt = now()->toDateString();
+            $paidAt =
+                now()->toDateString();
         }
 
         /*

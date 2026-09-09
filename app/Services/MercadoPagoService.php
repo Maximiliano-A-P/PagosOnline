@@ -177,11 +177,24 @@ class MercadoPagoService
             'services.mercadopago.webhook_secret'
         );
 
-        /*
-         * Sin Webhook Secret no podemos validar
-         * la autenticidad de la notificación.
-         */
+        Log::channel('stderr')->info(
+            'MERCADO PAGO - INICIO VALIDACION FIRMA',
+            [
+                'has_signature' => !empty($xSignature),
+                'has_request_id' => !empty($xRequestId),
+                'has_data_id' => !empty($dataId),
+                'secret_configured' => !empty($secret),
+                'secret_length' => $secret
+                    ? strlen($secret)
+                    : 0,
+            ]
+        );
+
         if (!$secret) {
+            Log::channel('stderr')->error(
+                'MERCADO PAGO - WEBHOOK SECRET VACIO'
+            );
+
             return false;
         }
 
@@ -193,24 +206,22 @@ class MercadoPagoService
                 $secret
             );
 
+            Log::channel('stderr')->info(
+                'MERCADO PAGO - FIRMA VALIDA'
+            );
+
             return true;
 
         } catch (InvalidWebhookSignatureException $e) {
 
-            /*
-             * La firma enviada por Mercado Pago no coincide
-             * con la firma calculada por el SDK.
-             *
-             * Registramos únicamente información útil
-             * para diagnóstico, sin exponer la firma
-             * ni el Webhook Secret.
-             */
-            Log::warning(
-                'Firma de Webhook de Mercado Pago inválida.',
+            Log::channel('stderr')->warning(
+                'MERCADO PAGO - FIRMA INVALIDA',
                 [
                     'request_id' => $xRequestId,
                     'data_id' => $dataId,
                     'reason' => $e->getReason()->value ?? null,
+                    'reason_name' => $e->getReason()->name ?? null,
+                    'timestamp' => $e->getTimestamp(),
                 ]
             );
 
@@ -218,12 +229,8 @@ class MercadoPagoService
 
         } catch (\Throwable $e) {
 
-            /*
-             * Capturamos cualquier otro error inesperado
-             * durante la validación.
-             */
-            Log::error(
-                'Error inesperado al validar la firma del Webhook de Mercado Pago.',
+            Log::channel('stderr')->error(
+                'MERCADO PAGO - ERROR VALIDANDO FIRMA',
                 [
                     'request_id' => $xRequestId,
                     'data_id' => $dataId,

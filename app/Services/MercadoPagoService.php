@@ -6,8 +6,10 @@ use App\Models\Invoice;
 use Illuminate\Support\Facades\Log;
 use MercadoPago\Client\Payment\PaymentClient;
 use MercadoPago\Client\Preference\PreferenceClient;
+use MercadoPago\Exceptions\InvalidWebhookSignatureException;
 use MercadoPago\Exceptions\MPApiException;
 use MercadoPago\MercadoPagoConfig;
+use MercadoPago\Webhook\WebhookSignatureValidator;
 
 class MercadoPagoService
 {
@@ -163,11 +165,13 @@ class MercadoPagoService
     /**
      * Valida la firma enviada por Mercado Pago
      * en una notificación Webhook.
+     *
+     * Utiliza el validador oficial incluido en el SDK.
      */
     public function validateWebhookSignature(
-        string $xSignature,
-        string $xRequestId,
-        string $dataId
+        ?string $xSignature,
+        ?string $xRequestId,
+        ?string $dataId
     ): bool {
         $secret = config(
             'services.mercadopago.webhook_secret'
@@ -181,68 +185,54 @@ class MercadoPagoService
             return false;
         }
 
-        /*
-         * Extraemos los valores de la firma.
-         *
-         * Formato esperado:
-         *
-         * ts=...,v1=...
-         */
-        $parts = [];
-
-        foreach (explode(',', $xSignature) as $part) {
-
-            [$key, $value] = array_pad(
-                explode('=', $part, 2),
-                2,
-                null
+        try {
+            WebhookSignatureValidator::validate(
+                $xSignature,
+                $xRequestId,
+                $dataId,
+                $secret
             );
 
-            if (
-                $key !== null
-                && $value !== null
-            ) {
-                $parts[trim($key)] = trim($value);
-            }
-        }
+            return true;
 
-        /*
-         * Una firma válida debe contener
-         * timestamp y hash.
-         */
-        if (
-            empty($parts['ts'])
-            || empty($parts['v1'])
-        ) {
+        } catch (InvalidWebhookSignatureException $e) {
+
+            /*
+             * La firma enviada por Mercado Pago no coincide
+             * con la firma calculada por el SDK.
+             *
+             * Registramos únicamente información útil
+             * para diagnóstico, sin exponer la firma
+             * ni el Webhook Secret.
+             */
+            Log::warning(
+                'Firma de Webhook de Mercado Pago inválida.',
+                [
+                    'request_id' => $xRequestId,
+                    'data_id' => $dataId,
+                    'reason' => $e->getReason()->value ?? null,
+                ]
+            );
+
+            return false;
+
+        } catch (\Throwable $e) {
+
+            /*
+             * Capturamos cualquier otro error inesperado
+             * durante la validación.
+             */
+            Log::error(
+                'Error inesperado al validar la firma del Webhook de Mercado Pago.',
+                [
+                    'request_id' => $xRequestId,
+                    'data_id' => $dataId,
+                    'message' => $e->getMessage(),
+                    'exception' => get_class($e),
+                ]
+            );
+
             return false;
         }
-
-        /*
-         * Manifest utilizado por Mercado Pago
-         * para generar la firma HMAC.
-         */
-        $manifest =
-            'id:' . strtolower($dataId) .
-            ';request-id:' . $xRequestId .
-            ';ts:' . $parts['ts'] .
-            ';';
-
-        /*
-         * Generamos nuestra propia firma utilizando
-         * la Webhook Secret.
-         */
-        $expectedSignature = hash_hmac(
-            'sha256',
-            $manifest,
-            $secret
-        );
-
-        /*
-         * Comparación segura contra ataques de timing.
-         */
-        return hash_equals(
-            $expectedSignature,
-            $parts['v1']
-        );
     }
 }

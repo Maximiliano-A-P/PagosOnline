@@ -20,6 +20,9 @@ class MercadoPagoWebhookController extends Controller
         /*
          * Solo procesamos notificaciones relacionadas
          * con pagos.
+         *
+         * Mercado Pago puede enviar el tipo de evento
+         * en el body o como query parameter.
          */
         $type =
             $request->input('type')
@@ -32,50 +35,23 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * Obtenemos el payment_id.
-         *
-         * Mercado Pago puede enviarlo:
-         * - en el body como data.id
-         * - en el query string como data.id
-         * - en el query string como data_id
+         * Mercado Pago puede enviar el payment_id
+         * dentro del body o como query parameter.
          */
-        $queryDataId =
-            $request->query('data.id')
+        $paymentId =
+            $request->input('data.id')
+            ?? $request->query('data.id')
             ?? $request->query('data_id');
 
-        $bodyDataId =
-            $request->input('data.id');
-
-        $paymentId =
-            $bodyDataId
-            ?? $queryDataId;
-
         if (!$paymentId) {
-            Log::channel('stderr')->error(
-                'MERCADO PAGO - PAYMENT ID NO RECIBIDO',
-                [
-                    'query' =>
-                        $request->query(),
-
-                    'body' =>
-                        $request->all(),
-                ]
-            );
-
             return response()->json([
-                'message' =>
-                    'Payment ID no recibido.',
+                'message' => 'Payment ID no recibido.',
             ], 400);
         }
 
         /*
-         * ID de la notificación.
-         */
-        $notificationId =
-            $request->input('id');
-
-        /*
-         * Headers de seguridad.
+         * Headers utilizados para validar
+         * la firma del Webhook.
          */
         $xSignature =
             $request->header('x-signature');
@@ -83,69 +59,10 @@ class MercadoPagoWebhookController extends Controller
         $xRequestId =
             $request->header('x-request-id');
 
-        Log::channel('stderr')->info(
-            'MERCADO PAGO WEBHOOK FIRMA',
-            [
-                'has_signature' =>
-                    !empty($xSignature),
-
-                'has_request_id' =>
-                    !empty($xRequestId),
-
-                'request_id' =>
-                    $xRequestId,
-
-                'data_id' =>
-                    $paymentId,
-
-                'query_data_id' =>
-                    $queryDataId,
-
-                'body_data_id' =>
-                    $bodyDataId,
-
-                'notification_id' =>
-                    $notificationId,
-
-                'webhook_secret_configured' =>
-                    !empty(
-                        config(
-                            'services.mercadopago.webhook_secret'
-                        )
-                    ),
-
-                'signature' =>
-                    $xSignature
-                        ? preg_replace(
-                            '/(ts|v1)=[^,]+/',
-                            '$1=***',
-                            $xSignature
-                        )
-                        : null,
-            ]
-        );
-
-        /*
-         * Mercado Pago debe enviar ambos headers.
-         */
         if (
             !$xSignature
             || !$xRequestId
         ) {
-            Log::channel('stderr')->error(
-                'MERCADO PAGO - FIRMA O REQUEST ID AUSENTE',
-                [
-                    'has_signature' =>
-                        !empty($xSignature),
-
-                    'has_request_id' =>
-                        !empty($xRequestId),
-
-                    'payment_id' =>
-                        (string) $paymentId,
-                ]
-            );
-
             return response()->json([
                 'message' =>
                     'Firma de Webhook no recibida.',
@@ -153,40 +70,15 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * ==========================================================
-         * VALIDACIÓN DE FIRMA
-         * ==========================================================
-         *
-         * La firma actualmente se valida correctamente
-         * utilizando la forma oficial con data.id.
+         * Validamos la firma del Webhook.
          */
         if (
             !$mercadoPagoService->validateWebhookSignature(
                 $xSignature,
                 $xRequestId,
-                (string) $paymentId,
-                $notificationId !== null
-                    ? (string) $notificationId
-                    : null,
-                $queryDataId !== null
-                    ? (string) $queryDataId
-                    : null
+                (string) $paymentId
             )
         ) {
-            Log::channel('stderr')->error(
-                'MERCADO PAGO - WEBHOOK RECHAZADO POR FIRMA',
-                [
-                    'payment_id' =>
-                        (string) $paymentId,
-
-                    'notification_id' =>
-                        $notificationId,
-
-                    'request_id' =>
-                        $xRequestId,
-                ]
-            );
-
             return response()->json([
                 'message' =>
                     'Firma de Webhook inválida.',
@@ -194,9 +86,10 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * ==========================================================
-         * CONSULTAR PAYMENT EN MERCADO PAGO
-         * ==========================================================
+         * Consultamos el pago directamente a Mercado Pago.
+         *
+         * No confiamos únicamente en los datos recibidos
+         * mediante el Webhook.
          */
         try {
             $payment =
@@ -206,8 +99,8 @@ class MercadoPagoWebhookController extends Controller
 
         } catch (\Throwable $e) {
 
-            Log::channel('stderr')->error(
-                'MERCADO PAGO - ERROR CONSULTANDO PAYMENT',
+            Log::error(
+                'No se pudo consultar el pago de Mercado Pago.',
                 [
                     'payment_id' =>
                         (string) $paymentId,
@@ -227,11 +120,12 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * Verificamos que exista el Payment.
+         * Verificamos que Mercado Pago haya devuelto
+         * efectivamente un pago.
          */
         if (!$payment) {
-            Log::channel('stderr')->error(
-                'MERCADO PAGO - PAYMENT VACIO',
+            Log::error(
+                'Mercado Pago no devolvió información del pago.',
                 [
                     'payment_id' =>
                         (string) $paymentId,
@@ -245,63 +139,16 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * ==========================================================
-         * DIAGNÓSTICO DEL OBJETO PAYMENT
-         * ==========================================================
-         *
-         * El objetivo es descubrir cómo expone realmente
-         * el SDK las propiedades del Payment.
-         *
-         * No registramos credenciales ni tokens.
-         */
-        Log::channel('stderr')->info(
-            'MERCADO PAGO - PAYMENT RAW DIAGNOSTICO',
-            [
-                'class' =>
-                    get_class($payment),
-
-                'properties' =>
-                    get_object_vars($payment),
-
-                'payment_id' =>
-                    isset($payment->id)
-                        ? $payment->id
-                        : null,
-
-                'status' =>
-                    $payment->status ?? null,
-
-                'external_reference' =>
-                    $payment->externalReference ?? null,
-
-                'external_reference_snake' =>
-                    $payment->external_reference ?? null,
-
-                'transaction_amount' =>
-                    $payment->transactionAmount ?? null,
-
-                'transaction_amount_snake' =>
-                    $payment->transaction_amount ?? null,
-
-                'date_approved' =>
-                    $payment->dateApproved ?? null,
-
-                'date_approved_snake' =>
-                    $payment->date_approved ?? null,
-            ]
-        );
-
-        /*
          * Verificamos que el ID devuelto por Mercado Pago
-         * coincida con el recibido.
+         * coincida con el ID recibido en el Webhook.
          */
         if (
             isset($payment->id)
             && (string) $payment->id
                 !== (string) $paymentId
         ) {
-            Log::channel('stderr')->error(
-                'MERCADO PAGO - PAYMENT ID NO COINCIDE',
+            Log::warning(
+                'El payment_id recibido no coincide con el pago consultado.',
                 [
                     'webhook_payment_id' =>
                         (string) $paymentId,
@@ -318,30 +165,14 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * ==========================================================
-         * EXTERNAL REFERENCE
-         * ==========================================================
+         * El SDK de Mercado Pago expone estos campos
+         * utilizando nombres snake_case.
          */
         $externalReference =
-            $payment->externalReference
-            ?? $payment->external_reference
+            $payment->external_reference
             ?? null;
 
         if (!$externalReference) {
-            Log::channel('stderr')->error(
-                'MERCADO PAGO - EXTERNAL REFERENCE AUSENTE',
-                [
-                    'payment_id' =>
-                        (string) $paymentId,
-
-                    'payment_status' =>
-                        $payment->status ?? null,
-
-                    'available_properties' =>
-                        get_object_vars($payment),
-                ]
-            );
-
             return response()->json([
                 'message' =>
                     'La referencia externa no existe.',
@@ -349,24 +180,14 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * La referencia externa debe ser numérica.
+         * La referencia externa debe contener
+         * un ID numérico correspondiente a una factura.
          */
         if (
             !ctype_digit(
                 (string) $externalReference
             )
         ) {
-            Log::channel('stderr')->error(
-                'MERCADO PAGO - EXTERNAL REFERENCE INVALIDA',
-                [
-                    'payment_id' =>
-                        (string) $paymentId,
-
-                    'external_reference' =>
-                        (string) $externalReference,
-                ]
-            );
-
             return response()->json([
                 'message' =>
                     'La referencia externa no es válida.',
@@ -374,9 +195,7 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * ==========================================================
-         * BUSCAR FACTURA
-         * ==========================================================
+         * Buscamos la factura correspondiente.
          */
         $invoice =
             Invoice::find(
@@ -384,17 +203,6 @@ class MercadoPagoWebhookController extends Controller
             );
 
         if (!$invoice) {
-            Log::channel('stderr')->error(
-                'MERCADO PAGO - FACTURA NO ENCONTRADA',
-                [
-                    'payment_id' =>
-                        (string) $paymentId,
-
-                    'external_reference' =>
-                        (string) $externalReference,
-                ]
-            );
-
             return response()->json([
                 'message' =>
                     'Factura no encontrada.',
@@ -402,22 +210,12 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * ==========================================================
-         * IDEMPOTENCIA
-         * ==========================================================
+         * Si la factura ya fue pagada,
+         * no volvemos a procesarla.
+         *
+         * Esto hace que el Webhook sea idempotente.
          */
         if ($invoice->payment_status === 'paid') {
-            Log::channel('stderr')->info(
-                'MERCADO PAGO - FACTURA YA PAGADA',
-                [
-                    'invoice_id' =>
-                        $invoice->id,
-
-                    'payment_id' =>
-                        (string) $paymentId,
-                ]
-            );
-
             return response()->json([
                 'message' =>
                     'La factura ya estaba pagada.',
@@ -425,28 +223,13 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * ==========================================================
-         * ESTADO DEL PAYMENT
-         * ==========================================================
+         * Solo un pago aprobado puede marcar
+         * la factura como pagada.
          */
         if (
             ($payment->status ?? null)
             !== 'approved'
         ) {
-            Log::channel('stderr')->warning(
-                'MERCADO PAGO - PAYMENT NO APROBADO',
-                [
-                    'invoice_id' =>
-                        $invoice->id,
-
-                    'payment_id' =>
-                        (string) $paymentId,
-
-                    'status' =>
-                        $payment->status ?? null,
-                ]
-            );
-
             return response()->json([
                 'message' =>
                     'El pago todavía no está aprobado.',
@@ -454,28 +237,30 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * ==========================================================
-         * IMPORTE
-         * ==========================================================
+         * El SDK expone transaction_amount
+         * utilizando snake_case.
          */
         $transactionAmount =
             (float) (
-                $payment->transactionAmount
-                ?? $payment->transaction_amount
+                $payment->transaction_amount
                 ?? 0
             );
 
         $invoiceAmount =
             (float) $invoice->price;
 
+        /*
+         * Verificamos que el importe recibido coincida
+         * con el importe de nuestra factura.
+         */
         if (
             abs(
                 $transactionAmount
                 - $invoiceAmount
             ) > 0.01
         ) {
-            Log::channel('stderr')->error(
-                'MERCADO PAGO - IMPORTE NO COINCIDE',
+            Log::warning(
+                'El importe del pago no coincide con la factura.',
                 [
                     'invoice_id' =>
                         $invoice->id,
@@ -498,13 +283,11 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * ==========================================================
-         * FECHA DE PAGO
-         * ==========================================================
+         * El SDK expone date_approved utilizando
+         * snake_case.
          */
         $dateApproved =
-            $payment->dateApproved
-            ?? $payment->date_approved
+            $payment->date_approved
             ?? null;
 
         $paidAt = null;
@@ -517,15 +300,17 @@ class MercadoPagoWebhookController extends Controller
                 );
         }
 
+        /*
+         * Si Mercado Pago no proporciona una fecha
+         * válida, utilizamos la fecha actual.
+         */
         if (!$paidAt) {
             $paidAt =
                 now()->toDateString();
         }
 
         /*
-         * ==========================================================
-         * ACTUALIZAR FACTURA
-         * ==========================================================
+         * Guardamos el resultado confirmado del pago.
          */
         $invoice->update([
             'payment_status' =>
@@ -547,23 +332,10 @@ class MercadoPagoWebhookController extends Controller
                 (string) $paymentId,
         ]);
 
-        Log::channel('stderr')->info(
-            'MERCADO PAGO - FACTURA MARCADA COMO PAGADA',
-            [
-                'invoice_id' =>
-                    $invoice->id,
-
-                'payment_id' =>
-                    (string) $paymentId,
-
-                'amount_paid' =>
-                    $transactionAmount,
-
-                'paid_at' =>
-                    $paidAt,
-            ]
-        );
-
+        /*
+         * Mercado Pago considera recibida correctamente
+         * la notificación cuando devolvemos HTTP 200.
+         */
         return response()->json([
             'message' =>
                 'Pago procesado correctamente.',

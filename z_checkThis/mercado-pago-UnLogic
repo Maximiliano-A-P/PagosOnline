@@ -1,0 +1,48 @@
+1. Propiedades del objeto Payment
+
+El SDK devolvía los datos del pago en snake_case, pero nuestro código los estaba leyendo en camelCase:
+
+Código:
+externalReference
+transactionAmount
+dateApproved
+
+SDK:
+external_reference
+transaction_amount
+date_approved
+
+Por eso el pago estaba aprobado, pero Laravel obtenía:
+
+external_reference = null
+transaction_amount = null
+date_approved = null
+
+y devolvía 400 por considerar ausente la referencia externa.
+
+2. Corrección
+
+Se modificó MercadoPagoWebhookController.php para utilizar:
+
+$payment->external_reference
+$payment->transaction_amount
+$payment->date_approved
+
+Con esa corrección, la prueba final dio:
+
+status = approved
+external_reference = 196
+transaction_amount = 12897.9
+
+y Laravel terminó registrando:
+
+FACTURA MARCADA COMO PAGADA
+invoice_id = 196
+payment_id = 178170400350
+amount_paid = 12897.9
+paid_at = 2026-09-09
+Resultado final
+
+El flujo quedó funcionando:
+
+Pago → Webhook → firma válida → consulta Payment → obtiene external_reference → encuentra factura → verifica importe → factura marcada como pagada.

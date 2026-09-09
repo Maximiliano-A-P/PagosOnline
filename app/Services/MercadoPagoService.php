@@ -74,7 +74,7 @@ class MercadoPagoService
                  * exactamente qué está enviando Mercado Pago.
                  */
                 'notification_url' =>
-                    'https://pagosonline.onrender.com/mercadopago/webhook-debug',
+                    'https://pagosonline.onrender.com/mercadopago/webhook',
 
                 /*
                  * URLs utilizadas por Mercado Pago para

@@ -51,10 +51,11 @@ class MercadoPagoService
                 /*
                  * URL pública utilizada por Mercado Pago
                  * para enviar las notificaciones.
-                 */
                 'notification_url' => config(
                     'services.mercadopago.webhook_url'
                 ),
+                */
+                'notification_url' => 'https://pagosonline.onrender.com/mercadopago/webhook-debug',
 
                 /*
                  * URLs utilizadas por Mercado Pago para

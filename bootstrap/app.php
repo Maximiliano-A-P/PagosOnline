@@ -12,38 +12,47 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+
         /*
          * Confiar en el proxy de Render.
          *
          * Render termina la conexión HTTPS en su balanceador
          * y reenvía el tráfico a nuestro contenedor como HTTP.
-         * Sin esto, Laravel cree que la conexión no es segura
-         * y genera URLs de assets, cookies y redirects con
-         * http:// en vez de https://.
+         *
+         * Sin esto, Laravel puede interpretar incorrectamente
+         * el esquema HTTPS y generar URLs, cookies y redirects
+         * con http://.
          */
         $middleware->trustProxies(at: '*');
 
+
         /*
          * Alias para el middleware de administrador.
-         *
-         * Luego podremos proteger rutas utilizando:
-         *
-         * ->middleware('admin')
          */
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
         ]);
 
+
         /*
-         * Excluir la ruta del webhook de Mercado Pago
-         * de la verificación CSRF.
+         * Excluir las rutas de Mercado Pago de la
+         * verificación CSRF.
+         *
+         * La primera es la ruta real utilizada
+         * por el sistema.
+         *
+         * La segunda es TEMPORAL y solamente existe
+         * para la investigación del Webhook.
          */
         $middleware->validateCsrfTokens(except: [
             'mercadopago/webhook',
+            'mercadopago/webhook-debug',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
     })->create();

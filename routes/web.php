@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\ArcaConfigController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardInvoiceController;
 use App\Http\Controllers\MercadoPagoWebhookController;
+use App\Http\Controllers\MercadoPagoWebhookDebugController;
 
 
 // ==========================================================
@@ -96,6 +97,33 @@ Route::post(
     '/mercadopago/webhook',
     [MercadoPagoWebhookController::class, 'handle']
 )->name('mercadopago.webhook');
+
+
+// ==========================================================
+// Webhook Mercado Pago - Diagnóstico temporal
+// ==========================================================
+//
+// Esta ruta se utilizará únicamente durante la investigación
+// del formato real enviado por Mercado Pago.
+//
+// NO procesa pagos.
+// NO modifica facturas.
+// NO valida firma.
+//
+// Registra temporalmente:
+// - query parameters
+// - body
+// - headers
+// - x-signature
+// - x-request-id
+//
+// La ruta deberá eliminarse una vez terminada la prueba.
+//
+
+Route::post(
+    '/mercadopago/webhook-debug',
+    [MercadoPagoWebhookDebugController::class, 'handle']
+)->name('mercadopago.webhook.debug');
 
 
 // ==========================================================

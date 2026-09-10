@@ -170,7 +170,7 @@ class DashboardInvoiceController extends Controller
                 ->paginate(10);
 
         return view(
-            'dashboard.invoices.history',
+            'history',
             compact('invoices')
         );
     }

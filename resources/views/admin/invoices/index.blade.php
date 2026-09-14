@@ -45,13 +45,14 @@
 
 
     <style>
+
         .btn {
             box-sizing: border-box;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             padding: 6px 14px;
-            background-color: #111827; /* gray-900 */
+            background-color: #111827;
             border: 1px solid #111827;
             border-radius: 6px;
             font-weight: 600;
@@ -68,47 +69,116 @@
         }
 
         .btn:hover {
-            background-color: #374151; /* gray-700 */
+            background-color: #374151;
         }
 
         .btn-secondary {
             background-color: #ffffff;
-            border: 1px solid #9ca3af; /* gray-400 */
+            border: 1px solid #9ca3af;
             color: #111827;
         }
 
         .btn-secondary:hover {
-            background-color: #f3f4f6; /* gray-100 */
+            background-color: #f3f4f6;
         }
 
         .btn-success {
-            background-color: #15803d; /* green-700 */
+            background-color: #15803d;
             border-color: #15803d;
         }
 
         .btn-success:hover {
-            background-color: #166534; /* green-800 */
+            background-color: #166534;
         }
 
-        .btn-danger {
-            background-color: #b91c1c; /* red-700 */
-            border-color: #b91c1c;
+        /*
+         * ==========================================================
+         * TARJETAS DE FACTURAS
+         * ==========================================================
+         */
+
+        .invoice-list,
+        .invoice-filters {
+            width: 90%;
+            margin: 0 auto 40px auto;
         }
 
-        .btn-danger:hover {
-            background-color: #991b1b; /* red-800 */
+        .invoice-card {
+            background-color: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            padding: 24px;
+            margin-bottom: 10px;
         }
 
-        .table-header th {
-            color: #000000;
+        .invoice-card-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: stretch;
+            gap: 30px;
+        }
+
+        .invoice-data {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .invoice-info {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 20px;
+        }
+
+        .invoice-amounts {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .invoice-field {
+            min-width: 0;
+        }
+
+        .invoice-label {
+            font-size: 13px;
             font-weight: 600;
-            padding: 16px 24px;
-            text-align: left;
-            font-size: 14px;
-            border-bottom: 2px solid #d1d5db;
+            color: #6b7280;
+            margin-bottom: 4px;
         }
 
-        .badge {
+        .invoice-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #111827;
+            overflow-wrap: anywhere;
+        }
+
+        .invoice-value-normal {
+            font-size: 16px;
+            font-weight: 500;
+            color: #111827;
+            overflow-wrap: anywhere;
+        }
+
+        .invoice-actions {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 10px;
+            min-width: 140px;
+            border-left: 1px solid #e5e7eb;
+            padding-left: 25px;
+        }
+
+        .invoice-actions form {
+            margin: 0;
+        }
+
+        .invoice-status {
             display: inline-flex;
             align-items: center;
             padding: 4px 12px;
@@ -118,21 +188,96 @@
             color: #ffffff;
         }
 
-        .badge-paid {
-            background-color: #15803d; /* green-700 */
+        .invoice-status-paid {
+            background-color: #15803d;
         }
 
-        .badge-pending {
-            background-color: #111827; /* gray-900 */
+        .invoice-status-pending {
+            background-color: #111827;
         }
+
+        .invoice-empty {
+            background-color: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            color: #111827;
+            font-size: 20px;
+        }
+
+        @media (max-width: 1100px) {
+
+            .invoice-info {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .invoice-amounts {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+        }
+
+        @media (max-width: 768px) {
+
+            .invoice-list {
+                width: 100%;
+            }
+
+            .invoice-card {
+                padding: 18px;
+            }
+
+            .invoice-card-content {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .invoice-info {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .invoice-amounts {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .invoice-actions {
+                border-left: none;
+                border-top: 1px solid #e5e7eb;
+                padding-left: 0;
+                padding-top: 20px;
+                flex-direction: row;
+                flex-wrap: wrap;
+                min-width: auto;
+            }
+
+        }
+
+        @media (max-width: 500px) {
+
+            .invoice-info,
+            .invoice-amounts {
+                grid-template-columns: 1fr;
+            }
+
+            .invoice-actions {
+                flex-direction: column;
+            }
+
+        }
+
     </style>
 
 
     <div class="py-12">
 
-        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+        <div class="w-full px-6 lg:px-8">
 
+
+            {{-- ================================================== --}}
             {{-- Mensaje de éxito --}}
+            {{-- ================================================== --}}
+
             @if (session('success'))
 
                 <div
@@ -145,7 +290,10 @@
             @endif
 
 
+            {{-- ================================================== --}}
             {{-- Mensaje de error --}}
+            {{-- ================================================== --}}
+
             @if (session('error'))
 
                 <div
@@ -158,8 +306,11 @@
             @endif
 
 
+            {{-- ================================================== --}}
             {{-- Encabezado --}}
-            <div class="mb-8">
+            {{-- ================================================== --}}
+
+            <div class="mb-8 max-w-7xl mx-auto">
 
                 <h3 class="font-semibold text-white text-[4vh]">
                     Facturas registradas
@@ -168,8 +319,14 @@
             </div>
 
 
+            {{-- ================================================== --}}
             {{-- Búsqueda y filtros --}}
-            <div class="bg-white border border-gray-300 rounded-lg shadow-sm mb-8">
+            {{-- ================================================== --}}
+
+            <div
+                class="invoice-filters bg-white border border-gray-300 rounded-lg
+                    shadow-sm"
+            >
 
                 <div class="p-6">
 
@@ -286,180 +443,338 @@
             </div>
 
 
-            {{-- Listado --}}
-            <div class="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden">
+            {{-- ================================================== --}}
+            {{-- Listado de facturas --}}
+            {{-- ================================================== --}}
 
-                <div class="divide-y divide-gray-200">
+            <div class="invoice-list">
 
-                    @forelse ($invoices as $invoice)
+                @forelse ($invoices as $invoice)
 
-                        <div class="p-6 hover:bg-gray-50">
+                    @php
 
-                            <div class="flex flex-col md:flex-row md:justify-between gap-6">
+                        $taxPercentage =
+                            $invoice->tax_percentage ?? 0;
 
-                                {{-- ===================== PARTE A: DATOS ===================== --}}
-                                <div class="flex-1 space-y-6">
+                        $price =
+                            (float) $invoice->price;
 
-                                    {{-- A.1 — Datos no numéricos --}}
-                                    <div class="space-y-2 text-gray-900 text-[3vh]">
+                        $overduePrice =
+                            (float) $invoice->overdue_price;
 
-                                        <div>
-                                            <span class="font-semibold">Cliente:</span>
+                        $priceWithTax =
+                            round(
+                                $price * (1 + ($taxPercentage / 100)),
+                                2
+                            );
+
+                        $overduePriceWithTax =
+                            round(
+                                $overduePrice * (1 + ($taxPercentage / 100)),
+                                2
+                            );
+
+                    @endphp
+
+
+                    {{-- ================================================== --}}
+                    {{-- TARJETA --}}
+                    {{-- ================================================== --}}
+
+                    <div class="invoice-card">
+
+                        <div class="invoice-card-content">
+
+
+                            {{-- ================================================== --}}
+                            {{-- DATOS --}}
+                            {{-- ================================================== --}}
+
+                            <div class="invoice-data">
+
+
+                                {{-- ================================================== --}}
+                                {{-- INFORMACIÓN --}}
+                                {{-- ================================================== --}}
+
+                                <div class="invoice-info">
+
+                                    {{-- Cliente --}}
+                                    <div class="invoice-field">
+
+                                        <div class="invoice-label">
+                                            Cliente
+                                        </div>
+
+                                        <div class="invoice-value">
                                             {{ $invoice->client_name ?? 'N/A' }}
                                         </div>
 
-                                        <div>
-                                            <span class="font-semibold">Documento:</span>
+                                        <div class="invoice-value-normal">
                                             {{ $invoice->client_document ?? 'N/A' }}
                                         </div>
 
-                                        <div>
-                                            <span class="font-semibold">Tipo de documento:</span>
-                                            {{ $invoice->client_document_type ?? 'N/A' }}
+                                    </div>
+
+
+                                    {{-- Servicio --}}
+                                    <div class="invoice-field">
+
+                                        <div class="invoice-label">
+                                            Servicio
                                         </div>
 
-                                        <div>
-                                            <span class="font-semibold">Condición IVA cliente:</span>
-                                            {{ $invoice->client_iva_condition ?? 'N/A' }}
-                                        </div>
-
-                                        <div>
-                                            <span class="font-semibold">Servicio:</span>
+                                        <div class="invoice-value-normal">
                                             {{ $invoice->service_name ?? 'N/A' }}
                                         </div>
 
-                                        <div>
-                                            <span class="font-semibold">Emisión:</span>
+                                    </div>
+
+
+                                    {{-- Emisión --}}
+                                    <div class="invoice-field">
+
+                                        <div class="invoice-label">
+                                            Emisión
+                                        </div>
+
+                                        <div class="invoice-value-normal">
                                             {{ $invoice->issued_at?->format('d/m/Y') ?? 'N/A' }}
                                         </div>
 
-                                        <div>
-                                            <span class="font-semibold">Vencimiento:</span>
+                                    </div>
+
+
+                                    {{-- Vencimiento --}}
+                                    <div class="invoice-field">
+
+                                        <div class="invoice-label">
+                                            Vencimiento
+                                        </div>
+
+                                        <div class="invoice-value-normal">
                                             {{ $invoice->due_date?->format('d/m/Y') ?? 'N/A' }}
                                         </div>
 
-                                        <div>
-                                            <span class="font-semibold">¿Vencida?:</span>
-                                            {{ $invoice->estaVencida() ? 'Sí' : 'No' }}
+                                    </div>
+
+
+                                    {{-- Estado --}}
+                                    <div class="invoice-field">
+
+                                        <div class="invoice-label">
+                                            Estado
                                         </div>
 
-                                        <div>
-                                            <span class="font-semibold">Estado:</span>
+                                        @if ($invoice->payment_status === 'paid')
 
-                                            @if ($invoice->payment_status === 'paid')
-                                                <span class="badge badge-paid">Pagada</span>
-                                            @else
-                                                <span class="badge badge-pending">Pendiente</span>
-                                            @endif
+                                            <span
+                                                class="invoice-status invoice-status-paid"
+                                            >
+                                                Pagada
+                                            </span>
+
+                                        @else
+
+                                            <span
+                                                class="invoice-status invoice-status-pending"
+                                            >
+                                                Pendiente
+                                            </span>
+
+                                        @endif
+
+                                    </div>
+
+                                </div>
+
+
+                                {{-- ================================================== --}}
+                                {{-- IMPORTES --}}
+                                {{-- ================================================== --}}
+
+                                <div class="invoice-amounts">
+
+                                    {{-- Precio neto --}}
+                                    <div class="invoice-field">
+
+                                        <div class="invoice-label">
+                                            Precio (NETO)
                                         </div>
 
-                                        <div>
-                                            <span class="font-semibold">Estado ARCA:</span>
-                                            {{ $invoice->arca_status ?? 'N/A' }}
-                                        </div>
-
-                                        <div>
-                                            <span class="font-semibold">CAE:</span>
-                                            {{ $invoice->arca_cae ?? 'N/A' }}
+                                        <div class="invoice-value">
+                                            ${{ number_format(
+                                                $price,
+                                                2,
+                                                ',',
+                                                '.'
+                                            ) }}
                                         </div>
 
                                     </div>
 
 
-                                    {{-- A.2 — Datos numéricos --}}
-                                    <div class="space-y-2 text-gray-900 text-[3vh]">
+                                    {{-- Precio vencido neto --}}
+                                    <div class="invoice-field">
 
-                                        <div>
-                                            <span class="font-semibold">Precio (NETO):</span>
-                                            {{ $invoice->price !== null
-                                                ? '$' . number_format($invoice->price, 2, ',', '.')
-                                                : 'N/A' }}
+                                        <div class="invoice-label">
+                                            Precio vencido (NETO)
                                         </div>
 
-                                        <div>
-                                            <span class="font-semibold">Precio vencido (NETO):</span>
-                                            {{ $invoice->overdue_price !== null
-                                                ? '$' . number_format($invoice->overdue_price, 2, ',', '.')
-                                                : 'N/A' }}
+                                        <div class="invoice-value">
+                                            ${{ number_format(
+                                                $overduePrice,
+                                                2,
+                                                ',',
+                                                '.'
+                                            ) }}
                                         </div>
 
-                                        <div>
-                                            <span class="font-semibold">Impuestos (IVA):</span>
-                                            {{ $invoice->tax_percentage !== null
-                                                ? number_format($invoice->tax_percentage, 2, ',', '.') . '%'
-                                                : 'N/A' }}
+                                    </div>
+
+
+                                    {{-- Impuestos --}}
+                                    <div class="invoice-field">
+
+                                        <div class="invoice-label">
+                                            Impuestos %
                                         </div>
 
-                                        <div>
-                                            <span class="font-semibold">
-                                                Importe {{ $invoice->payment_status === 'paid' ? 'cobrado' : 'a cobrar' }}:
-                                            </span>
-                                            ${{ number_format($invoice->montoACobrar(), 2, ',', '.') }}
+                                        <div class="invoice-value">
+                                            {{ number_format(
+                                                $taxPercentage,
+                                                2,
+                                                ',',
+                                                '.'
+                                            ) }}%
+                                        </div>
+
+                                    </div>
+
+
+                                    {{-- Neto + impuestos --}}
+                                    <div class="invoice-field">
+
+                                        <div class="invoice-label">
+                                            Neto + Impuestos
+                                        </div>
+
+                                        <div class="invoice-value">
+                                            ${{ number_format(
+                                                $priceWithTax,
+                                                2,
+                                                ',',
+                                                '.'
+                                            ) }}
+                                        </div>
+
+                                    </div>
+
+
+                                    {{-- Vencido + impuestos --}}
+                                    <div class="invoice-field">
+
+                                        <div class="invoice-label">
+                                            Vencido + Impuestos
+                                        </div>
+
+                                        <div class="invoice-value">
+                                            ${{ number_format(
+                                                $overduePriceWithTax,
+                                                2,
+                                                ',',
+                                                '.'
+                                            ) }}
                                         </div>
 
                                     </div>
 
                                 </div>
-                                {{-- ===================== FIN PARTE A ===================== --}}
 
 
-                                {{-- ===================== PARTE B: ACCIONES ===================== --}}
-                                <div class="flex flex-row md:flex-col items-start gap-4 shrink-0">
+                            </div>
+
+
+                            {{-- ================================================== --}}
+                            {{-- ACCIONES --}}
+                            {{-- ================================================== --}}
+
+                            <div class="invoice-actions">
+
+                                <a
+                                    href="{{ route(
+                                        'admin.invoices.show',
+                                        $invoice
+                                    ) }}"
+                                    class="btn"
+                                >
+                                    Ver
+                                </a>
+
+
+                                @if ($invoice->payment_status !== 'paid')
 
                                     <a
-                                        href="{{ route('admin.invoices.show', $invoice) }}"
+                                        href="{{ route(
+                                            'admin.invoices.payment',
+                                            $invoice
+                                        ) }}"
                                         class="btn"
                                     >
-                                        Ver
+                                        Registrar pago
                                     </a>
 
-                                    @if ($invoice->payment_status !== 'paid')
-                                        <a
-                                            href="{{ route('admin.invoices.payment', $invoice) }}"
-                                            class="btn"
-                                        >
-                                            Registrar pago
-                                        </a>
-                                    @endif
+                                @endif
 
-                                    <form
-                                        method="POST"
-                                        action="{{ route('admin.invoices.destroy', $invoice) }}"
-                                        onsubmit="return confirm(
-                                            '¿Eliminar esta factura? Esta acción no se puede deshacer.'
-                                        );"
+
+                                <form
+                                    method="POST"
+                                    action="{{ route(
+                                        'admin.invoices.destroy',
+                                        $invoice
+                                    ) }}"
+                                    onsubmit="return confirm(
+                                        '¿Eliminar esta factura? Esta acción no se puede deshacer.'
+                                    );"
+                                >
+                                    @csrf
+
+                                    @method('DELETE')
+
+                                    <button
+                                        type="submit"
+                                        class="btn"
                                     >
-                                        @csrf
-                                        @method('DELETE')
+                                        Eliminar
+                                    </button>
 
-                                        <button type="submit" class="btn">
-                                            Eliminar
-                                        </button>
-                                    </form>
-
-                                </div>
-                                {{-- ===================== FIN PARTE B ===================== --}}
+                                </form>
 
                             </div>
 
                         </div>
 
-                    @empty
+                    </div>
 
-                        <div class="p-10 text-center text-gray-900 text-[3vh]">
-                            No hay facturas registradas.
-                        </div>
+                @empty
 
-                    @endforelse
+                    <div class="invoice-empty">
+                        No hay facturas registradas.
+                    </div>
 
-                </div>
+                @endforelse
 
             </div>
 
 
+            {{-- ================================================== --}}
             {{-- Paginación --}}
+            {{-- ================================================== --}}
+
             <div class="mt-8">
+
                 {{ $invoices->links() }}
+
             </div>
 
         </div>

@@ -1,317 +1,718 @@
 <x-app-layout>
 
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Dashboard') }}
+<x-slot name="header">
+
+    <div>
+        <h2 class="font-semibold text-white leading-tight text-[4vh]">
+            Bienvenido
         </h2>
-    </x-slot>
+    </div>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+</x-slot>
 
-            {{-- ============================================= --}}
-            {{-- AGREGAR DOCUMENTO --}}
-            {{-- ============================================= --}}
 
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+<style>
 
-                <h3 class="text-lg font-semibold text-gray-900">
-                    Agregar documento
-                </h3>
+    /*
+     * ==========================================================
+     * BOTONES
+     * ==========================================================
+     */
 
-                <p class="mt-1 text-sm text-gray-600">
-                    Ingrese un número de documento para consultar sus facturas.
+    .dashboard-btn {
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 42px;
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-weight: 600;
+        color: #ffffff;
+        font-size: 14px;
+        line-height: normal;
+        font-family: inherit;
+        text-decoration: none;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        margin: 0;
+        transition: background-color 0.15s ease-in-out;
+    }
+
+    .dashboard-btn-primary {
+        background-color: #111827;
+        border: 1px solid #111827;
+    }
+
+    .dashboard-btn-primary:hover {
+        background-color: #374151;
+    }
+
+    .dashboard-btn-secondary {
+        background-color: #ffffff;
+        border: 1px solid #9ca3af;
+        color: #111827;
+    }
+
+    .dashboard-btn-secondary:hover {
+        background-color: #f3f4f6;
+    }
+
+
+    /*
+     * ==========================================================
+     * FACTURAS PENDIENTES
+     * ==========================================================
+     */
+
+    .pending-invoice-list {
+        width: 100%;
+        margin: 0 auto;
+    }
+
+    .pending-invoice-card {
+        background-color: #ffffff;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        padding: 24px;
+        margin-bottom: 10px;
+    }
+
+    .pending-invoice-card:last-child {
+        margin-bottom: 0;
+    }
+
+    .pending-invoice-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: stretch;
+        gap: 30px;
+    }
+
+    .pending-invoice-data {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .pending-invoice-info {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 20px;
+    }
+
+    .pending-invoice-amounts {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 20px;
+        margin-top: 25px;
+        padding-top: 20px;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .pending-invoice-field {
+        min-width: 0;
+    }
+
+    .pending-invoice-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #6b7280;
+        margin-bottom: 4px;
+    }
+
+    .pending-invoice-value {
+        font-size: 18px;
+        font-weight: 600;
+        color: #111827;
+        overflow-wrap: anywhere;
+    }
+
+    .pending-invoice-value-normal {
+        font-size: 16px;
+        font-weight: 500;
+        color: #111827;
+        overflow-wrap: anywhere;
+    }
+
+    .pending-invoice-actions {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 10px;
+        min-width: 160px;
+        border-left: 1px solid #e5e7eb;
+        padding-left: 25px;
+    }
+
+    .pending-invoice-actions .dashboard-btn {
+        width: 100%;
+    }
+
+    .pending-invoice-empty {
+        background-color: #ffffff;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        padding: 40px;
+        text-align: center;
+        color: #111827;
+        font-size: 18px;
+    }
+
+
+    /*
+     * ==========================================================
+     * RESPONSIVE
+     * ==========================================================
+     */
+
+    @media (max-width: 1100px) {
+
+        .pending-invoice-info {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .pending-invoice-amounts {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+    }
+
+
+    @media (max-width: 768px) {
+
+        .pending-invoice-list {
+            width: 100%;
+        }
+
+        .pending-invoice-card {
+            padding: 18px;
+        }
+
+        .pending-invoice-content {
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .pending-invoice-info {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .pending-invoice-amounts {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .pending-invoice-actions {
+            border-left: none;
+            border-top: 1px solid #e5e7eb;
+            padding-left: 0;
+            padding-top: 20px;
+            flex-direction: row;
+            flex-wrap: wrap;
+            min-width: auto;
+        }
+
+        .pending-invoice-actions .dashboard-btn {
+            width: auto;
+            min-width: 160px;
+        }
+
+    }
+
+
+    @media (max-width: 500px) {
+
+        .pending-invoice-info,
+        .pending-invoice-amounts {
+            grid-template-columns: 1fr;
+        }
+
+        .pending-invoice-actions {
+            flex-direction: column;
+        }
+
+        .pending-invoice-actions .dashboard-btn {
+            width: 100%;
+        }
+
+    }
+
+</style>
+
+
+<div class="py-12">
+
+    <div class="w-full px-6 lg:px-8">
+
+
+        {{-- ============================================= --}}
+        {{-- AGREGAR DOCUMENTO --}}
+        {{-- ============================================= --}}
+
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+
+            <h3 class="text-lg font-semibold text-gray-900">
+                Agregar documento
+            </h3>
+
+            <p class="mt-1 text-sm text-gray-600">
+                Ingrese un número de documento para consultar sus facturas.
+            </p>
+
+            <form
+                method="POST"
+                action="{{ route('dashboard.documents.store') }}"
+                class="mt-4 flex gap-3"
+            >
+
+                @csrf
+
+                <input
+                    type="text"
+                    name="document"
+                    value="{{ old('document') }}"
+                    placeholder="Número de documento"
+                    required
+                    class="block w-full rounded-md border-gray-300 shadow-sm
+                           focus:border-indigo-500 focus:ring-indigo-500"
+                >
+
+                <button
+                    type="submit"
+                    class="dashboard-btn dashboard-btn-primary"
+                >
+                    Agregar
+                </button>
+
+            </form>
+
+            @error('document')
+
+                <p class="mt-2 text-sm text-red-600">
+                    {{ $message }}
                 </p>
 
-                <form
-                    method="POST"
-                    action="{{ route('dashboard.documents.store') }}"
-                    class="mt-4 flex gap-3"
-                >
-                    @csrf
+            @enderror
 
-                    <input
-                        type="text"
-                        name="document"
-                        value="{{ old('document') }}"
-                        placeholder="Número de documento"
-                        required
-                        class="block w-full rounded-md border-gray-300 shadow-sm
-                               focus:border-indigo-500 focus:ring-indigo-500"
-                    >
-
-                    <button
-                        type="submit"
-                        class="inline-flex items-center px-4 py-2
-                               bg-gray-800 border border-transparent
-                               rounded-md font-semibold text-xs text-white
-                               uppercase tracking-widest
-                               hover:bg-gray-700"
-                    >
-                        Agregar
-                    </button>
-                </form>
-
-                @error('document')
-                    <p class="mt-2 text-sm text-red-600">
-                        {{ $message }}
-                    </p>
-                @enderror
-
-            </div>
+        </div>
 
 
-            {{-- ============================================= --}}
-            {{-- DOCUMENTOS AGREGADOS --}}
-            {{-- ============================================= --}}
+        {{-- ============================================= --}}
+        {{-- DOCUMENTOS AGREGADOS --}}
+        {{-- ============================================= --}}
 
-            <div class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+        <div class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
 
-                <h3 class="text-lg font-semibold text-gray-900">
-                    Documentos Agregados
-                </h3>
+            <h3 class="text-lg font-semibold text-gray-900">
+                Documentos Agregados
+            </h3>
 
-                @if(empty($documents))
+            @if(empty($documents))
 
-                    <p class="mt-4 text-sm text-gray-600">
-                        No hay documentos agregados.
-                    </p>
+                <p class="mt-4 text-sm text-gray-600">
+                    No hay documentos agregados.
+                </p>
 
-                @else
+            @else
 
-                    <div class="mt-4 space-y-3">
+                <div class="mt-4 space-y-3">
 
-                        @foreach($documents as $document)
+                    @foreach($documents as $document)
 
-                            <div
-                                class="flex items-center justify-between
-                                       border border-gray-200 rounded-lg p-4"
+                        <div
+                            class="flex items-center justify-between
+                                   border border-gray-200 rounded-lg p-4"
+                        >
+
+                            <span class="font-medium text-gray-900">
+                                {{ $document }}
+                            </span>
+
+                            <form
+                                method="POST"
+                                action="{{ route(
+                                    'dashboard.documents.destroy',
+                                    $document
+                                ) }}"
                             >
 
-                                <span class="font-medium text-gray-900">
-                                    {{ $document }}
-                                </span>
+                                @csrf
+                                @method('DELETE')
 
-                                <form
-                                    method="POST"
-                                    action="{{ route(
-                                        'dashboard.documents.destroy',
-                                        $document
-                                    ) }}"
+                                <button
+                                    type="submit"
+                                    class="text-sm text-red-600
+                                           hover:text-red-800"
                                 >
-                                    @csrf
-                                    @method('DELETE')
+                                    Quitar
+                                </button>
 
-                                    <button
-                                        type="submit"
-                                        class="text-sm text-red-600
-                                               hover:text-red-800"
-                                    >
-                                        Quitar
-                                    </button>
-                                </form>
+                            </form>
 
-                            </div>
+                        </div>
 
-                        @endforeach
+                    @endforeach
 
-                    </div>
+                </div>
 
-                @endif
+            @endif
 
-            </div>
+        </div>
 
 
-            {{-- ============================================= --}}
-            {{-- FACTURAS PENDIENTES --}}
-            {{-- ============================================= --}}
+        {{-- ============================================= --}}
+        {{-- FACTURAS PENDIENTES --}}
+        {{-- ============================================= --}}
 
-            <div class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+        <div class="mt-6">
 
-                <h3 class="text-lg font-semibold text-gray-900">
+            <div class="mb-8">
+
+                <h3 class="font-semibold text-white text-[4vh]">
                     Facturas pendientes
                 </h3>
 
-                @if(isset($pendingInvoices) && $pendingInvoices->count())
+            </div>
 
-                    <div class="mt-4 overflow-x-auto">
 
-                        <table class="min-w-full divide-y divide-gray-200">
+            @if(isset($pendingInvoices) && $pendingInvoices->count())
 
-                            <thead>
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-xs
-                                               font-medium text-gray-500
-                                               uppercase">
-                                        Documento
-                                    </th>
+                <div class="pending-invoice-list">
 
-                                    <th class="px-4 py-3 text-left text-xs
-                                               font-medium text-gray-500
-                                               uppercase">
-                                        Servicio
-                                    </th>
+                    @foreach($pendingInvoices as $invoice)
 
-                                    <th class="px-4 py-3 text-left text-xs
-                                               font-medium text-gray-500
-                                               uppercase">
-                                        Emisión
-                                    </th>
+                        @php
 
-                                    <th class="px-4 py-3 text-left text-xs
-                                               font-medium text-gray-500
-                                               uppercase">
-                                        Vencimiento
-                                    </th>
+                            $taxPercentage =
+                                $invoice->tax_percentage ?? 0;
 
-                                    <th class="px-4 py-3 text-left text-xs
-                                               font-medium text-gray-500
-                                               uppercase">
-                                        Importe
-                                    </th>
+                            $price =
+                                (float) $invoice->price;
 
-                                    <th class="px-4 py-3 text-right text-xs
-                                               font-medium text-gray-500
-                                               uppercase">
-                                        Acciones
-                                    </th>
-                                </tr>
-                            </thead>
+                            $overduePrice =
+                                (float) $invoice->overdue_price;
 
-                            <tbody class="divide-y divide-gray-200">
+                            $priceWithTax =
+                                round(
+                                    $price * (1 + ($taxPercentage / 100)),
+                                    2
+                                );
 
-                                @foreach($pendingInvoices as $invoice)
+                            $overduePriceWithTax =
+                                round(
+                                    $overduePrice * (1 + ($taxPercentage / 100)),
+                                    2
+                                );
 
-                                    <tr>
+                        @endphp
 
-                                        <td class="px-4 py-4 text-sm text-gray-900">
-                                            {{ $invoice->client_document }}
-                                        </td>
 
-                                        <td class="px-4 py-4 text-sm text-gray-900">
-                                            {{ $invoice->service_name }}
-                                        </td>
+                        {{-- ================================= --}}
+                        {{-- TARJETA --}}
+                        {{-- ================================= --}}
 
-                                        <td class="px-4 py-4 text-sm text-gray-600">
-                                            {{ $invoice->issued_at }}
-                                        </td>
+                        <div class="pending-invoice-card">
 
-                                        <td class="px-4 py-4 text-sm text-gray-600">
-                                            {{ $invoice->due_date }}
-                                        </td>
+                            <div class="pending-invoice-content">
 
-                                        <td class="px-4 py-4 text-sm font-medium text-gray-900">
-                                            ${{ number_format(
-                                                $invoice->price,
-                                                2,
-                                                ',',
-                                                '.'
-                                            ) }}
-                                        </td>
 
-                                        <td class="px-4 py-4 text-right">
+                                {{-- ================================= --}}
+                                {{-- DATOS --}}
+                                {{-- ================================= --}}
 
-                                            <div class="flex justify-end gap-2">
+                                <div class="pending-invoice-data">
 
-                                                {{-- PAGO ONLINE --}}
-                                                <a
-                                                    href="{{ route(
-                                                        'dashboard.invoices.pay',
-                                                        $invoice
-                                                    ) }}"
-                                                    class="inline-flex items-center
-                                                           px-3 py-2
-                                                           bg-gray-800
-                                                           rounded-md
-                                                           text-xs font-semibold
-                                                           text-white
-                                                           uppercase
-                                                           tracking-widest
-                                                           hover:bg-gray-700"
-                                                >
-                                                    Pagar
-                                                </a>
 
-                                                {{-- PDF --}}
-                                                <a
-                                                    href="{{ route(
-                                                        'dashboard.invoices.pdf',
-                                                        $invoice
-                                                    ) }}"
-                                                    class="inline-flex items-center
-                                                           px-3 py-2
-                                                           border
-                                                           border-gray-300
-                                                           rounded-md
-                                                           text-xs font-semibold
-                                                           text-gray-700
-                                                           uppercase
-                                                           tracking-widest
-                                                           hover:bg-gray-50"
-                                                >
-                                                    Descargar PDF
-                                                </a>
+                                    {{-- ================================= --}}
+                                    {{-- INFORMACIÓN --}}
+                                    {{-- ================================= --}}
 
+                                    <div class="pending-invoice-info">
+
+
+                                        {{-- Cliente --}}
+
+                                        <div class="pending-invoice-field">
+
+                                            <div class="pending-invoice-label">
+                                                Cliente
                                             </div>
 
-                                        </td>
+                                            <div class="pending-invoice-value">
+                                                {{ $invoice->client_name ?? 'N/A' }}
+                                            </div>
 
-                                    </tr>
+                                            <div class="pending-invoice-value-normal">
+                                                {{ $invoice->client_document ?? 'N/A' }}
+                                            </div>
 
-                                @endforeach
+                                        </div>
 
-                            </tbody>
 
-                        </table>
+                                        {{-- Servicio --}}
 
+                                        <div class="pending-invoice-field">
+
+                                            <div class="pending-invoice-label">
+                                                Servicio
+                                            </div>
+
+                                            <div class="pending-invoice-value-normal">
+                                                {{ $invoice->service_name ?? 'N/A' }}
+                                            </div>
+
+                                        </div>
+
+
+                                        {{-- Emisión --}}
+
+                                        <div class="pending-invoice-field">
+
+                                            <div class="pending-invoice-label">
+                                                Emisión
+                                            </div>
+
+                                            <div class="pending-invoice-value-normal">
+                                                {{ $invoice->issued_at?->format('d/m/Y') ?? 'N/A' }}
+                                            </div>
+
+                                        </div>
+
+
+                                        {{-- Vencimiento --}}
+
+                                        <div class="pending-invoice-field">
+
+                                            <div class="pending-invoice-label">
+                                                Vencimiento
+                                            </div>
+
+                                            <div class="pending-invoice-value-normal">
+                                                {{ $invoice->due_date?->format('d/m/Y') ?? 'N/A' }}
+                                            </div>
+
+                                        </div>
+
+
+                                        {{-- Estado --}}
+
+                                        <div class="pending-invoice-field">
+
+                                            <div class="pending-invoice-label">
+                                                Estado
+                                            </div>
+
+                                            <span
+                                                class="inline-flex items-center
+                                                       px-3 py-1
+                                                       rounded-full
+                                                       font-semibold
+                                                       text-[13px]
+                                                       text-white
+                                                       bg-gray-900"
+                                            >
+                                                Pendiente
+                                            </span>
+
+                                        </div>
+
+                                    </div>
+
+
+                                    {{-- ================================= --}}
+                                    {{-- IMPORTES --}}
+                                    {{-- ================================= --}}
+
+                                    <div class="pending-invoice-amounts">
+
+
+                                        {{-- Precio neto --}}
+
+                                        <div class="pending-invoice-field">
+
+                                            <div class="pending-invoice-label">
+                                                Precio (NETO)
+                                            </div>
+
+                                            <div class="pending-invoice-value">
+                                                ${{ number_format(
+                                                    $price,
+                                                    2,
+                                                    ',',
+                                                    '.'
+                                                ) }}
+                                            </div>
+
+                                        </div>
+
+
+                                        {{-- Precio vencido neto --}}
+
+                                        <div class="pending-invoice-field">
+
+                                            <div class="pending-invoice-label">
+                                                Precio vencido (NETO)
+                                            </div>
+
+                                            <div class="pending-invoice-value">
+                                                ${{ number_format(
+                                                    $overduePrice,
+                                                    2,
+                                                    ',',
+                                                    '.'
+                                                ) }}
+                                            </div>
+
+                                        </div>
+
+
+                                        {{-- Impuestos --}}
+
+                                        <div class="pending-invoice-field">
+
+                                            <div class="pending-invoice-label">
+                                                Impuestos %
+                                            </div>
+
+                                            <div class="pending-invoice-value">
+                                                {{ number_format(
+                                                    $taxPercentage,
+                                                    2,
+                                                    ',',
+                                                    '.'
+                                                ) }}%
+                                            </div>
+
+                                        </div>
+
+
+                                        {{-- Neto + impuestos --}}
+
+                                        <div class="pending-invoice-field">
+
+                                            <div class="pending-invoice-label">
+                                                Neto + Impuestos
+                                            </div>
+
+                                            <div class="pending-invoice-value">
+                                                ${{ number_format(
+                                                    $priceWithTax,
+                                                    2,
+                                                    ',',
+                                                    '.'
+                                                ) }}
+                                            </div>
+
+                                        </div>
+
+
+                                        {{-- Vencido + impuestos --}}
+
+                                        <div class="pending-invoice-field">
+
+                                            <div class="pending-invoice-label">
+                                                Vencido + Impuestos
+                                            </div>
+
+                                            <div class="pending-invoice-value">
+                                                ${{ number_format(
+                                                    $overduePriceWithTax,
+                                                    2,
+                                                    ',',
+                                                    '.'
+                                                ) }}
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+
+                                {{-- ================================= --}}
+                                {{-- ACCIONES --}}
+                                {{-- ================================= --}}
+
+                                <div class="pending-invoice-actions">
+
+
+                                    {{-- PAGO ONLINE --}}
+
+                                    <a
+                                        href="{{ route(
+                                            'dashboard.invoices.pay',
+                                            $invoice
+                                        ) }}"
+                                        class="dashboard-btn dashboard-btn-primary"
+                                    >
+                                        Pagar
+                                    </a>
+
+
+                                    {{-- PDF --}}
+
+                                    <a
+                                        href="{{ route(
+                                            'dashboard.invoices.pdf',
+                                            $invoice
+                                        ) }}"
+                                        class="dashboard-btn dashboard-btn-secondary"
+                                    >
+                                        Descargar PDF
+                                    </a>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    @endforeach
+
+                </div>
+
+            @else
+
+                <div class="pending-invoice-list">
+
+                    <div class="pending-invoice-empty">
+                        No hay facturas pendientes para los documentos agregados.
                     </div>
 
-                @else
+                </div>
 
-                    <p class="mt-4 text-sm text-gray-600">
-                        No hay facturas pendientes para los documentos agregados.
-                    </p>
-
-                @endif
-
-            </div>
-
-
-            {{-- ============================================= --}}
-            {{-- HISTORIAL --}}
-            {{-- ============================================= --}}
-
-            <div class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-
-                <h3 class="text-lg font-semibold text-gray-900">
-                    Historial de facturas
-                </h3>
-
-                <p class="mt-1 text-sm text-gray-600">
-                    Consulte todas las facturas emitidas para los documentos
-                    agregados.
-                </p>
-
-                <a
-                    href="{{ route('dashboard.invoices.history') }}"
-                    class="mt-4 inline-flex items-center
-                           px-4 py-2
-                           bg-gray-800
-                           border border-transparent
-                           rounded-md
-                           font-semibold
-                           text-xs
-                           text-white
-                           uppercase
-                           tracking-widest
-                           hover:bg-gray-700"
-                >
-                    Ver historial de facturas
-                </a>
-
-            </div>
+            @endif
 
         </div>
+
+
+        {{-- ============================================= --}}
+        {{-- HISTORIAL --}}
+        {{-- ============================================= --}}
+
+        <div class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+
+            <h3 class="text-lg font-semibold text-gray-900">
+                Historial de facturas
+            </h3>
+
+            <p class="mt-1 text-sm text-gray-600">
+                Consulte todas las facturas emitidas para los documentos
+                agregados.
+            </p>
+
+            <a
+                href="{{ route('dashboard.invoices.history') }}"
+                class="mt-4 dashboard-btn dashboard-btn-primary"
+            >
+                Ver historial de facturas
+            </a>
+
+        </div>
+
     </div>
 
+</div>
 </x-app-layout>

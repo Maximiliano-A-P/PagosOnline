@@ -101,6 +101,10 @@
         margin-top: 15px;
     }
 
+    .dashboard-section h3 {
+        font-size: 24px;
+    }
+
     /*
      * ==========================================================
      * SECCIONES GENERALES

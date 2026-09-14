@@ -34,7 +34,7 @@
                     Gestión
                 </h3>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 gap-6">
 
                     {{-- Clientes --}}
                     <a
@@ -110,7 +110,7 @@
                     Facturación
                 </h3>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 gap-6">
 
                     {{-- Facturas --}}
                     <a
@@ -166,7 +166,7 @@
                     Configuración
                 </h3>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 gap-6">
 
                     {{-- ARCA --}}
                     <a

@@ -8,7 +8,7 @@
                 Facturas
             </h2>
 
-            <div class="flex items-center gap-4">
+            <div class="header-actions flex items-center gap-4">
 
                 {{-- Cargar factura histórica --}}
                 <a
@@ -97,6 +97,13 @@
          * ==========================================================
          */
 
+        .header-actions .btn {
+            width: 220px;
+            height: 50px;
+            box-sizing: border-box;
+            font-size: 17px;
+        }
+
         .invoice-list,
         .invoice-filters {
             width: 90%;
@@ -169,13 +176,30 @@
             flex-direction: column;
             justify-content: center;
             gap: 10px;
-            min-width: 140px;
+            min-width: 160px;
             border-left: 1px solid #e5e7eb;
             padding-left: 25px;
         }
 
+        .invoice-actions .btn,
+        .invoice-actions form {
+            width: 100%;
+        }
+
         .invoice-actions form {
             margin: 0;
+        }
+
+        .invoice-filters input,
+        .invoice-filters select {
+            height: 48px;
+            box-sizing: border-box;
+        }
+
+        .invoice-filters .btn {
+            width: 160px;
+            height: 42px;
+            box-sizing: border-box;
         }
 
         .invoice-status {

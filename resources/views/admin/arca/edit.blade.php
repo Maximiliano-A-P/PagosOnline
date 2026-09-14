@@ -134,6 +134,49 @@
                             </p>
                         </div>
 
+                        {{-- Condición frente al IVA (emisor) --}}
+                        <div>
+                            <label
+                                for="condicion_iva"
+                                class="block font-medium text-gray-900 text-[3vh]"
+                            >
+                                Condición frente al IVA (código AFIP)
+                            </label>
+
+                            <input
+                                id="condicion_iva"
+                                name="condicion_iva"
+                                type="number"
+                                min="1"
+                                list="condicionIvaReferencia"
+                                value="{{ old('condicion_iva', $config?->condicion_iva) }}"
+                                required
+                                class="mt-2 block w-full rounded-md border-gray-400 shadow-sm text-[3vh] text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
+                            >
+
+                            <datalist id="condicionIvaReferencia">
+                                <option value="1">IVA Responsable Inscripto</option>
+                                <option value="4">IVA Sujeto Exento</option>
+                                <option value="5">Consumidor Final</option>
+                                <option value="6">Responsable Monotributo</option>
+                                <option value="7">Sujeto No Categorizado</option>
+                                <option value="8">Proveedor del Exterior</option>
+                                <option value="9">Cliente del Exterior</option>
+                                <option value="10">IVA Liberado – Ley N° 19.640</option>
+                                <option value="13">Monotributista Social</option>
+                                <option value="15">IVA No Alcanzado</option>
+                                <option value="16">Monotributo Trabajador Independiente Promovido</option>
+                            </datalist>
+
+                            <p class="mt-2 text-gray-700 text-[3vh]">
+                                Se puede escribir cualquier código numérico. La lista es
+                                solo de referencia (tabla de condiciones de ARCA/AFIP
+                                vigente al momento de escribir esto) — si ARCA agrega o
+                                modifica códigos, se carga el nuevo valor directamente
+                                acá sin necesitar ningún cambio de código.
+                            </p>
+                        </div>
+
                         {{-- Certificado --}}
                         <div>
                             <label
@@ -187,9 +230,9 @@
                                 Estado de autenticación
                             </h4>
 
-                            @if ($config?->token)
+                            @if ($config?->token && $config?->sign)
                                 <p>
-                                    Token configurado.
+                                    Token y Sign configurados.
                                 </p>
 
                                 @if ($config->token_expires_at)
@@ -200,14 +243,14 @@
                                 @endif
                             @else
                                 <p>
-                                    No existe un token de autenticación
-                                    configurado actualmente.
+                                    Todavía no se generó un Token/Sign de autenticación
+                                    contra ARCA.
                                 </p>
                             @endif
 
                             <p>
-                                El token será gestionado automáticamente
-                                por la integración con ARCA.
+                                El Token y el Sign son gestionados automáticamente por
+                                la integración con ARCA — no se cargan manualmente acá.
                             </p>
 
                         </div>

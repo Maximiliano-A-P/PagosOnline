@@ -198,6 +198,56 @@
                     >
                 </div>
 
+                <div class="field">
+                    <label for="arca_document_type">
+                        Tipo de documento (código AFIP)
+                    </label>
+
+                    <input
+                        type="number"
+                        id="arca_document_type"
+                        name="arca_document_type"
+                        list="tipoDocumentoReferencia"
+                        value="{{ old(
+                            'arca_document_type',
+                            $client->arca_document_type
+                        ) }}"
+                        min="1"
+                    >
+
+                    <datalist id="tipoDocumentoReferencia">
+                        <option value="80">CUIT</option>
+                        <option value="86">CUIL</option>
+                        <option value="96">DNI</option>
+                        <option value="99">Consumidor Final</option>
+                    </datalist>
+                </div>
+
+                <div class="field">
+                    <label for="arca_iva_condition">
+                        Condición frente al IVA (código AFIP)
+                    </label>
+
+                    <input
+                        type="number"
+                        id="arca_iva_condition"
+                        name="arca_iva_condition"
+                        list="condicionIvaReferencia"
+                        value="{{ old(
+                            'arca_iva_condition',
+                            $client->arca_iva_condition
+                        ) }}"
+                        min="1"
+                    >
+
+                    <datalist id="condicionIvaReferencia">
+                        <option value="1">IVA Responsable Inscripto</option>
+                        <option value="4">IVA Sujeto Exento</option>
+                        <option value="5">Consumidor Final</option>
+                        <option value="6">Responsable Monotributo</option>
+                    </datalist>
+                </div>
+
                 <div class="actions">
                     <button type="submit" class="btn">
                         Guardar cambios

@@ -207,6 +207,95 @@
 
                     </div>
 
+                    {{-- Tipo de documento (opcional) --}}
+                    <div>
+
+                        <label
+                            for="client_document_type"
+                            class="block font-semibold text-gray-900 text-[3vh]"
+                        >
+                            Tipo de documento (código AFIP)
+                        </label>
+
+                        <input
+                            id="client_document_type"
+                            name="client_document_type"
+                            type="number"
+                            list="tipoDocumentoReferencia"
+                            value="{{ old('client_document_type') }}"
+                            min="1"
+                            class="mt-2 block w-full rounded-md
+                                border-gray-400 bg-white
+                                text-gray-900 text-[3vh]
+                                shadow-sm
+                                focus:border-indigo-600
+                                focus:ring-indigo-600"
+                        >
+
+                        <datalist id="tipoDocumentoReferencia">
+                            <option value="80">CUIT</option>
+                            <option value="86">CUIL</option>
+                            <option value="96">DNI</option>
+                            <option value="99">Consumidor Final</option>
+                        </datalist>
+
+                        <p class="mt-2 text-gray-700 text-[3vh]">
+                            Dejar vacío si no se conoce — se factura como Consumidor Final.
+                        </p>
+
+                        @error('client_document_type')
+                            <p class="mt-2 text-red-700 text-[3vh]">
+                                {{ $message }}
+                            </p>
+                        @enderror
+
+                    </div>
+
+
+                    {{-- Condición frente al IVA (opcional) --}}
+                    <div>
+
+                        <label
+                            for="client_iva_condition"
+                            class="block font-semibold text-gray-900 text-[3vh]"
+                        >
+                            Condición frente al IVA (código AFIP)
+                        </label>
+
+                        <input
+                            id="client_iva_condition"
+                            name="client_iva_condition"
+                            type="number"
+                            list="condicionIvaReferenciaCliente"
+                            value="{{ old('client_iva_condition') }}"
+                            min="1"
+                            class="mt-2 block w-full rounded-md
+                                border-gray-400 bg-white
+                                text-gray-900 text-[3vh]
+                                shadow-sm
+                                focus:border-indigo-600
+                                focus:ring-indigo-600"
+                        >
+
+                        <datalist id="condicionIvaReferenciaCliente">
+                            <option value="1">IVA Responsable Inscripto</option>
+                            <option value="4">IVA Sujeto Exento</option>
+                            <option value="5">Consumidor Final</option>
+                            <option value="6">Responsable Monotributo</option>
+                        </datalist>
+
+                        <p class="mt-2 text-gray-700 text-[3vh]">
+                            Dejar vacío si no se conoce — se factura como Consumidor Final.
+                        </p>
+
+                        @error('client_iva_condition')
+                            <p class="mt-2 text-red-700 text-[3vh]">
+                                {{ $message }}
+                            </p>
+                        @enderror
+
+                    </div>
+
 
                     {{-- Servicio --}}
                     <div>

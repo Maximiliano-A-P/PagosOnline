@@ -67,6 +67,18 @@ class ClientController extends Controller
                 'integer',
                 'min:1',
             ],
+
+            'arca_document_type' => [
+                'nullable',
+                'integer',
+                'min:1',
+            ],
+
+            'arca_iva_condition' => [
+                'nullable',
+                'integer',
+                'min:1',
+            ],
         ]);
 
         Client::create($validated);
@@ -100,6 +112,18 @@ class ClientController extends Controller
 
             'document' => [
                 'required',
+                'integer',
+                'min:1',
+            ],
+
+            'arca_document_type' => [
+                'nullable',
+                'integer',
+                'min:1',
+            ],
+
+            'arca_iva_condition' => [
+                'nullable',
                 'integer',
                 'min:1',
             ],

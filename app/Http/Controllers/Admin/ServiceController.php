@@ -44,6 +44,12 @@ class ServiceController extends Controller
                 'min:0',
             ],
 
+            'tax_percentage' => [
+                'nullable',
+                'numeric',
+                'min:0',
+            ],
+
             /*
              * Día del mes en el que vence el servicio.
              *
@@ -117,6 +123,12 @@ class ServiceController extends Controller
 
             'price' => [
                 'required',
+                'numeric',
+                'min:0',
+            ],
+
+            'tax_percentage' => [
+                'nullable',
                 'numeric',
                 'min:0',
             ],

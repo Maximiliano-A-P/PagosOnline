@@ -298,3 +298,10 @@ Route::get(
     [LoginUnlockController::class,
     'unlock']
 )->name('login.unlock');
+
+Route::get('/debug-extensions', function () {
+    return response()->json([
+        'soap' => extension_loaded('soap'),
+        'openssl' => extension_loaded('openssl'),
+    ]);
+});

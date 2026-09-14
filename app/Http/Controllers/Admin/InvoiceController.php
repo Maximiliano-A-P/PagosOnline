@@ -154,6 +154,18 @@ class InvoiceController extends Controller
                 'min:1',
             ],
 
+            'client_document_type' => [
+                'nullable',
+                'integer',
+                'min:1',
+            ],
+
+            'client_iva_condition' => [
+                'nullable',
+                'integer',
+                'min:1',
+            ],
+
             /*
              * Opcional para facturas históricas.
              */
@@ -247,6 +259,8 @@ class InvoiceController extends Controller
              */
             'client_name' => $validated['client_name'],
             'client_document' => $validated['client_document'],
+            'client_document_type' => $validated['client_document_type'] ?? null,
+            'client_iva_condition' => $validated['client_iva_condition'] ?? null,
 
             /*
              * Servicio.
@@ -427,11 +441,15 @@ class InvoiceController extends Controller
                      */
                     'client_name' => $client->name,
                     'client_document' => $client->document,
+                    'client_document_type' => $client->arca_document_type,
+                    'client_iva_condition' => $client->arca_iva_condition,
 
                     /*
                      * Identificación interna del servicio.
                      */
                     'service_id' => $service->id,
+                    'service_period_start' => $currentMonth->toDateString(),
+                    'service_period_end' => $currentMonth->copy()->addMonths($service->period)->subDay()->toDateString(),
 
                     /*
                      * Nombre histórico del servicio.

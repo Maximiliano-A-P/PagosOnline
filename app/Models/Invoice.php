@@ -42,6 +42,10 @@ class Invoice extends Model
         'arca_point_of_sale',
         'arca_invoice_number',
         'arca_qr',
+        'client_document_type',
+        'client_iva_condition',
+        'service_period_start',
+        'service_period_end',
     ];
 
     protected function casts(): array
@@ -67,6 +71,8 @@ class Invoice extends Model
             'arca_cae_expires_at' => 'datetime',
             'arca_point_of_sale' => 'integer',
             'arca_invoice_number' => 'integer',
+            'service_period_start' => 'date',
+            'service_period_end' => 'date',
         ];
     }
 

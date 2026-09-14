@@ -33,6 +33,18 @@ class ArcaConfigController extends Controller
                 'max:20',
             ],
 
+            'condicion_iva' => [
+                'required',
+                'integer',
+                'min:1',
+            ],
+
+            'punto_venta' => [
+                'required',
+                'integer',
+                'min:1',
+            ],
+
             'certificate_path' => [
                 'nullable',
                 'string',

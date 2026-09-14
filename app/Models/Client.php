@@ -11,6 +11,8 @@ class Client extends Model
     protected $fillable = [
         'name',
         'document',
+        'arca_document_type',
+        'arca_iva_condition',
     ];
 
     /**

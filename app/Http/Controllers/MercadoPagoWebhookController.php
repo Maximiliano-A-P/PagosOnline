@@ -7,6 +7,9 @@ use App\Services\MercadoPagoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use App\Models\ArcaConfig;
+use App\Services\Arca\ArcaApiService;
+use App\Services\Arca\WsaaClient;
 
 class MercadoPagoWebhookController extends Controller
 {
@@ -309,35 +312,51 @@ class MercadoPagoWebhookController extends Controller
         }
 
         /*
-         * Guardamos el resultado confirmado del pago.
-         */
+        * Guardamos el resultado confirmado del pago.
+        */
         $invoice->update([
-            'payment_status' =>
-                'paid',
-
-            'amount_paid' =>
-                $transactionAmount,
-
-            'paid_at' =>
-                $paidAt,
-
-            'payment_method' =>
-                'mercadopago',
-
-            'paid_by' =>
-                null,
-
-            'mercadopago_payment_id' =>
-                (string) $paymentId,
+            'payment_status' => 'paid',
+            'amount_paid' => $transactionAmount,
+            'paid_at' => $paidAt,
+            'payment_method' => 'mercadopago',
+            'paid_by' => null,
+            'mercadopago_payment_id' => (string) $paymentId,
         ]);
 
         /*
-         * Mercado Pago considera recibida correctamente
-         * la notificación cuando devolvemos HTTP 200.
-         */
+        * Emitimos la factura ante ARCA recién ahora, con el pago
+        * ya confirmado — nunca antes, para que el monto declarado
+        * coincida siempre con lo efectivamente cobrado.
+        *
+        * Un error acá NO debe hacer fallar el webhook: el pago ya
+        * se recibió y quedó registrado igual. Si ARCA falla, queda
+        * registrado en arca_status para reintentar manualmente.
+        */
+        try {
+            $arcaConfig = ArcaConfig::firstOrFail();
+            $wsaaClient = new WsaaClient($arcaConfig);
+            $arcaApiService = new ArcaApiService($wsaaClient, $arcaConfig);
+
+            $arcaApiService->emitir($invoice->fresh());
+
+        } catch (\Throwable $e) {
+
+            Log::error(
+                'No se pudo emitir la factura ante ARCA.',
+                [
+                    'invoice_id' => $invoice->id,
+                    'message' => $e->getMessage(),
+                    'exception' => get_class($e),
+                ]
+            );
+        }
+
+        /*
+        * Mercado Pago considera recibida correctamente
+        * la notificación cuando devolvemos HTTP 200.
+        */
         return response()->json([
-            'message' =>
-                'Pago procesado correctamente.',
+            'message' => 'Pago procesado correctamente.',
         ], 200);
     }
 }

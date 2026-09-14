@@ -312,7 +312,7 @@
                                     </th>
 
                                     <th>
-                                        Precio
+                                        Importe
                                     </th>
 
                                     <th>
@@ -364,9 +364,25 @@
                                         </td>
 
 
-                                        {{-- Precio --}}
+                                        {{-- Importe --}}
                                         <td class="px-6 py-5 text-gray-900 text-[3vh] whitespace-nowrap">
-                                            ${{ number_format($invoice->price, 2, ',', '.') }}
+
+                                            <div class="font-medium">
+                                                ${{ number_format($invoice->montoACobrar(), 2, ',', '.') }}
+                                            </div>
+
+                                            @if ($invoice->payment_status !== 'paid' && $invoice->estaVencida())
+                                                <div class="text-red-700 text-[2.4vh]">
+                                                    Vencido (${{ number_format($invoice->overdue_price, 2, ',', '.') }})
+                                                </div>
+                                            @endif
+
+                                            @if ($invoice->tax_percentage > 0)
+                                                <div class="text-gray-700 text-[2.4vh]">
+                                                    IVA {{ rtrim(rtrim(number_format($invoice->tax_percentage, 2, ',', '.'), '0'), ',') }}%
+                                                </div>
+                                            @endif
+
                                         </td>
 
 

@@ -57,12 +57,12 @@ class ArcaApiService
             return;
         }
 
-        // --- Cálculo del monto a facturar (con o sin mora) ---
+        // --- Descomponer el monto realmente cobrado en neto + IVA ---
 
-        $neto = $this->determinarBaseNeto($invoice);
+        $total = (float) $invoice->amount_paid;
         $porcentajeIva = (float) ($invoice->tax_percentage ?? 0);
-        $iva = round($neto * $porcentajeIva / 100, 2);
-        $total = $neto + $iva;
+        $neto = round($total / (1 + $porcentajeIva / 100), 2);
+        $iva = round($total - $neto, 2);
 
         $payload = [
             'token' => $credenciales['token'],
@@ -106,22 +106,6 @@ class ArcaApiService
             );
 
         $this->procesarRespuesta($invoice, $respuesta, $tipoComprobante);
-    }
-
-    /**
-     * Decide si corresponde facturar el precio normal o el
-     * precio con recargo por mora — ARCA no tiene ninguna
-     * noción de esto, así que la decisión es 100% nuestra
-     * ANTES de armar el payload.
-     */
-    private function determinarBaseNeto(Invoice $invoice): float
-    {
-        $pagadoConMora = $invoice->paid_at
-            && $invoice->paid_at->greaterThan($invoice->due_date);
-
-        return (float) ($pagadoConMora
-            ? $invoice->overdue_price
-            : $invoice->price);
     }
 
     private function alicuotaIdParaPorcentaje(float $porcentaje): int

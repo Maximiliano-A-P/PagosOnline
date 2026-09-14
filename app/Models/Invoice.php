@@ -34,6 +34,7 @@ class Invoice extends Model
         // Datos Mercado Pago
         'mercadopago_preference_id',
         'mercadopago_payment_id',
+        'expected_amount' => 'decimal:2',
 
         // Datos ARCA
         'arca_status',
@@ -67,6 +68,7 @@ class Invoice extends Model
             'overdue_price' => 'decimal:2',
             'amount_paid' => 'decimal:2',
             'paid_at' => 'date',
+            'expected_amount' => 'decimal:2',
 
             // Datos ARCA
             'arca_cae_expires_at' => 'datetime',
@@ -103,5 +105,35 @@ class Invoice extends Model
             User::class,
             'paid_by'
         );
+    }
+
+    /**
+     * True si, a día de hoy, corresponde el precio con recargo
+     * por mora (todavía no fue pagada y ya venció).
+     */
+    public function estaVencida(): bool
+    {
+        return $this->payment_status !== 'paid'
+            && now()->greaterThan($this->due_date);
+    }
+
+    /**
+     * Monto que corresponde cobrar en este momento: el ya pagado
+     * si la factura está paga, o una previsión (precio normal o
+     * vencido, según corresponda) + IVA si todavía está pendiente.
+     */
+    public function montoACobrar(): float
+    {
+        if ($this->payment_status === 'paid') {
+            return (float) $this->amount_paid;
+        }
+
+        $base = $this->estaVencida()
+            ? (float) $this->overdue_price
+            : (float) $this->price;
+
+        $iva = round($base * (float) ($this->tax_percentage ?? 0) / 100, 2);
+
+        return $base + $iva;
     }
 }

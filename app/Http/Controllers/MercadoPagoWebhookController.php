@@ -246,8 +246,7 @@ class MercadoPagoWebhookController extends Controller
                 ?? 0
             );
 
-        $invoiceAmount =
-            (float) $invoice->price;
+        $invoiceAmount = (float) ($invoice->expected_amount ?? $invoice->price);
 
         /*
          * Verificamos que el importe recibido coincida

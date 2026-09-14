@@ -1,0 +1,68 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Agrega a invoices una copia histórica de los datos
+     * fiscales del cliente, siguiendo el mismo criterio que ya
+     * usan client_name/client_document: la factura conserva los
+     * datos vigentes al momento de emitirse, sin depender de que
+     * el registro de Client o Service no cambien después.
+     *
+     * También agrega el período de servicio facturado (exigido
+     * por WSFE para Concepto 2/3), y el porcentaje de impuesto
+     * vigente al momento de facturar.
+     */
+    public function up(): void
+    {
+        Schema::table('invoices', function (Blueprint $table) {
+
+            // Snapshot: código AFIP del tipo de documento del
+            // cliente al momento de facturar. NULL = se trató
+            // como Consumidor Final.
+            $table->unsignedSmallInteger('client_document_type')
+                ->nullable()
+                ->after('client_document');
+
+            // Snapshot: condición frente al IVA del cliente al
+            // momento de facturar. NULL = se trató como
+            // Consumidor Final.
+            $table->unsignedSmallInteger('client_iva_condition')
+                ->nullable()
+                ->after('client_document_type');
+
+            // Período de servicio que cubre esta factura
+            // (exigido por WSFE para Concepto 2/3).
+            $table->date('service_period_start')
+                ->nullable()
+                ->after('service_name');
+
+            $table->date('service_period_end')
+                ->nullable()
+                ->after('service_period_start');
+
+            // Snapshot: porcentaje de impuesto (IVA) vigente en
+            // el Service al momento de generar la factura.
+            $table->decimal('tax_percentage', 5, 2)
+                ->nullable()
+                ->after('overdue_price');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('invoices', function (Blueprint $table) {
+            $table->dropColumn([
+                'client_document_type',
+                'client_iva_condition',
+                'service_period_start',
+                'service_period_end',
+                'tax_percentage',
+            ]);
+        });
+    }
+};

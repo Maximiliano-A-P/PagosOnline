@@ -204,6 +204,13 @@ class InvoiceController extends Controller
                 'min:0',
             ],
 
+            'tax_percentage' => [
+                'nullable',
+                'numeric',
+                'min:0',
+                'max:100',
+            ],
+
             /*
              * Estado del pago.
              */
@@ -276,6 +283,7 @@ class InvoiceController extends Controller
             'price' => $validated['price'],
             'due_date' => $validated['due_date'],
             'overdue_price' => $validated['overdue_price'],
+            'tax_percentage' => $validated['tax_percentage'] ?? null,
 
             /*
              * Pago.
@@ -462,6 +470,7 @@ class InvoiceController extends Controller
                     'price' => $service->price,
                     'due_date' => $dueDate,
                     'overdue_price' => $service->overdue_price,
+                    'tax_percentage' => $service->tax_percentage,
 
                     /*
                      * Estado inicial.

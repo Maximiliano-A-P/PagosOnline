@@ -151,7 +151,7 @@
                                 for="price"
                                 class="block font-semibold text-gray-900 text-[3vh]"
                             >
-                                Precio
+                                Precio (NETO)
                             </label>
 
                             <input
@@ -171,6 +171,41 @@
                                        focus:border-indigo-600
                                        focus:ring-indigo-600"
                             >
+
+                        </div>
+
+                        {{-- Impuestos --}}
+                        <div>
+
+                            <label
+                                for="tax_percentage"
+                                class="block font-semibold text-gray-900 text-[3vh]"
+                            >
+                                Impuestos (IVA) %
+                            </label>
+
+                            <input
+                                type="number"
+                                id="tax_percentage"
+                                name="tax_percentage"
+                                value="{{ old('tax_percentage') }}"
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                class="mt-2 block w-full rounded-md
+                                    border-gray-400
+                                    bg-white
+                                    text-gray-900
+                                    text-[3vh]
+                                    shadow-sm
+                                    focus:border-indigo-600
+                                    focus:ring-indigo-600"
+                            >
+
+                            <p class="mt-2 text-gray-700 text-[3vh]">
+                                Porcentaje a sumar sobre el precio neto (ej. 21 para IVA
+                                21%). Dejar vacío o en 0 si no corresponde aplicar impuesto.
+                            </p>
 
                         </div>
 
@@ -217,7 +252,7 @@
                                 for="overdue_price"
                                 class="block font-semibold text-gray-900 text-[3vh]"
                             >
-                                Precio vencido
+                                Precio vencido (NETO)
                             </label>
 
                             <input

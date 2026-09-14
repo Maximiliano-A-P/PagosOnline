@@ -73,6 +73,7 @@ class Invoice extends Model
             'arca_invoice_number' => 'integer',
             'service_period_start' => 'date',
             'service_period_end' => 'date',
+            'tax_percentage' => 'decimal:2',
         ];
     }
 

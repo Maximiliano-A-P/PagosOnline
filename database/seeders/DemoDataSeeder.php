@@ -28,14 +28,40 @@ class DemoDataSeeder extends Seeder
         $periods = [1, 3, 6, 12]; // mensual, trimestral, semestral, anual
 
         $services = collect(range(1, 10))->map(function ($i) use ($periods) {
+
             $price = fake()->randomFloat(2, 1000, 20000);
 
+            /*
+             * Porcentaje de impuesto aplicable al servicio.
+             *
+             * 0    = sin impuesto
+             * 10.50 = 10,5 %
+             * 21   = 21 %
+             */
+            $taxPercentage = fake()->randomElement([
+                0,
+                10.50,
+                21.00,
+            ]);
+
             return Service::create([
-                'service' => 'Servicio ' . $i . ' - ' . fake()->words(2, true),
-                'price' => $price,
-                'due_day' => fake()->numberBetween(1, 28),
-                'overdue_price' => round($price * 1.1, 2),
-                'period' => fake()->randomElement($periods),
+                'service' =>
+                    'Servicio ' . $i . ' - ' . fake()->words(2, true),
+
+                'price' =>
+                    $price,
+
+                'tax_percentage' =>
+                    $taxPercentage,
+
+                'due_day' =>
+                    fake()->numberBetween(1, 28),
+
+                'overdue_price' =>
+                    round($price * 1.1, 2),
+
+                'period' =>
+                    fake()->randomElement($periods),
             ]);
         });
 
@@ -45,13 +71,57 @@ class DemoDataSeeder extends Seeder
         // ==================================================
 
         for ($i = 1; $i <= 200; $i++) {
-            $client = Client::create([
-                'name' => fake()->name(),
-                'document' => fake()->unique()->numberBetween(10000000, 99999999),
+
+            /*
+             * Datos fiscales del cliente.
+             *
+             * Se utilizan códigos AFIP habituales:
+             *
+             * 80 = CUIT
+             * 96 = DNI
+             *
+             * Para la condición frente al IVA:
+             *
+             * 1 = Responsable Inscripto
+             * 5 = Consumidor Final
+             * 6 = Monotributista
+             */
+            $arcaDocumentType = fake()->randomElement([
+                80,
+                96,
             ]);
 
+            $arcaIvaCondition = fake()->randomElement([
+                1,
+                5,
+                6,
+            ]);
+
+            $client = Client::create([
+                'name' =>
+                    fake()->name(),
+
+                'document' =>
+                    fake()->unique()->numberBetween(
+                        10000000,
+                        99999999
+                    ),
+
+                'arca_document_type' =>
+                    $arcaDocumentType,
+
+                'arca_iva_condition' =>
+                    $arcaIvaCondition,
+            ]);
+
+            /*
+             * Cada cliente recibe 2 servicios aleatorios.
+             */
             $client->services()->attach(
-                $services->random(2)->pluck('id')->toArray()
+                $services
+                    ->random(2)
+                    ->pluck('id')
+                    ->toArray()
             );
         }
     }

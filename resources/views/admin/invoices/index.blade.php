@@ -295,100 +295,118 @@
 
                         <div class="p-6 hover:bg-gray-50">
 
-                            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+                            <div class="flex flex-col md:flex-row md:justify-between gap-6">
 
-                                {{-- Datos, todos apilados --}}
-                                <div class="space-y-2 text-gray-900 text-[3vh]">
+                                {{-- ===================== PARTE A: DATOS ===================== --}}
+                                <div class="flex-1 space-y-6">
 
-                                    <div>
-                                        <span class="font-semibold">Cliente:</span>
-                                        {{ $invoice->client_name }}
+                                    {{-- A.1 — Datos no numéricos --}}
+                                    <div class="space-y-2 text-gray-900 text-[3vh]">
+
+                                        <div>
+                                            <span class="font-semibold">Cliente:</span>
+                                            {{ $invoice->client_name ?? 'N/A' }}
+                                        </div>
+
+                                        <div>
+                                            <span class="font-semibold">Documento:</span>
+                                            {{ $invoice->client_document ?? 'N/A' }}
+                                        </div>
+
+                                        <div>
+                                            <span class="font-semibold">Tipo de documento:</span>
+                                            {{ $invoice->client_document_type ?? 'N/A' }}
+                                        </div>
+
+                                        <div>
+                                            <span class="font-semibold">Condición IVA cliente:</span>
+                                            {{ $invoice->client_iva_condition ?? 'N/A' }}
+                                        </div>
+
+                                        <div>
+                                            <span class="font-semibold">Servicio:</span>
+                                            {{ $invoice->service_name ?? 'N/A' }}
+                                        </div>
+
+                                        <div>
+                                            <span class="font-semibold">Emisión:</span>
+                                            {{ $invoice->issued_at?->format('d/m/Y') ?? 'N/A' }}
+                                        </div>
+
+                                        <div>
+                                            <span class="font-semibold">Vencimiento:</span>
+                                            {{ $invoice->due_date?->format('d/m/Y') ?? 'N/A' }}
+                                        </div>
+
+                                        <div>
+                                            <span class="font-semibold">¿Vencida?:</span>
+                                            {{ $invoice->estaVencida() ? 'Sí' : 'No' }}
+                                        </div>
+
+                                        <div>
+                                            <span class="font-semibold">Estado:</span>
+
+                                            @if ($invoice->payment_status === 'paid')
+                                                <span class="badge badge-paid">Pagada</span>
+                                            @else
+                                                <span class="badge badge-pending">Pendiente</span>
+                                            @endif
+                                        </div>
+
+                                        <div>
+                                            <span class="font-semibold">Estado ARCA:</span>
+                                            {{ $invoice->arca_status ?? 'N/A' }}
+                                        </div>
+
+                                        <div>
+                                            <span class="font-semibold">CAE:</span>
+                                            {{ $invoice->arca_cae ?? 'N/A' }}
+                                        </div>
+
                                     </div>
 
-                                    <div>
-                                        <span class="font-semibold">Documento:</span>
-                                        {{ $invoice->client_document }}
-                                    </div>
 
-                                    <div>
-                                        <span class="font-semibold">Tipo de documento:</span>
-                                        {{ $invoice->client_document_type ?? 'N/A' }}
-                                    </div>
+                                    {{-- A.2 — Datos numéricos --}}
+                                    <div class="space-y-2 text-gray-900 text-[3vh]">
 
-                                    <div>
-                                        <span class="font-semibold">Condición IVA cliente:</span>
-                                        {{ $invoice->client_iva_condition ?? 'N/A' }}
-                                    </div>
+                                        <div>
+                                            <span class="font-semibold">Precio (NETO):</span>
+                                            {{ $invoice->price !== null
+                                                ? '$' . number_format($invoice->price, 2, ',', '.')
+                                                : 'N/A' }}
+                                        </div>
 
-                                    <div>
-                                        <span class="font-semibold">Servicio:</span>
-                                        {{ $invoice->service_name }}
-                                    </div>
+                                        <div>
+                                            <span class="font-semibold">Precio vencido (NETO):</span>
+                                            {{ $invoice->overdue_price !== null
+                                                ? '$' . number_format($invoice->overdue_price, 2, ',', '.')
+                                                : 'N/A' }}
+                                        </div>
 
-                                    <div>
-                                        <span class="font-semibold">Emisión:</span>
-                                        {{ $invoice->issued_at->format('d/m/Y') }}
-                                    </div>
+                                        <div>
+                                            <span class="font-semibold">Impuestos (IVA):</span>
+                                            {{ $invoice->tax_percentage !== null
+                                                ? number_format($invoice->tax_percentage, 2, ',', '.') . '%'
+                                                : 'N/A' }}
+                                        </div>
 
-                                    <div>
-                                        <span class="font-semibold">Vencimiento:</span>
-                                        {{ $invoice->due_date->format('d/m/Y') }}
-                                    </div>
+                                        <div>
+                                            <span class="font-semibold">
+                                                Importe {{ $invoice->payment_status === 'paid' ? 'cobrado' : 'a cobrar' }}:
+                                            </span>
+                                            ${{ number_format($invoice->montoACobrar(), 2, ',', '.') }}
+                                        </div>
 
-                                    <div>
-                                        <span class="font-semibold">Precio (NETO):</span>
-                                        ${{ number_format($invoice->price, 2, ',', '.') }}
-                                    </div>
-
-                                    <div>
-                                        <span class="font-semibold">Precio vencido (NETO):</span>
-                                        ${{ number_format($invoice->overdue_price, 2, ',', '.') }}
-                                    </div>
-
-                                    <div>
-                                        <span class="font-semibold">Impuestos (IVA):</span>
-                                        {{ $invoice->tax_percentage !== null
-                                            ? number_format($invoice->tax_percentage, 2, ',', '.') . '%'
-                                            : 'N/A' }}
-                                    </div>
-
-                                    <div>
-                                        <span class="font-semibold">¿Vencida?:</span>
-                                        {{ $invoice->estaVencida() ? 'Sí' : 'No' }}
-                                    </div>
-
-                                    <div>
-                                        <span class="font-semibold">Importe {{ $invoice->payment_status === 'paid' ? 'cobrado' : 'a cobrar' }}:</span>
-                                        ${{ number_format($invoice->montoACobrar(), 2, ',', '.') }}
-                                    </div>
-
-                                    <div>
-                                        <span class="font-semibold">Estado:</span>
-
-                                        @if ($invoice->payment_status === 'paid')
-                                            <span class="badge badge-paid">Pagada</span>
-                                        @else
-                                            <span class="badge badge-pending">Pendiente</span>
-                                        @endif
-                                    </div>
-
-                                    <div>
-                                        <span class="font-semibold">Estado ARCA:</span>
-                                        {{ $invoice->arca_status ?? 'N/A' }}
-                                    </div>
-
-                                    <div>
-                                        <span class="font-semibold">CAE:</span>
-                                        {{ $invoice->arca_cae ?? 'N/A' }}
                                     </div>
 
                                 </div>
+                                {{-- ===================== FIN PARTE A ===================== --}}
 
 
-                                {{-- Acciones --}}
+                                {{-- ===================== PARTE B: ACCIONES ===================== --}}
                                 <div class="flex flex-row md:flex-col items-start gap-4 shrink-0">
 
-                                    
+                                    <a
                                         href="{{ route('admin.invoices.show', $invoice) }}"
                                         class="btn"
                                     >
@@ -396,7 +414,7 @@
                                     </a>
 
                                     @if ($invoice->payment_status !== 'paid')
-                                        
+                                        <a
                                             href="{{ route('admin.invoices.payment', $invoice) }}"
                                             class="btn"
                                         >
@@ -420,6 +438,7 @@
                                     </form>
 
                                 </div>
+                                {{-- ===================== FIN PARTE B ===================== --}}
 
                             </div>
 
@@ -435,6 +454,12 @@
 
                 </div>
 
+            </div>
+
+
+            {{-- Paginación --}}
+            <div class="mt-8">
+                {{ $invoices->links() }}
             </div>
 
         </div>

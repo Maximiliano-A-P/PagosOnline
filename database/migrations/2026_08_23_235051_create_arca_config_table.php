@@ -20,11 +20,24 @@ return new class extends Migration
     {
         Schema::create('arca_config', function (Blueprint $table) {
 
+            /*
+             * =====================================================
+             * IDENTIFICADOR Y FECHAS
+             * =====================================================
+             */
+
             // Identificador único de la configuración.
             $table->id();
 
             // Fechas de creación y última modificación.
             $table->timestamps();
+
+
+            /*
+             * =====================================================
+             * DATOS DEL CONTRIBUYENTE
+             * =====================================================
+             */
 
             // CUIT del contribuyente ante ARCA.
             //
@@ -33,6 +46,38 @@ return new class extends Migration
             // (30-12345678-9).
             $table->string('cuit');
 
+
+            /*
+             * =====================================================
+             * CONFIGURACIÓN FISCAL DEL EMISOR
+             * =====================================================
+             */
+
+            // Condición frente al IVA del emisor.
+            //
+            // Códigos AFIP habituales:
+            // 1 = Responsable Inscripto
+            // 6 = Monotributista
+            // etc.
+            $table->unsignedSmallInteger('condicion_iva')
+                ->nullable()
+                ->after('cuit');
+
+            // Punto de venta habilitado en ARCA.
+            //
+            // Se guarda como configuración general de la empresa,
+            // no como dato específico de cada factura.
+            $table->unsignedInteger('punto_venta')
+                ->nullable()
+                ->after('condicion_iva');
+
+
+            /*
+             * =====================================================
+             * CERTIFICADOS DIGITALES
+             * =====================================================
+             */
+
             // Ruta donde se encuentra almacenado el certificado
             // digital utilizado para comunicarse con ARCA.
             $table->string('certificate_path');
@@ -40,11 +85,27 @@ return new class extends Migration
             // Ruta donde se encuentra almacenada la clave privada.
             $table->string('private_key_path');
 
+
+            /*
+             * =====================================================
+             * AUTENTICACIÓN WSAA
+             * =====================================================
+             */
+
             // Token utilizado para autenticarse contra ARCA.
             $table->text('token');
 
+            // Sign devuelto por el WSAA junto con el Token.
+            //
+            // Ambos son obligatorios para realizar las llamadas
+            // posteriores a los servicios de ARCA.
+            $table->text('sign')
+                ->nullable()
+                ->after('token');
+
             // Fecha y hora de vencimiento del token.
-            $table->timestamp('token_expires_at')->nullable();
+            $table->timestamp('token_expires_at')
+                ->nullable();
         });
     }
 

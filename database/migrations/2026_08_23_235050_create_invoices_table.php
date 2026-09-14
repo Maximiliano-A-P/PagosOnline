@@ -13,8 +13,16 @@ return new class extends Migration
     {
         Schema::create('invoices', function (Blueprint $table) {
 
+            /*
+             * =====================================================
+             * IDENTIFICADOR Y FECHAS
+             * =====================================================
+             */
+
+            // Identificador único de la factura.
             $table->id();
 
+            // created_at y updated_at.
             $table->timestamps();
 
 
@@ -40,9 +48,30 @@ return new class extends Migration
              * La factura conserva una copia de los datos del
              * cliente existentes en el momento de su emisión.
              */
+
+            // Nombre histórico del cliente.
             $table->string('client_name');
 
+            // Documento histórico del cliente.
             $table->unsignedBigInteger('client_document');
+
+            /*
+             * Snapshot: código AFIP del tipo de documento del
+             * cliente al momento de facturar.
+             *
+             * NULL = se trató como Consumidor Final.
+             */
+            $table->unsignedSmallInteger('client_document_type')
+                ->nullable();
+
+            /*
+             * Snapshot: condición frente al IVA del cliente al
+             * momento de facturar.
+             *
+             * NULL = se trató como Consumidor Final.
+             */
+            $table->unsignedSmallInteger('client_iva_condition')
+                ->nullable();
 
 
             /*
@@ -66,12 +95,22 @@ return new class extends Migration
                 ->constrained('services')
                 ->nullOnDelete();
 
-
             /*
              * Nombre histórico del servicio al momento
              * de emitir la factura.
              */
             $table->string('service_name');
+
+            /*
+             * Período de servicio que cubre esta factura.
+             *
+             * Es exigido por WSFE para Concepto 2/3.
+             */
+            $table->date('service_period_start')
+                ->nullable();
+
+            $table->date('service_period_end')
+                ->nullable();
 
 
             /*
@@ -82,17 +121,33 @@ return new class extends Migration
              * Estos valores son una copia de los valores del
              * servicio en el momento de generar la factura.
              */
+
+            // Precio normal del servicio al momento de facturar.
             $table->decimal('price', 12, 2);
 
-            /*
-             * Fecha de vencimiento de la factura.
-             */
+            // Fecha de vencimiento de la factura.
             $table->date('due_date');
 
-            /*
-             * Precio correspondiente después del vencimiento.
-             */
+            // Precio correspondiente después del vencimiento.
             $table->decimal('overdue_price', 12, 2);
+
+            /*
+             * Snapshot: porcentaje de impuesto (IVA) vigente
+             * en el Service al momento de generar la factura.
+             */
+            $table->decimal('tax_percentage', 5, 2)
+                ->nullable();
+
+            /*
+             * Guarda el monto exacto (base + IVA) que se le informó
+             * a Mercado Pago al generar el link de pago.
+             *
+             * Es la fuente de verdad para validar el pago recibido
+             * en el webhook, sin depender de recalcular fechas
+             * después del hecho.
+             */
+            $table->decimal('expected_amount', 10, 2)
+                ->nullable();
 
 
             /*
@@ -106,7 +161,6 @@ return new class extends Migration
             $table->string('payment_status')
                 ->default('pending');
 
-
             /*
              * Importe realmente pagado.
              *
@@ -114,7 +168,6 @@ return new class extends Migration
              */
             $table->decimal('amount_paid', 12, 2)
                 ->nullable();
-
 
             /*
              * Fecha en que se registró el pago.
@@ -124,13 +177,11 @@ return new class extends Migration
             $table->date('paid_at')
                 ->nullable();
 
-
             /*
              * Forma de pago.
              */
             $table->string('payment_method')
                 ->nullable();
-
 
             /*
              * Usuario administrador que registró manualmente
@@ -158,6 +209,7 @@ return new class extends Migration
              * Ambos campos son NULL mientras la factura no haya
              * iniciado o completado un pago mediante Mercado Pago.
              */
+
             $table->string('mercadopago_preference_id')
                 ->nullable();
 
@@ -177,13 +229,11 @@ return new class extends Migration
             $table->string('arca_status')
                 ->nullable();
 
-
             /*
              * Código de autorización electrónico.
              */
             $table->string('arca_cae')
                 ->nullable();
-
 
             /*
              * Vencimiento del CAE.
@@ -193,13 +243,11 @@ return new class extends Migration
             $table->timestamp('arca_cae_expires_at')
                 ->nullable();
 
-
             /*
              * Tipo de comprobante emitido.
              */
             $table->string('arca_invoice_type')
                 ->nullable();
-
 
             /*
              * Punto de venta utilizado ante ARCA.
@@ -207,13 +255,11 @@ return new class extends Migration
             $table->unsignedInteger('arca_point_of_sale')
                 ->nullable();
 
-
             /*
              * Número del comprobante asignado por ARCA.
              */
             $table->unsignedBigInteger('arca_invoice_number')
                 ->nullable();
-
 
             /*
              * Información utilizada para generar/mostrar

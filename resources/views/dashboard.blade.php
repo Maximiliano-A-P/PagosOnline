@@ -105,6 +105,11 @@
         font-size: 24px;
     }
 
+    .pending-invoice-field span {
+        color: #ffffff;
+        background-color: #111827;
+    }
+
     /*
      * ==========================================================
      * SECCIONES GENERALES

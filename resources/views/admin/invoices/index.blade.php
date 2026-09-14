@@ -286,210 +286,152 @@
             </div>
 
 
-            {{-- Tabla --}}
+            {{-- Listado --}}
             <div class="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden">
 
-                <div class="p-6">
+                <div class="divide-y divide-gray-200">
 
-                    <div class="overflow-x-auto">
+                    @forelse ($invoices as $invoice)
 
-                        <table class="min-w-full divide-y divide-gray-300">
+                        <div class="p-6 hover:bg-gray-50">
 
-                            <thead class="table-header">
+                            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
 
-                                <tr>
+                                {{-- Datos, todos apilados --}}
+                                <div class="space-y-2 text-gray-900 text-[3vh]">
 
-                                    <th>
-                                        Emisión
-                                    </th>
+                                    <div>
+                                        <span class="font-semibold">Cliente:</span>
+                                        {{ $invoice->client_name }}
+                                    </div>
 
-                                    <th>
-                                        Cliente
-                                    </th>
+                                    <div>
+                                        <span class="font-semibold">Documento:</span>
+                                        {{ $invoice->client_document }}
+                                    </div>
 
-                                    <th>
-                                        Servicio
-                                    </th>
+                                    <div>
+                                        <span class="font-semibold">Tipo de documento:</span>
+                                        {{ $invoice->client_document_type ?? 'N/A' }}
+                                    </div>
 
-                                    <th>
-                                        Importe
-                                    </th>
+                                    <div>
+                                        <span class="font-semibold">Condición IVA cliente:</span>
+                                        {{ $invoice->client_iva_condition ?? 'N/A' }}
+                                    </div>
 
-                                    <th>
-                                        Vencimiento
-                                    </th>
+                                    <div>
+                                        <span class="font-semibold">Servicio:</span>
+                                        {{ $invoice->service_name }}
+                                    </div>
 
-                                    <th>
-                                        Estado
-                                    </th>
+                                    <div>
+                                        <span class="font-semibold">Emisión:</span>
+                                        {{ $invoice->issued_at->format('d/m/Y') }}
+                                    </div>
 
-                                    <th>
-                                        Acciones
-                                    </th>
+                                    <div>
+                                        <span class="font-semibold">Vencimiento:</span>
+                                        {{ $invoice->due_date->format('d/m/Y') }}
+                                    </div>
 
-                                </tr>
+                                    <div>
+                                        <span class="font-semibold">Precio (NETO):</span>
+                                        ${{ number_format($invoice->price, 2, ',', '.') }}
+                                    </div>
 
-                            </thead>
+                                    <div>
+                                        <span class="font-semibold">Precio vencido (NETO):</span>
+                                        ${{ number_format($invoice->overdue_price, 2, ',', '.') }}
+                                    </div>
 
+                                    <div>
+                                        <span class="font-semibold">Impuestos (IVA):</span>
+                                        {{ $invoice->tax_percentage !== null
+                                            ? number_format($invoice->tax_percentage, 2, ',', '.') . '%'
+                                            : 'N/A' }}
+                                    </div>
 
-                            <tbody class="bg-white divide-y divide-gray-200">
+                                    <div>
+                                        <span class="font-semibold">¿Vencida?:</span>
+                                        {{ $invoice->estaVencida() ? 'Sí' : 'No' }}
+                                    </div>
 
-                                @forelse ($invoices as $invoice)
+                                    <div>
+                                        <span class="font-semibold">Importe {{ $invoice->payment_status === 'paid' ? 'cobrado' : 'a cobrar' }}:</span>
+                                        ${{ number_format($invoice->montoACobrar(), 2, ',', '.') }}
+                                    </div>
 
-                                    <tr class="hover:bg-gray-50">
+                                    <div>
+                                        <span class="font-semibold">Estado:</span>
 
-                                        {{-- Emisión --}}
-                                        <td class="px-6 py-5 text-gray-900 text-[3vh] whitespace-nowrap">
-                                            {{ $invoice->issued_at->format('d/m/Y') }}
-                                        </td>
+                                        @if ($invoice->payment_status === 'paid')
+                                            <span class="badge badge-paid">Pagada</span>
+                                        @else
+                                            <span class="badge badge-pending">Pendiente</span>
+                                        @endif
+                                    </div>
 
+                                    <div>
+                                        <span class="font-semibold">Estado ARCA:</span>
+                                        {{ $invoice->arca_status ?? 'N/A' }}
+                                    </div>
 
-                                        {{-- Cliente --}}
-                                        <td class="px-6 py-5 whitespace-nowrap">
+                                    <div>
+                                        <span class="font-semibold">CAE:</span>
+                                        {{ $invoice->arca_cae ?? 'N/A' }}
+                                    </div>
 
-                                            <div class="text-gray-900 font-medium text-[3vh]">
-                                                {{ $invoice->client_name }}
-                                            </div>
-
-                                            <div class="text-gray-700 text-[3vh]">
-                                                {{ $invoice->client_document }}
-                                            </div>
-
-                                        </td>
-
-
-                                        {{-- Servicio --}}
-                                        <td class="px-6 py-5 text-gray-900 text-[3vh] whitespace-nowrap">
-                                            {{ $invoice->service_name }}
-                                        </td>
-
-
-                                        {{-- Importe --}}
-                                        <td class="px-6 py-5 text-gray-900 text-[3vh] whitespace-nowrap">
-
-                                            <div class="font-medium">
-                                                ${{ number_format($invoice->montoACobrar(), 2, ',', '.') }}
-                                            </div>
-
-                                            @if ($invoice->payment_status !== 'paid' && $invoice->estaVencida())
-                                                <div class="text-red-700 text-[2.4vh]">
-                                                    Vencido (${{ number_format($invoice->overdue_price, 2, ',', '.') }})
-                                                </div>
-                                            @endif
-
-                                            @if ($invoice->tax_percentage > 0)
-                                                <div class="text-gray-700 text-[2.4vh]">
-                                                    IVA {{ rtrim(rtrim(number_format($invoice->tax_percentage, 2, ',', '.'), '0'), ',') }}%
-                                                </div>
-                                            @endif
-
-                                        </td>
-
-
-                                        {{-- Vencimiento --}}
-                                        <td class="px-6 py-5 text-gray-900 text-[3vh] whitespace-nowrap">
-                                            {{ $invoice->due_date->format('d/m/Y') }}
-                                        </td>
+                                </div>
 
 
-                                        {{-- Estado --}}
-                                        <td class="px-6 py-5 whitespace-nowrap">
+                                {{-- Acciones --}}
+                                <div class="flex flex-row md:flex-col items-start gap-4 shrink-0">
 
-                                            @if ($invoice->payment_status === 'paid')
+                                    
+                                        href="{{ route('admin.invoices.show', $invoice) }}"
+                                        class="btn"
+                                    >
+                                        Ver
+                                    </a>
 
-                                                <span class="badge badge-paid">
-                                                    Pagada
-                                                </span>
-
-                                            @else
-
-                                                <span class="badge badge-pending">
-                                                    Pendiente
-                                                </span>
-
-                                            @endif
-
-                                        </td>
-
-
-                                        {{-- Acciones --}}
-                                        <td class="px-6 py-5 text-[3vh]">
-
-                                            <div class="flex items-center gap-4">
-
-                                                <a
-                                                    href="{{ route('admin.invoices.show', $invoice) }}"
-                                                    class="btn"
-                                                >
-                                                    Ver
-                                                </a>
-
-
-                                                @if ($invoice->payment_status !== 'paid')
-
-                                                    <a
-                                                        href="{{ route('admin.invoices.payment', $invoice) }}"
-                                                        class="btn"
-                                                    >
-                                                        Registrar pago
-                                                    </a>
-
-                                                @endif
-
-
-                                                <form
-                                                    method="POST"
-                                                    action="{{ route('admin.invoices.destroy', $invoice) }}"
-                                                    onsubmit="return confirm(
-                                                        '¿Eliminar esta factura? Esta acción no se puede deshacer.'
-                                                    );"
-                                                >
-
-                                                    @csrf
-                                                    @method('DELETE')
-
-                                                    <button
-                                                        type="submit"
-                                                        class="btn"
-                                                    >
-                                                        Eliminar
-                                                    </button>
-
-                                                </form>
-
-                                            </div>
-
-                                        </td>
-
-                                    </tr>
-
-                                @empty
-
-                                    <tr>
-
-                                        <td
-                                            colspan="7"
-                                            class="px-6 py-10 text-center
-                                                   text-gray-900 text-[3vh]"
+                                    @if ($invoice->payment_status !== 'paid')
+                                        
+                                            href="{{ route('admin.invoices.payment', $invoice) }}"
+                                            class="btn"
                                         >
-                                            No hay facturas registradas.
-                                        </td>
+                                            Registrar pago
+                                        </a>
+                                    @endif
 
-                                    </tr>
+                                    <form
+                                        method="POST"
+                                        action="{{ route('admin.invoices.destroy', $invoice) }}"
+                                        onsubmit="return confirm(
+                                            '¿Eliminar esta factura? Esta acción no se puede deshacer.'
+                                        );"
+                                    >
+                                        @csrf
+                                        @method('DELETE')
 
-                                @endforelse
+                                        <button type="submit" class="btn">
+                                            Eliminar
+                                        </button>
+                                    </form>
 
-                            </tbody>
+                                </div>
 
-                        </table>
+                            </div>
 
-                    </div>
+                        </div>
 
+                    @empty
 
-                    {{-- Paginación --}}
-                    <div class="mt-8">
-                        {{ $invoices->links() }}
-                    </div>
+                        <div class="p-10 text-center text-gray-900 text-[3vh]">
+                            No hay facturas registradas.
+                        </div>
+
+                    @endforelse
 
                 </div>
 

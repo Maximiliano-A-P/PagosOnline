@@ -22,6 +22,7 @@ class Invoice extends Model
         'price',
         'due_date',
         'overdue_price',
+        'tax_percentage',
 
         // Estado del pago
         'payment_status',

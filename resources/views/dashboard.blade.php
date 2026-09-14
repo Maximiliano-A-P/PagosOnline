@@ -15,6 +15,44 @@
 
     /*
      * ==========================================================
+     * CONTENEDOR GENERAL
+     * ==========================================================
+     */
+
+    .dashboard-container {
+        width: 90vw;
+        margin-left: auto;
+        margin-right: auto;
+        box-sizing: border-box;
+    }
+
+
+    /*
+     * ==========================================================
+     * TAMAÑO BASE DE TEXTO
+     * ==========================================================
+     *
+     * El tamaño de referencia es 21px.
+     *
+     * Se aplica solamente a los textos que estaban
+     * por debajo de este tamaño.
+     */
+
+    .dashboard-page p,
+    .dashboard-page label,
+    .dashboard-page input,
+    .dashboard-page button,
+    .dashboard-page a,
+    .dashboard-page span,
+    .dashboard-page th,
+    .dashboard-page td,
+    .dashboard-page .dashboard-text {
+        font-size: 21px;
+    }
+
+
+    /*
+     * ==========================================================
      * BOTONES
      * ==========================================================
      */
@@ -29,7 +67,7 @@
         border-radius: 6px;
         font-weight: 600;
         color: #ffffff;
-        font-size: 14px;
+        font-size: 21px;
         line-height: normal;
         font-family: inherit;
         text-decoration: none;
@@ -57,6 +95,22 @@
 
     .dashboard-btn-secondary:hover {
         background-color: #f3f4f6;
+    }
+
+    .dashboard-history-btn {
+        margin-top: 15px;
+    }
+
+    /*
+     * ==========================================================
+     * SECCIONES GENERALES
+     * ==========================================================
+     */
+
+    .dashboard-section {
+        width: 100%;
+        margin-left: auto;
+        margin-right: auto;
     }
 
 
@@ -116,21 +170,21 @@
     }
 
     .pending-invoice-label {
-        font-size: 13px;
+        font-size: 21px;
         font-weight: 600;
         color: #6b7280;
         margin-bottom: 4px;
     }
 
     .pending-invoice-value {
-        font-size: 18px;
+        font-size: 21px;
         font-weight: 600;
         color: #111827;
         overflow-wrap: anywhere;
     }
 
     .pending-invoice-value-normal {
-        font-size: 16px;
+        font-size: 21px;
         font-weight: 500;
         color: #111827;
         overflow-wrap: anywhere;
@@ -157,7 +211,7 @@
         padding: 40px;
         text-align: center;
         color: #111827;
-        font-size: 18px;
+        font-size: 21px;
     }
 
 
@@ -182,8 +236,8 @@
 
     @media (max-width: 768px) {
 
-        .pending-invoice-list {
-            width: 100%;
+        .dashboard-container {
+            width: 90vw;
         }
 
         .pending-invoice-card {
@@ -241,16 +295,16 @@
 </style>
 
 
-<div class="py-12">
+<div class="dashboard-page py-12">
 
-    <div class="w-full px-6 lg:px-8">
+    <div class="dashboard-container">
 
 
         {{-- ============================================= --}}
         {{-- AGREGAR DOCUMENTO --}}
         {{-- ============================================= --}}
 
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+        <div class="dashboard-section bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
 
             <h3 class="text-lg font-semibold text-gray-900">
                 Agregar documento
@@ -302,7 +356,7 @@
         {{-- DOCUMENTOS AGREGADOS --}}
         {{-- ============================================= --}}
 
-        <div class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+        <div class="dashboard-section mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
 
             <h3 class="text-lg font-semibold text-gray-900">
                 Documentos Agregados
@@ -508,7 +562,6 @@
                                                        px-3 py-1
                                                        rounded-full
                                                        font-semibold
-                                                       text-[13px]
                                                        text-white
                                                        bg-gray-900"
                                             >
@@ -637,7 +690,6 @@
 
                                 <div class="pending-invoice-actions">
 
-
                                     {{-- PAGO ONLINE --}}
 
                                     <a
@@ -692,7 +744,7 @@
         {{-- HISTORIAL --}}
         {{-- ============================================= --}}
 
-        <div class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+        <div class="dashboard-section mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
 
             <h3 class="text-lg font-semibold text-gray-900">
                 Historial de facturas
@@ -705,7 +757,7 @@
 
             <a
                 href="{{ route('dashboard.invoices.history') }}"
-                class="mt-4 dashboard-btn dashboard-btn-primary"
+                class="dashboard-history-btn dashboard-btn dashboard-btn-primary"
             >
                 Ver historial de facturas
             </a>
@@ -715,4 +767,5 @@
     </div>
 
 </div>
+
 </x-app-layout>

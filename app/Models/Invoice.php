@@ -23,6 +23,7 @@ class Invoice extends Model
         'due_date',
         'overdue_price',
         'tax_percentage',
+        'expected_amount',
 
         // Estado del pago
         'payment_status',
@@ -34,7 +35,6 @@ class Invoice extends Model
         // Datos Mercado Pago
         'mercadopago_preference_id',
         'mercadopago_payment_id',
-        'expected_amount' => 'decimal:2',
 
         // Datos ARCA
         'arca_status',

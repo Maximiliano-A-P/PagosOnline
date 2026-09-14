@@ -29,6 +29,29 @@ class MercadoPagoService
     {
         $client = new PreferenceClient();
 
+        /*
+        * Calculamos el monto a cobrar en este momento exacto:
+        * precio normal o vencido según corresponda, más el IVA
+        * si el servicio lo tiene configurado.
+        *
+        * Se guarda en expected_amount para que el webhook pueda
+        * validar el pago recibido contra el monto que realmente
+        * se le informó a Mercado Pago, sin tener que volver a
+        * calcular fechas después del hecho.
+        */
+        $base = now()->greaterThan($invoice->due_date)
+            ? (float) $invoice->overdue_price
+            : (float) $invoice->price;
+
+        $iva = round(
+            $base * (float) ($invoice->tax_percentage ?? 0) / 100,
+            2
+        );
+
+        $total = $base + $iva;
+
+        $invoice->update(['expected_amount' => $total]);
+
         try {
             $preference = $client->create([
                 'items' => [
@@ -37,7 +60,7 @@ class MercadoPagoService
                         'title' => $invoice->service_name,
                         'quantity' => 1,
                         'currency_id' => 'ARS',
-                        'unit_price' => (float) $invoice->price,
+                        'unit_price' => $total,
                     ],
                 ],
 

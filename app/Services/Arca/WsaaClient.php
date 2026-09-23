@@ -96,27 +96,39 @@ class WsaaClient
      */
     private function firmarTicket(string $xml): string
     {
-        if (!$this->config->certificate_path || !$this->config->private_key_path) {
+        $certificadoBase64 = config('arca.certificado_crt');
+        $claveBase64 = config('arca.private_key');
+
+        if (!$certificadoBase64 || !$claveBase64) {
             throw new RuntimeException(
-                'Falta configurar el certificado o la clave privada de ARCA.'
+                'Falta configurar ARCA_CERTIFICATE_CRT o ARCA_PRIVATE_KEY en el .env.'
             );
         }
 
+        $certificadoPem = base64_decode($certificadoBase64);
+        $clavePem = base64_decode($claveBase64);
+
+        $archivoCert = tempnam(sys_get_temp_dir(), 'arca_crt_');
+        $archivoKey = tempnam(sys_get_temp_dir(), 'arca_key_');
         $archivoXml = tempnam(sys_get_temp_dir(), 'arca_ttl_');
         $archivoFirmado = tempnam(sys_get_temp_dir(), 'arca_cms_');
 
+        file_put_contents($archivoCert, $certificadoPem);
+        file_put_contents($archivoKey, $clavePem);
         file_put_contents($archivoXml, $xml);
 
         $firmado = openssl_pkcs7_sign(
             $archivoXml,
             $archivoFirmado,
-            'file://' . $this->config->certificate_path,
-            'file://' . $this->config->private_key_path,
+            'file://' . $archivoCert,
+            'file://' . $archivoKey,
             [],
             PKCS7_DETACHED | PKCS7_BINARY
         );
 
         if (!$firmado) {
+            @unlink($archivoCert);
+            @unlink($archivoKey);
             @unlink($archivoXml);
             @unlink($archivoFirmado);
             throw new RuntimeException(
@@ -124,12 +136,11 @@ class WsaaClient
             );
         }
 
-        // openssl_pkcs7_sign devuelve el archivo en formato MIME
-        // (con headers y separadores). Necesitamos aislar el
-        // bloque en Base64 puro que exige el WSAA.
         $contenido = file_get_contents($archivoFirmado);
         $cms = $this->extraerBase64DelMime($contenido);
 
+        @unlink($archivoCert);
+        @unlink($archivoKey);
         @unlink($archivoXml);
         @unlink($archivoFirmado);
 

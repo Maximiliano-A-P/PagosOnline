@@ -22,4 +22,8 @@ return [
     // URL de la API ARCA (Node) que ya armamos y desplegamos.
     'api_url' => env('ARCA_API_URL'),
     'api_key' => env('ARCA_API_KEY'),
+
+    // Certificado para identificacion WSFA
+    'certificado_crt' => env('ARCA_CERTIFICATE_CRT'),
+    'private_key' => env('ARCA_PRIVATE_KEY'),
 ];

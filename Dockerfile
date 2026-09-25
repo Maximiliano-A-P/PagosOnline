@@ -90,6 +90,7 @@ RUN docker-php-ext-configure gd \
         bcmath \
         exif \
         pcntl \
+        soap \
         intl \
         zip \
         gd \

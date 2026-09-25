@@ -337,7 +337,10 @@ class MercadoPagoWebhookController extends Controller
             $wsaaClient = new WsaaClient($arcaConfig);
             $arcaApiService = new ArcaApiService($wsaaClient, $arcaConfig);
 
-            $arcaApiService->emitir($invoice->fresh());
+            $arcaApiService->emitir(
+                $invoice->fresh(),
+                false
+            );
 
         } catch (\Throwable $e) {
 

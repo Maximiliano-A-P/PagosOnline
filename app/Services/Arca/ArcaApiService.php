@@ -276,6 +276,12 @@ class ArcaApiService
 
             'fchVtoPago' =>
                 $fechaVencimiento->format('Ymd'),
+
+            'invoiceId' =>
+                $invoice->id,
+
+            'reintentoAutomatico' =>
+                $automatico,
         ];
 
         /*

@@ -267,11 +267,28 @@ return new class extends Migration
                 ->nullable();
 
             /*
-             * Información utilizada para generar/mostrar
-             * el QR del comprobante.
+             * Información utilizada para generar/mostrar el QR del comprobante.
              */
             $table->text('arca_qr')
                 ->nullable();
+
+            /*
+             * Información utilizada para el reintento de peticion
+             */
+
+            $table->unsignedInteger('arca_retry_attempts')
+                ->default(0);
+
+            $table->timestamp('arca_last_attempt_at')
+                ->nullable();
+
+            $table->timestamp('arca_retry_at')
+                ->nullable();
+
+            $table->index([
+                'payment_status',
+                'arca_retry_at',
+            ]);
         });
     }
 

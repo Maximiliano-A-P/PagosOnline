@@ -8,6 +8,10 @@ use App\Models\Invoice;
 use App\Models\Service;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Models\ArcaConfig;
+use App\Services\Arca\ArcaApiService;
+use App\Services\Arca\WsaaClient;
+use Illuminate\Support\Facades\Log;
 
 class InvoiceController extends Controller
 {
@@ -604,6 +608,28 @@ class InvoiceController extends Controller
      */
     public function destroy(Invoice $invoice)
     {
+        /*
+        * Las facturas que tuvieron un pago o una
+        * autorización ARCA nunca se pueden eliminar.
+        */
+        if (
+            $invoice->payment_status === 'paid'
+            || $invoice->amount_paid !== null
+            || !empty($invoice->mercadopago_payment_id)
+            || !empty($invoice->arca_cae)
+            || $invoice->arca_status === 'aprobado'
+        ) {
+            return redirect()
+                ->route(
+                    'admin.invoices.show',
+                    $invoice
+                )
+                ->with(
+                    'error',
+                    'Una factura pagada o autorizada por ARCA no puede eliminarse.'
+                );
+        }
+
         $invoice->delete();
 
         return redirect()
@@ -611,6 +637,97 @@ class InvoiceController extends Controller
             ->with(
                 'success',
                 'Factura eliminada correctamente.'
+            );
+    }
+
+    public function retryArca(Invoice $invoice)
+    {
+        if ($invoice->payment_status !== 'paid') {
+            return redirect()
+                ->route(
+                    'admin.invoices.show',
+                    $invoice
+                )
+                ->with(
+                    'error',
+                    'Solo se puede reintentar ARCA sobre una factura pagada.'
+                );
+        }
+
+        if (
+            $invoice->arca_status === 'aprobado'
+            || !empty($invoice->arca_cae)
+        ) {
+            return redirect()
+                ->route(
+                    'admin.invoices.show',
+                    $invoice
+                )
+                ->with(
+                    'error',
+                    'La factura ya fue autorizada por ARCA.'
+                );
+        }
+
+        $config = ArcaConfig::first();
+
+        if (!$config) {
+            return redirect()
+                ->route(
+                    'admin.invoices.show',
+                    $invoice
+                )
+                ->with(
+                    'error',
+                    'No existe configuración de ARCA.'
+                );
+        }
+
+        /*
+        * El reintento manual empieza inmediatamente
+        * y reinicia el contador automático.
+        */
+        $invoice->update([
+            'arca_retry_attempts' => 0,
+            'arca_retry_at' => now(),
+        ]);
+
+        try {
+            $service = new ArcaApiService(
+                new WsaaClient($config),
+                $config
+            );
+
+            $service->emitir(
+                $invoice->fresh()
+            );
+
+        } catch (\Throwable $e) {
+
+            Log::error(
+                'Error en reintento manual ARCA.',
+                [
+                    'invoice_id' =>
+                        $invoice->id,
+
+                    'message' =>
+                        $e->getMessage(),
+
+                    'exception' =>
+                        get_class($e),
+                ]
+            );
+
+            $invoice->update([
+                'arca_status' =>
+                    'error: ' . $e->getMessage(),
+            ]);
+        }
+
+        return redirect()
+            ->route(
+                'admin.invoices.show',
+                $invoice
             );
     }
 }

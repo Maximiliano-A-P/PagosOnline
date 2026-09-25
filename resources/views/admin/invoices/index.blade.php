@@ -750,29 +750,53 @@
 
                                 @endif
 
-
-                                <form
-                                    method="POST"
-                                    action="{{ route(
-                                        'admin.invoices.destroy',
-                                        $invoice
-                                    ) }}"
-                                    onsubmit="return confirm(
-                                        '¿Eliminar esta factura? Esta acción no se puede deshacer.'
-                                    );"
-                                >
-                                    @csrf
-
-                                    @method('DELETE')
-
-                                    <button
-                                        type="submit"
-                                        class="btn"
+                                @if (
+                                    $invoice->payment_status === 'paid'
+                                    && empty($invoice->arca_cae)
+                                    && $invoice->arca_status !== 'aprobado'
+                                )
+                                    <form
+                                        method="POST"
+                                        action="{{ route('admin.invoices.retry-arca', $invoice) }}"
                                     >
-                                        Eliminar
-                                    </button>
+                                        @csrf
 
-                                </form>
+                                        <button
+                                            type="submit"
+                                            class="btn"
+                                        >
+                                            Reintentar ARCA
+                                        </button>
+                                    </form>
+                                @endif
+
+
+                                @if (
+                                    $invoice->payment_status !== 'paid'
+                                    && $invoice->amount_paid === null
+                                    && empty($invoice->mercadopago_payment_id)
+                                    && empty($invoice->arca_cae)
+                                    && $invoice->arca_status !== 'aprobado'
+                                )
+                                    <form
+                                        method="POST"
+                                        action="{{ route('admin.invoices.destroy', $invoice) }}"
+                                        onsubmit="return confirm(
+                                            '¿Eliminar esta factura? Esta acción no se puede deshacer.'
+                                        );"
+                                    >
+                                        @csrf
+
+                                        @method('DELETE')
+
+                                        <button
+                                            type="submit"
+                                            class="btn"
+                                        >
+                                            Eliminar
+                                        </button>
+                                    </form>
+                                @endif
 
                             </div>
 

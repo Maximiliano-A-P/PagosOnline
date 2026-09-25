@@ -49,6 +49,9 @@ class Invoice extends Model
         'client_iva_condition',
         'service_period_start',
         'service_period_end',
+        'arca_retry_attempts',
+        'arca_last_attempt_at',
+        'arca_retry_at',
     ];
 
     protected function casts(): array
@@ -78,6 +81,9 @@ class Invoice extends Model
             'service_period_start' => 'date',
             'service_period_end' => 'date',
             'tax_percentage' => 'decimal:2',
+            'arca_retry_attempts' => 'integer',
+            'arca_last_attempt_at' => 'datetime',
+            'arca_retry_at' => 'datetime',
         ];
     }
 

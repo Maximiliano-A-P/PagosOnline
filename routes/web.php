@@ -240,6 +240,10 @@ Route::middleware(['auth', 'admin'])
             [ArcaConfigController::class, 'update']
         )->name('arca.update');
 
+        Route::post(
+            '/invoices/{invoice}/retry-arca',
+            [InvoiceController::class, 'retryArca']
+        )->name('invoices.retry-arca');
     });
 
 

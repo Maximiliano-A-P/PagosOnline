@@ -123,4 +123,31 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+
+    'retry' => [
+
+        /*
+        * Tiempo base antes del primer reintento.
+        */
+        'delay_minutes' =>
+            (int) env('ARCA_RETRY_DELAY_MINUTES', 10),
+
+        /*
+        * Cantidad máxima de facturas procesadas por una ejecución del Cron.
+        */
+        'max_per_run' =>
+            (int) env('ARCA_RETRY_MAX_PER_RUN', 1),
+
+        /*
+        * Máximo de intentos automáticos para una misma factura.
+        */
+        'max_attempts' =>
+            (int) env('ARCA_RETRY_MAX_ATTEMPTS', 8),
+
+        /*
+        * Límite superior del backoff.
+        */
+        'max_backoff_minutes' =>
+            (int) env('ARCA_RETRY_MAX_BACKOFF_MINUTES', 120),
+    ],
 ];

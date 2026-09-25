@@ -149,13 +149,36 @@ class ArcaApiService
             return;
         }
 
+        /*
+        * Errores normales devueltos por nuestra API Node.
+        */
         $mensaje = collect($datos['errores'] ?? [])
             ->pluck('mensaje')
             ->implode(' | ');
 
+        /*
+        * Algunos errores de HTTP pueden venir con una clave
+        * "error" en lugar de "errores".
+        */
+        if (!$mensaje && isset($datos['error'])) {
+            $mensaje = (string) $datos['error'];
+        }
+
+        /*
+        * Si la respuesta no fue JSON o no contiene una estructura
+        * reconocible, mostramos el código HTTP y el cuerpo real.
+        */
+        if (!$mensaje) {
+            $mensaje = sprintf(
+                'HTTP %s. Respuesta API ARCA: %s',
+                $respuesta->status(),
+                $respuesta->body()
+            );
+        }
+
         $this->marcarError(
             $invoice,
-            $mensaje ?: 'Error desconocido al comunicarse con la API ARCA.'
+            $mensaje
         );
     }
 

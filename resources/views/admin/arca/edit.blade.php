@@ -6,7 +6,7 @@
                 Configuración ARCA
             </h2>
 
-            
+            <a
                 href="{{ route('admin.dashboard') }}"
                 class="btn"
             >
@@ -48,16 +48,16 @@
             padding: 20px;
         }
 
-        .info-box h4 {
+                .info-box h4 {
             color: #ffffff;
             font-weight: 600;
-            font-size: 16px;
+            font-size: 22px;
             margin: 0;
         }
 
         .info-box p {
             color: #d1d5db; /* gray-300 */
-            font-size: 14px;
+            font-size: 18px;
             margin: 8px 0 0;
         }
 

@@ -51,15 +51,16 @@ class ArcaApiService
         $condicionCliente = $invoice->client_iva_condition
             ?? self::CONSUMIDOR_FINAL_IVA;
 
-        $tipoComprobante = ComprobanteResolver::determinarTipoComprobante(
-            $this->config->condicion_iva,
-            $invoice->client_iva_condition
-        );
+        $tipoComprobante =
+            ComprobanteResolver::determinarTipoComprobante(
+                $this->config->condicion_iva,
+                $invoice->client_iva_condition
+            );
 
         /*
          * Factura A requiere CUIT.
          *
-         * Esto es un error de datos y NO debe entrar
+         * Esto es un error de datos y no debe entrar
          * en el reintento automático.
          */
         if (
@@ -74,29 +75,84 @@ class ArcaApiService
             return;
         }
 
-        [$docTipo, $docNro] = array_values(
-            ComprobanteResolver::resolverDocumento(
-                $tipoComprobante,
-                (string) $invoice->client_document,
-                $invoice->client_cuit
+        [$docTipo, $docNro] =
+            array_values(
+                ComprobanteResolver::resolverDocumento(
+                    $tipoComprobante,
+                    (string) $invoice->client_document,
+                    $invoice->client_cuit
+                )
+            );
+
+        /*
+         * ==========================================================
+         * FECHA DEL COMPROBANTE
+         * ==========================================================
+         */
+
+        $fechaComprobante =
+            $invoice->issued_at
+                ->copy()
+                ->startOfDay();
+
+        /*
+         * ==========================================================
+         * FECHA DE VENCIMIENTO DEL PAGO
+         * ==========================================================
+         *
+         * ARCA no permite que FchVtoPago sea anterior
+         * a la fecha del comprobante.
+         *
+         * Si por alguna razón una factura existente tiene
+         * un vencimiento anterior, usamos como mínimo la fecha
+         * del comprobante.
+         */
+
+        $fechaVencimiento =
+            $invoice->due_date
+                ->copy()
+                ->startOfDay();
+
+        if (
+            $fechaVencimiento->lt(
+                $fechaComprobante
             )
-        );
+        ) {
+            $fechaVencimiento =
+                $fechaComprobante->copy();
+        }
 
-        $total = (float) $invoice->amount_paid;
+        /*
+         * ==========================================================
+         * IMPORTES
+         * ==========================================================
+         */
 
-        $porcentajeIva = (float) (
-            $invoice->tax_percentage ?? 0
-        );
+        $total =
+            (float) $invoice->amount_paid;
 
-        $neto = round(
-            $total / (1 + $porcentajeIva / 100),
-            2
-        );
+        $porcentajeIva =
+            (float) (
+                $invoice->tax_percentage ?? 0
+            );
 
-        $iva = round(
-            $total - $neto,
-            2
-        );
+        $neto =
+            round(
+                $total / (1 + $porcentajeIva / 100),
+                2
+            );
+
+        $iva =
+            round(
+                $total - $neto,
+                2
+            );
+
+        /*
+         * ==========================================================
+         * PAYLOAD
+         * ==========================================================
+         */
 
         $payload = [
             'token' =>
@@ -127,7 +183,7 @@ class ArcaApiService
                 $condicionCliente,
 
             'fecha' =>
-                $invoice->issued_at->format('Ymd'),
+                $fechaComprobante->format('Ymd'),
 
             'importeNeto' =>
                 $neto,
@@ -148,6 +204,10 @@ class ArcaApiService
                 $fechaVencimiento->format('Ymd'),
         ];
 
+        /*
+         * Factura A/M:
+         * se discrimina el IVA.
+         */
         if (
             ComprobanteResolver::discriminaIva($tipoComprobante)
             && $iva > 0
@@ -166,16 +226,24 @@ class ArcaApiService
             ]];
         }
 
+        /*
+         * ==========================================================
+         * LLAMADA A LA API ARCA
+         * ==========================================================
+         */
+
         try {
-            $respuesta = Http::withHeaders([
-                'X-Internal-Api-Key' =>
-                    config('arca.api_key'),
-            ])
-                ->timeout(30)
-                ->post(
-                    config('arca.api_url') . '/wsfe/solicitar-cae',
-                    $payload
-                );
+            $respuesta =
+                Http::withHeaders([
+                    'X-Internal-Api-Key' =>
+                        config('arca.api_key'),
+                ])
+                    ->timeout(30)
+                    ->post(
+                        config('arca.api_url')
+                        . '/wsfe/solicitar-cae',
+                        $payload
+                    );
 
         } catch (ConnectionException $e) {
 
@@ -189,8 +257,15 @@ class ArcaApiService
         }
 
         /*
-         * Errores HTTP transitorios.
+         * ==========================================================
+         * ERRORES HTTP TRANSITORIOS
+         * ==========================================================
+         *
+         * 408 = Request Timeout
+         * 429 = Too Many Requests
+         * 5xx = Error del servidor
          */
+
         if (
             $respuesta->status() === 408
             || $respuesta->status() === 429
@@ -207,6 +282,12 @@ class ArcaApiService
 
             return;
         }
+
+        /*
+         * ==========================================================
+         * PROCESAR RESPUESTA
+         * ==========================================================
+         */
 
         $this->procesarRespuesta(
             $invoice,
@@ -227,7 +308,14 @@ class ArcaApiService
         $respuesta,
         int $tipoComprobante
     ): void {
-        $datos = $respuesta->json();
+        $datos =
+            $respuesta->json();
+
+        /*
+         * ==========================================================
+         * COMPROBANTE APROBADO
+         * ==========================================================
+         */
 
         if (
             $respuesta->successful()
@@ -254,6 +342,9 @@ class ArcaApiService
                 'arca_invoice_number' =>
                     $datos['numeroComprobante'],
 
+                /*
+                 * Ya no necesita reintentos.
+                 */
                 'arca_retry_attempts' =>
                     0,
 
@@ -265,26 +356,44 @@ class ArcaApiService
         }
 
         /*
-         * Errores funcionales de ARCA.
+         * ==========================================================
+         * ERROR FUNCIONAL DE ARCA
+         * ==========================================================
          *
-         * No se reintentan automáticamente.
+         * Estos errores no se reintentan automáticamente porque
+         * normalmente requieren corregir los datos del comprobante.
          */
-        $mensaje = collect(
-            $datos['errores'] ?? []
-        )
-            ->pluck('mensaje')
-            ->implode(' | ');
 
-        if (!$mensaje && isset($datos['error'])) {
-            $mensaje = (string) $datos['error'];
+        $mensaje =
+            collect(
+                $datos['errores'] ?? []
+            )
+                ->pluck('mensaje')
+                ->implode(' | ');
+
+        /*
+         * Algunas respuestas pueden utilizar "error"
+         * en lugar de "errores".
+         */
+        if (
+            !$mensaje
+            && isset($datos['error'])
+        ) {
+            $mensaje =
+                (string) $datos['error'];
         }
 
+        /*
+         * Último recurso si no conseguimos un mensaje
+         * estructurado.
+         */
         if (!$mensaje) {
-            $mensaje = sprintf(
-                'HTTP %s. Respuesta API ARCA: %s',
-                $respuesta->status(),
-                $respuesta->body()
-            );
+            $mensaje =
+                sprintf(
+                    'HTTP %s. Respuesta API ARCA: %s',
+                    $respuesta->status(),
+                    $respuesta->body()
+                );
         }
 
         $this->marcarError(
@@ -320,9 +429,11 @@ class ArcaApiService
             );
 
         /*
-         * Llegamos al máximo.
+         * Se alcanzó el máximo de intentos.
          */
-        if ($intentos > $maxIntentos) {
+        if (
+            $intentos > $maxIntentos
+        ) {
             $invoice->update([
                 'arca_status' =>
                     'error: '
@@ -357,6 +468,15 @@ class ArcaApiService
                 )
             );
 
+        /*
+         * Backoff exponencial:
+         *
+         * intento 1 -> 10 min
+         * intento 2 -> 20 min
+         * intento 3 -> 40 min
+         * intento 4 -> 80 min
+         * intento 5+ -> 120 min
+         */
         $delay =
             min(
                 $base * (2 ** ($intentos - 1)),
@@ -388,8 +508,8 @@ class ArcaApiService
                 'error: ' . $mensaje,
 
             /*
-             * Error permanente: no se mete en el
-             * reintento automático.
+             * Error permanente:
+             * no entra al reintento automático.
              */
             'arca_retry_at' =>
                 null,

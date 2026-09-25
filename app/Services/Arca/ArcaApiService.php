@@ -145,7 +145,7 @@ class ArcaApiService
                 $invoice->service_period_end?->format('Ymd'),
 
             'fchVtoPago' =>
-                $invoice->due_date->format('Ymd'),
+                $fechaVencimiento->format('Ymd'),
         ];
 
         if (

@@ -210,6 +210,7 @@ class InvoiceController extends Controller
             'due_date' => [
                 'required',
                 'date',
+                'after_or_equal:issued_at',
             ],
 
             'overdue_price' => [
@@ -444,10 +445,20 @@ class InvoiceController extends Controller
                     $currentMonth->daysInMonth
                 );
 
-                $dueDate = $currentMonth
+                $dueDateObject = $currentMonth
                     ->copy()
-                    ->day($dueDay)
-                    ->toDateString();
+                    ->day($dueDay);
+
+                if (
+                    $dueDateObject->lt(
+                        $generationDate->copy()->startOfDay()
+                    )
+                ) {
+                    $dueDateObject =
+                        $generationDate->copy()->startOfDay();
+                }
+
+                $dueDate = $dueDateObject->toDateString();
 
                 /*
                  * ==================================================

@@ -68,4 +68,14 @@ class ComprobanteResolver
     {
         return in_array($tipoComprobante, [1, 2, 3]); // Factura/NC/ND tipo A
     }
+
+    /**
+     * Indica si el comprobante debe discriminar IVA en el detalle
+     * (alicuotasIva). Solo aplica a comprobantes tipo A y M —
+     * la B y la C nunca discriminan.
+     */
+    public static function discriminaIva(int $tipoComprobante): bool
+    {
+        return in_array($tipoComprobante, [1, 2, 3, 51, 52, 53]); // A y M
+    }
 }

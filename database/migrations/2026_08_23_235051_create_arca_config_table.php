@@ -74,20 +74,6 @@ return new class extends Migration
 
             /*
              * =====================================================
-             * CERTIFICADOS DIGITALES
-             * =====================================================
-             */
-
-            // Ruta donde se encuentra almacenado el certificado
-            // digital utilizado para comunicarse con ARCA.
-            $table->string('certificate_path');
-
-            // Ruta donde se encuentra almacenada la clave privada.
-            $table->string('private_key_path');
-
-
-            /*
-             * =====================================================
              * AUTENTICACIÓN WSAA
              * =====================================================
              */

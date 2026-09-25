@@ -44,18 +44,6 @@ class ArcaConfigController extends Controller
                 'integer',
                 'min:1',
             ],
-
-            'certificate_path' => [
-                'nullable',
-                'string',
-                'max:500',
-            ],
-
-            'private_key_path' => [
-                'nullable',
-                'string',
-                'max:500',
-            ],
         ]);
 
         $config = ArcaConfig::first();

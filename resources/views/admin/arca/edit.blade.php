@@ -2,11 +2,11 @@
 
     <x-slot name="header">
         <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-white leading-tight text-[3vh]">
+            <h2 class="font-semibold text-white leading-tight text-[32px]">
                 Configuración ARCA
             </h2>
 
-            <a
+            
                 href="{{ route('admin.dashboard') }}"
                 class="btn"
             >
@@ -21,13 +21,13 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 6px 14px;
+            padding: 10px 22px;
             background-color: #111827; /* gray-900 */
             border: 1px solid #111827;
             border-radius: 6px;
             font-weight: 600;
             color: #ffffff;
-            font-size: 14px;
+            font-size: 18px;
             line-height: normal;
             font-family: inherit;
             text-decoration: none;
@@ -60,15 +60,42 @@
             font-size: 14px;
             margin: 8px 0 0;
         }
+
+        .help-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .help-list li {
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb; /* gray-200 */
+        }
+
+        .help-list li:last-child {
+            border-bottom: none;
+        }
+
+        .help-list .help-name {
+            font-weight: 600;
+            color: #111827; /* gray-900 */
+            font-size: 18px;
+        }
+
+        .help-list .help-desc {
+            color: #4b5563; /* gray-600 */
+            font-size: 16px;
+            margin-top: 4px;
+        }
     </style>
 
     <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-[1600px] mx-auto sm:px-6 lg:px-8">
 
             {{-- Mensaje de éxito --}}
             @if (session('success'))
                 <div
-                    class="mb-6 p-4 bg-green-700 text-white rounded-lg shadow-sm text-[3vh]"
+                    class="mb-6 p-4 bg-green-700 text-white rounded-lg shadow-sm text-[24px]"
                 >
                     {{ session('success') }}
                 </div>
@@ -79,7 +106,7 @@
                 <div
                     class="mb-6 p-4 bg-red-700 text-white rounded-lg shadow-sm"
                 >
-                    <ul class="list-disc list-inside text-[3vh]">
+                    <ul class="list-disc list-inside text-[24px]">
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
                         @endforeach
@@ -92,11 +119,11 @@
                 <div class="p-6 text-gray-900">
 
                     <div class="mb-8">
-                        <h3 class="font-semibold text-gray-900 text-[4vh]">
+                        <h3 class="font-semibold text-gray-900 text-[32px]">
                             Datos de ARCA
                         </h3>
 
-                        <p class="mt-2 text-gray-700 text-[3vh]">
+                        <p class="mt-2 text-gray-700 text-[24px]">
                             Configuración necesaria para la comunicación
                             del sistema con ARCA.
                         </p>
@@ -114,7 +141,7 @@
                         <div>
                             <label
                                 for="cuit"
-                                class="block font-medium text-gray-900 text-[3vh]"
+                                class="block font-medium text-gray-900 text-[24px]"
                             >
                                 CUIT
                             </label>
@@ -125,10 +152,10 @@
                                 type="text"
                                 value="{{ old('cuit', $config?->cuit) }}"
                                 required
-                                class="mt-2 block w-full rounded-md border-gray-400 shadow-sm text-[3vh] text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
+                                class="mt-2 block w-full rounded-md border-gray-400 shadow-sm text-[24px] text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
                             >
 
-                            <p class="mt-2 text-gray-700 text-[3vh]">
+                            <p class="mt-2 text-gray-700 text-[24px]">
                                 CUIT de la empresa utilizada para operar
                                 con ARCA.
                             </p>
@@ -138,7 +165,7 @@
                         <div>
                             <label
                                 for="condicion_iva"
-                                class="block font-medium text-gray-900 text-[3vh]"
+                                class="block font-medium text-gray-900 text-[24px]"
                             >
                                 Condición frente al IVA (código AFIP)
                             </label>
@@ -151,7 +178,7 @@
                                 list="condicionIvaReferencia"
                                 value="{{ old('condicion_iva', $config?->condicion_iva) }}"
                                 required
-                                class="mt-2 block w-full rounded-md border-gray-400 shadow-sm text-[3vh] text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
+                                class="mt-2 block w-full rounded-md border-gray-400 shadow-sm text-[24px] text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
                             >
 
                             <datalist id="condicionIvaReferencia">
@@ -168,59 +195,57 @@
                                 <option value="16">Monotributo Trabajador Independiente Promovido</option>
                             </datalist>
 
-                            <p class="mt-2 text-gray-700 text-[3vh]">
+                            <p class="mt-2 text-gray-700 text-[24px]">
                                 Se puede escribir cualquier código numérico. La lista es
                                 solo de referencia (tabla de condiciones de ARCA/AFIP
                                 vigente al momento de escribir esto) — si ARCA agrega o
                                 modifica códigos, se carga el nuevo valor directamente
-                                acá sin necesitar ningún cambio de código.
+                                acá sin necesitar ningún cambio de código. Ver la
+                                sección "Explicaciones" más abajo para el detalle de
+                                qué implica cada una.
                             </p>
                         </div>
 
-                        {{-- Certificado --}}
+                        {{-- Punto de venta --}}
                         <div>
                             <label
-                                for="certificate_path"
-                                class="block font-medium text-gray-900 text-[3vh]"
+                                for="punto_venta"
+                                class="block font-medium text-gray-900 text-[24px]"
                             >
-                                Ruta del certificado
+                                Punto de venta
                             </label>
 
                             <input
-                                id="certificate_path"
-                                name="certificate_path"
-                                type="text"
-                                value="{{ old('certificate_path', $config?->certificate_path) }}"
-                                class="mt-2 block w-full rounded-md border-gray-400 shadow-sm text-[3vh] text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
+                                id="punto_venta"
+                                name="punto_venta"
+                                type="number"
+                                min="1"
+                                value="{{ old('punto_venta', $config?->punto_venta) }}"
+                                required
+                                class="mt-2 block w-full rounded-md border-gray-400 shadow-sm text-[24px] text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
                             >
 
-                            <p class="mt-2 text-gray-700 text-[3vh]">
-                                Ubicación del certificado digital utilizado
-                                para autenticarse ante ARCA.
+                            <p class="mt-2 text-gray-700 text-[24px]">
+                                Punto de venta habilitado en ARCA que se usa
+                                para pedir el CAE. En homologación normalmente
+                                alcanza con el 1. Ver "Explicaciones" más abajo.
                             </p>
                         </div>
 
-                        {{-- Clave privada --}}
-                        <div>
-                            <label
-                                for="private_key_path"
-                                class="block font-medium text-gray-900 text-[3vh]"
-                            >
-                                Ruta de la clave privada
-                            </label>
+                        {{-- Información del certificado --}}
+                        <div class="info-box">
 
-                            <input
-                                id="private_key_path"
-                                name="private_key_path"
-                                type="text"
-                                value="{{ old('private_key_path', $config?->private_key_path) }}"
-                                class="mt-2 block w-full rounded-md border-gray-400 shadow-sm text-[3vh] text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
-                            >
+                            <h4>
+                                Certificado y clave privada
+                            </h4>
 
-                            <p class="mt-2 text-gray-700 text-[3vh]">
-                                Ubicación de la clave privada utilizada
-                                para la autenticación.
+                            <p>
+                                No se cargan desde acá: salen de las variables
+                                de entorno ARCA_CERTIFICATE_CRT y
+                                ARCA_PRIVATE_KEY (Base64) configuradas en el
+                                servidor.
                             </p>
+
                         </div>
 
                         {{-- Información del token --}}
@@ -268,6 +293,139 @@
                         </div>
 
                     </form>
+
+                    {{-- ================================================== --}}
+                    {{-- Explicaciones --}}
+                    {{-- ================================================== --}}
+
+                    <hr class="my-10 border-gray-300">
+
+                    <h3 class="font-semibold text-gray-900 text-[32px] mb-6">
+                        Explicaciones
+                    </h3>
+
+                    <div class="mb-8">
+                        <h4 class="font-semibold text-gray-900 text-[20px] mb-2">
+                            Condición frente al IVA
+                        </h4>
+
+                        <p class="text-gray-700 text-[16px] mb-4">
+                            Es la categoría del emisor (la empresa/persona que factura)
+                            ante ARCA/AFIP. El sistema la usa para decidir si el
+                            comprobante se emite como Factura A, B o C. Con condición
+                            "Responsable Inscripto" el sistema mira también la condición
+                            del cliente (Responsable Inscripto → Factura A, cualquier otra
+                            → Factura B). Con cualquier otra condición del emisor
+                            (Monotributo, Exento, etc.), siempre se emite Factura C.
+                        </p>
+
+                        <ul class="help-list">
+                            <li>
+                                <div class="help-name">1 — IVA Responsable Inscripto</div>
+                                <div class="help-desc">
+                                    Inscripto en IVA. Es la única condición que puede
+                                    generar Factura A (si el cliente también es
+                                    Responsable Inscripto) o Factura B (para el resto de
+                                    los clientes). Para Factura A el cliente necesita
+                                    CUIT cargado.
+                                </div>
+                            </li>
+                            <li>
+                                <div class="help-name">4 — IVA Sujeto Exento</div>
+                                <div class="help-desc">
+                                    Exento de IVA por la actividad que realiza. El
+                                    sistema lo trata igual que cualquier condición que
+                                    no sea Responsable Inscripto: siempre emite Factura C.
+                                </div>
+                            </li>
+                            <li>
+                                <div class="help-name">5 — Consumidor Final</div>
+                                <div class="help-desc">
+                                    No está inscripto ante AFIP como contribuyente.
+                                    Es también el valor por defecto que usa el sistema
+                                    para un cliente sin condición cargada. Como emisor,
+                                    resulta en Factura C.
+                                </div>
+                            </li>
+                            <li>
+                                <div class="help-name">6 — Responsable Monotributo</div>
+                                <div class="help-desc">
+                                    Monotributista. Siempre emite Factura C y nunca
+                                    discrimina IVA por separado.
+                                </div>
+                            </li>
+                            <li>
+                                <div class="help-name">7 — Sujeto No Categorizado</div>
+                                <div class="help-desc">
+                                    Contribuyente sin categoría de IVA definida todavía
+                                    ante AFIP. Como emisor, resulta en Factura C.
+                                </div>
+                            </li>
+                            <li>
+                                <div class="help-name">8 — Proveedor del Exterior</div>
+                                <div class="help-desc">
+                                    Proveedor radicado fuera del país. Como emisor,
+                                    resulta en Factura C.
+                                </div>
+                            </li>
+                            <li>
+                                <div class="help-name">9 — Cliente del Exterior</div>
+                                <div class="help-desc">
+                                    Cliente radicado fuera del país. Como emisor,
+                                    resulta en Factura C.
+                                </div>
+                            </li>
+                            <li>
+                                <div class="help-name">10 — IVA Liberado – Ley N° 19.640</div>
+                                <div class="help-desc">
+                                    Liberado de IVA por un régimen especial (Tierra del
+                                    Fuego). Como emisor, resulta en Factura C.
+                                </div>
+                            </li>
+                            <li>
+                                <div class="help-name">13 — Monotributista Social</div>
+                                <div class="help-desc">
+                                    Variante del monotributo para emprendimientos
+                                    sociales. Como emisor, resulta en Factura C.
+                                </div>
+                            </li>
+                            <li>
+                                <div class="help-name">15 — IVA No Alcanzado</div>
+                                <div class="help-desc">
+                                    La actividad no está alcanzada por el impuesto al
+                                    IVA. Como emisor, resulta en Factura C.
+                                </div>
+                            </li>
+                            <li>
+                                <div class="help-name">16 — Monotributo Trabajador Independiente Promovido</div>
+                                <div class="help-desc">
+                                    Variante del monotributo para trabajadores
+                                    independientes promovidos. Como emisor, resulta en
+                                    Factura C.
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 class="font-semibold text-gray-900 text-[20px] mb-2">
+                            Punto de venta
+                        </h4>
+
+                        <p class="text-gray-700 text-[16px]">
+                            Es el número que identifica, dentro del CUIT configurado,
+                            el canal por el que se factura (por ejemplo, "sucursal web").
+                            Cada punto de venta tiene su propia numeración correlativa
+                            de comprobantes en ARCA: al pedir un CAE, el sistema informa
+                            este número para que ARCA sepa qué numeración de factura
+                            corresponde. En el ambiente de producción, el punto de venta
+                            tiene que estar dado de alta en ARCA (Administrador de puntos
+                            de venta y domicilios) como habilitado para "Factura
+                            Electrónica – Web Services" antes de poder usarlo acá. En el
+                            ambiente de homologación (pruebas) no hace falta darlo de
+                            alta — alcanza con usar el 1.
+                        </p>
+                    </div>
 
                 </div>
 

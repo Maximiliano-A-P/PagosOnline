@@ -12,8 +12,6 @@ class ArcaConfig extends Model
         'cuit',
         'condicion_iva',
         'punto_venta',
-        'certificate_path',
-        'private_key_path',
         'token',
         'sign',
         'token_expires_at',

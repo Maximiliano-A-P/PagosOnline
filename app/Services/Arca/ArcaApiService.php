@@ -39,16 +39,31 @@ class ArcaApiService
             $invoice->client_iva_condition
         );
 
+        /*
+        * Factura A requiere CUIT del cliente.
+        */
+        if (
+            ComprobanteResolver::requiereCuit($tipoComprobante)
+            && empty($invoice->client_cuit)
+        ) {
+            $this->marcarError(
+                $invoice,
+                'El cliente debe tener CUIT cargada para facturar como Responsable Inscripto (Factura A).'
+            );
+
+            return;
+        }
+
         [$docTipo, $docNro] = array_values(
             ComprobanteResolver::resolverDocumento(
-                $invoice->client_document_type,
-                (string) $invoice->client_document
+                $tipoComprobante,
+                (string) $invoice->client_document,
+                $invoice->client_cuit
             )
         );
 
         if (
-            ComprobanteResolver::requiereCuit($tipoComprobante)
-            && $docTipo !== 80
+            $invoice->client_cuit
         ) {
             $this->marcarError(
                 $invoice,

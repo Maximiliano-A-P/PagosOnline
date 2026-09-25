@@ -68,10 +68,10 @@ class ClientController extends Controller
                 'min:1',
             ],
 
-            'arca_document_type' => [
+            'cuit' => [
                 'nullable',
-                'integer',
-                'min:1',
+                'string',
+                'regex:/^\d{11}$/',
             ],
 
             'arca_iva_condition' => [
@@ -116,10 +116,10 @@ class ClientController extends Controller
                 'min:1',
             ],
 
-            'arca_document_type' => [
+            'cuit' => [
                 'nullable',
-                'integer',
-                'min:1',
+                'string',
+                'regex:/^\d{11}$/',
             ],
 
             'arca_iva_condition' => [

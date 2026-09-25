@@ -11,7 +11,7 @@ class Client extends Model
     protected $fillable = [
         'name',
         'document',
-        'arca_document_type',
+        'cuit',
         'arca_iva_condition',
     ];
 
@@ -39,6 +39,9 @@ class Client extends Model
      */
     public function users(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'client_user');
+        return $this->belongsToMany(
+            User::class,
+            'client_user'
+        );
     }
 }

@@ -160,6 +160,12 @@ class InvoiceController extends Controller
                 'min:1',
             ],
 
+            'client_cuit' => [
+                'nullable',
+                'string',
+                'regex:/^\d{11}$/',
+            ],
+
             'client_iva_condition' => [
                 'nullable',
                 'integer',
@@ -449,7 +455,8 @@ class InvoiceController extends Controller
                      */
                     'client_name' => $client->name,
                     'client_document' => $client->document,
-                    'client_document_type' => $client->arca_document_type,
+                    'client_cuit' => $client->cuit,
+                    'client_document_type' => 96,
                     'client_iva_condition' => $client->arca_iva_condition,
 
                     /*

@@ -13,6 +13,7 @@ class Invoice extends Model
         // Datos históricos del cliente
         'client_name',
         'client_document',
+        'client_cuit',
 
         // Identificación y datos históricos del servicio
         'service_id',

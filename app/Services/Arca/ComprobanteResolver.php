@@ -4,21 +4,18 @@ namespace App\Services\Arca;
 
 class ComprobanteResolver
 {
-    // Códigos AFIP de condición frente al IVA (los más comunes)
+    // Códigos AFIP de condición frente al IVA.
     private const RESPONSABLE_INSCRIPTO = 1;
     private const CONSUMIDOR_FINAL = 5;
     private const MONOTRIBUTISTA = 6;
 
-    // Código AFIP de tipo de documento para Consumidor Final
+    // Códigos AFIP de tipo de documento.
+    private const DOC_TIPO_CUIT = 80;
+    private const DOC_TIPO_DNI = 96;
     private const DOC_TIPO_CONSUMIDOR_FINAL = 99;
 
     /**
-     * Determina el tipo de comprobante (código AFIP) a emitir,
-     * cruzando la condición del emisor con la del cliente.
-     *
-     * Si el cliente no tiene condición cargada (null), se lo
-     * trata como Consumidor Final — nunca se exige CUIT para
-     * poder facturar.
+     * Determina el tipo de comprobante.
      */
     public static function determinarTipoComprobante(
         int $condicionEmisor,
@@ -32,50 +29,75 @@ class ComprobanteResolver
                 : 6;  // Factura B
         }
 
-        // Emisor Monotributista (u otra condición que no discrimina IVA)
+        // Emisor Monotributista.
         return 11; // Factura C
     }
 
     /**
-     * Determina qué docTipo/docNro mandarle a la API ARCA,
-     * respetando que un cliente sin CUIT cargado se factura
-     * igual como Consumidor Final.
+     * Determina el documento que se envía a ARCA.
+     *
+     * Factura A:
+     *   CUIT -> DocTipo 80
+     *
+     * Factura B/C:
+     *   DNI -> DocTipo 96
+     *
+     * La CUIT no reemplaza al DNI para una Factura C.
      */
     public static function resolverDocumento(
-        ?int $tipoDocumentoCliente,
-        ?string $documentoCliente
+        int $tipoComprobante,
+        ?string $documentoDni,
+        ?string $cuit
     ): array {
-        if ($tipoDocumentoCliente === null || $documentoCliente === null) {
+        $documentoDni = $documentoDni !== null
+            ? preg_replace('/\D/', '', $documentoDni)
+            : null;
+
+        $cuit = $cuit !== null
+            ? preg_replace('/\D/', '', $cuit)
+            : null;
+
+        if (self::requiereCuit($tipoComprobante)) {
             return [
-                'docTipo' => self::DOC_TIPO_CONSUMIDOR_FINAL,
-                'docNro' => '0',
+                'docTipo' => self::DOC_TIPO_CUIT,
+                'docNro' => $cuit ?? '',
+            ];
+        }
+
+        if ($documentoDni !== null && $documentoDni !== '') {
+            return [
+                'docTipo' => self::DOC_TIPO_DNI,
+                'docNro' => $documentoDni,
             ];
         }
 
         return [
-            'docTipo' => $tipoDocumentoCliente,
-            'docNro' => $documentoCliente,
+            'docTipo' => self::DOC_TIPO_CONSUMIDOR_FINAL,
+            'docNro' => '0',
         ];
     }
 
     /**
-     * Valida que, si corresponde Factura A, el cliente
-     * efectivamente tenga CUIT cargado. Usar antes de intentar
-     * emitir, para frenar con un mensaje claro en vez de que
-     * falle recién del lado de ARCA.
+     * Determina qué comprobantes requieren CUIT.
      */
     public static function requiereCuit(int $tipoComprobante): bool
     {
-        return in_array($tipoComprobante, [1, 2, 3]); // Factura/NC/ND tipo A
+        return in_array(
+            $tipoComprobante,
+            [1, 2, 3],
+            true
+        );
     }
 
     /**
-     * Indica si el comprobante debe discriminar IVA en el detalle
-     * (alicuotasIva). Solo aplica a comprobantes tipo A y M —
-     * la B y la C nunca discriminan.
+     * Indica si el comprobante discrimina IVA.
      */
     public static function discriminaIva(int $tipoComprobante): bool
     {
-        return in_array($tipoComprobante, [1, 2, 3, 51, 52, 53]); // A y M
+        return in_array(
+            $tipoComprobante,
+            [1, 2, 3, 51, 52, 53],
+            true
+        );
     }
 }

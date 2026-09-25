@@ -40,8 +40,8 @@ class ArcaApiService
         );
 
         /*
-        * Factura A requiere CUIT del cliente.
-        */
+         * Factura A requiere CUIT del cliente.
+         */
         if (
             ComprobanteResolver::requiereCuit($tipoComprobante)
             && empty($invoice->client_cuit)
@@ -61,16 +61,6 @@ class ArcaApiService
                 $invoice->client_cuit
             )
         );
-
-        if (
-            $invoice->client_cuit
-        ) {
-            $this->marcarError(
-                $invoice,
-                'El cliente debe tener CUIT cargado para facturar como Responsable Inscripto (Factura A).'
-            );
-            return;
-        }
 
         // --- Descomponer el monto realmente cobrado en neto + IVA ---
 
@@ -103,7 +93,10 @@ class ArcaApiService
         ];
 
         // Factura A/M: hay que discriminar el IVA en detalle.
-        if (ComprobanteResolver::discriminaIva($tipoComprobante) && $iva > 0) {
+        if (
+            ComprobanteResolver::discriminaIva($tipoComprobante)
+            && $iva > 0
+        ) {
             $payload['alicuotasIva'] = [[
                 'id' => $this->alicuotaIdParaPorcentaje($porcentajeIva),
                 'baseImp' => $neto,
@@ -120,19 +113,30 @@ class ArcaApiService
                 $payload
             );
 
-        $this->procesarRespuesta($invoice, $respuesta, $tipoComprobante);
+        $this->procesarRespuesta(
+            $invoice,
+            $respuesta,
+            $tipoComprobante
+        );
     }
 
     private function alicuotaIdParaPorcentaje(float $porcentaje): int
     {
-        return self::ALICUOTAS_AFIP[$porcentaje] ?? self::ALICUOTAS_AFIP[21];
+        return self::ALICUOTAS_AFIP[$porcentaje]
+            ?? self::ALICUOTAS_AFIP[21];
     }
 
-    private function procesarRespuesta(Invoice $invoice, $respuesta, int $tipoComprobante): void
-    {
+    private function procesarRespuesta(
+        Invoice $invoice,
+        $respuesta,
+        int $tipoComprobante
+    ): void {
         $datos = $respuesta->json();
 
-        if ($respuesta->successful() && ($datos['exito'] ?? false)) {
+        if (
+            $respuesta->successful()
+            && ($datos['exito'] ?? false)
+        ) {
             $invoice->update([
                 'arca_status' => 'aprobado',
                 'arca_cae' => $datos['cae'],
@@ -141,6 +145,7 @@ class ArcaApiService
                 'arca_point_of_sale' => $this->config->punto_venta,
                 'arca_invoice_number' => $datos['numeroComprobante'],
             ]);
+
             return;
         }
 
@@ -154,8 +159,10 @@ class ArcaApiService
         );
     }
 
-    private function marcarError(Invoice $invoice, string $mensaje): void
-    {
+    private function marcarError(
+        Invoice $invoice,
+        string $mensaje
+    ): void {
         $invoice->update([
             'arca_status' => 'error: ' . $mensaje,
         ]);

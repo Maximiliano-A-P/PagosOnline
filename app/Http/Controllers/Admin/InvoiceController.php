@@ -272,7 +272,8 @@ class InvoiceController extends Controller
              */
             'client_name' => $validated['client_name'],
             'client_document' => $validated['client_document'],
-            'client_document_type' => $validated['client_document_type'] ?? null,
+            'client_cuit' => $validated['client_cuit'] ?? null,
+            'client_document_type' => 96,
             'client_iva_condition' => $validated['client_iva_condition'] ?? null,
 
             /*

@@ -1,6 +1,5 @@
 <x-app-layout>
 
-```
 <x-slot name="header">
     <h2 class="font-semibold text-white leading-tight text-[4vh]">
         Nueva factura manual
@@ -53,331 +52,118 @@
     }
 </style>
 
-
 <div class="py-12">
 
-    <div class="max-w-4xl mx-auto px-6 lg:px-8">
+```
+<div class="max-w-4xl mx-auto px-6 lg:px-8">
 
-        {{-- Errores --}}
-        @if ($errors->any())
+    {{-- Errores --}}
+    @if ($errors->any())
 
-            <div
-                class="mb-8 rounded-lg bg-red-700 border border-red-800
-                       text-white px-6 py-4 shadow-sm"
+        <div
+            class="mb-8 rounded-lg bg-red-700 border border-red-800
+                   text-white px-6 py-4 shadow-sm"
+        >
+            <ul class="list-disc list-inside space-y-1 text-[3vh]">
+
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+
+            </ul>
+        </div>
+
+    @endif
+
+
+    <div class="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden">
+
+        {{-- Encabezado --}}
+        <div class="card-header">
+
+            <h3>
+                Cargar factura histórica
+            </h3>
+
+            <p>
+                Utilizá este formulario para registrar una factura
+                que ya existía antes de utilizar el sistema.
+            </p>
+
+        </div>
+
+
+        <div class="p-6">
+
+            <form
+                method="POST"
+                action="{{ route('admin.invoices.store') }}"
+                class="space-y-7"
             >
-                <ul class="list-disc list-inside space-y-1 text-[3vh]">
 
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-
-                </ul>
-            </div>
-
-        @endif
+                @csrf
 
 
-        <div class="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden">
+                {{-- Fecha de emisión --}}
+                <div>
 
-            {{-- Encabezado --}}
-            <div class="card-header">
+                    <label
+                        for="issued_at"
+                        class="block font-semibold text-gray-900 text-[3vh]"
+                    >
+                        Fecha de emisión
+                    </label>
 
-                <h3>
-                    Cargar factura histórica
-                </h3>
+                    <input
+                        id="issued_at"
+                        name="issued_at"
+                        type="date"
+                        value="{{ old('issued_at') }}"
+                        required
+                        class="mt-2 block w-full rounded-md
+                               border-gray-400 bg-white
+                               text-gray-900 text-[3vh]
+                               shadow-sm
+                               focus:border-indigo-600
+                               focus:ring-indigo-600"
+                    >
 
-                <p>
-                    Utilizá este formulario para registrar una factura
-                    que ya existía antes de utilizar el sistema.
-                </p>
-
-            </div>
-
-
-            <div class="p-6">
-
-                <form
-                    method="POST"
-                    action="{{ route('admin.invoices.store') }}"
-                    class="space-y-7"
-                >
-
-                    @csrf
-
-
-                    {{-- Fecha de emisión --}}
-                    <div>
-
-                        <label
-                            for="issued_at"
-                            class="block font-semibold text-gray-900 text-[3vh]"
-                        >
-                            Fecha de emisión
-                        </label>
-
-                        <input
-                            id="issued_at"
-                            name="issued_at"
-                            type="date"
-                            value="{{ old('issued_at') }}"
-                            required
-                            class="mt-2 block w-full rounded-md
-                                   border-gray-400 bg-white
-                                   text-gray-900 text-[3vh]
-                                   shadow-sm
-                                   focus:border-indigo-600
-                                   focus:ring-indigo-600"
-                        >
-
-                        @error('issued_at')
-                            <p class="mt-2 text-red-700 text-[3vh]">
-                                {{ $message }}
-                            </p>
-                        @enderror
-
-                    </div>
-
-
-                    {{-- Cliente --}}
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                        <div>
-
-                            <label
-                                for="client_name"
-                                class="block font-semibold text-gray-900 text-[3vh]"
-                            >
-                                Nombre del cliente
-                            </label>
-
-                            <input
-                                id="client_name"
-                                name="client_name"
-                                type="text"
-                                value="{{ old('client_name') }}"
-                                required
-                                class="mt-2 block w-full rounded-md
-                                       border-gray-400 bg-white
-                                       text-gray-900 text-[3vh]
-                                       shadow-sm
-                                       focus:border-indigo-600
-                                       focus:ring-indigo-600"
-                            >
-
-                            @error('client_name')
-                                <p class="mt-2 text-red-700 text-[3vh]">
-                                    {{ $message }}
-                                </p>
-                            @enderror
-
-                        </div>
-
-
-                        <div>
-
-                            <label
-                                for="client_document"
-                                class="block font-semibold text-gray-900 text-[3vh]"
-                            >
-                                Documento
-                            </label>
-
-                            <input
-                                id="client_document"
-                                name="client_document"
-                                type="number"
-                                value="{{ old('client_document') }}"
-                                min="1"
-                                required
-                                class="mt-2 block w-full rounded-md
-                                       border-gray-400 bg-white
-                                       text-gray-900 text-[3vh]
-                                       shadow-sm
-                                       focus:border-indigo-600
-                                       focus:ring-indigo-600"
-                            >
-
-                            @error('client_document')
-                                <p class="mt-2 text-red-700 text-[3vh]">
-                                    {{ $message }}
-                                </p>
-                            @enderror
-
-                        </div>
-
-                    </div>
-
-                    {{-- Tipo de documento (opcional) --}}
-                    <div>
-
-                        <label
-                            for="client_document_type"
-                            class="block font-semibold text-gray-900 text-[3vh]"
-                        >
-                            Tipo de documento (código AFIP)
-                        </label>
-
-                        <input
-                            id="client_document_type"
-                            name="client_document_type"
-                            type="number"
-                            list="tipoDocumentoReferencia"
-                            value="{{ old('client_document_type') }}"
-                            min="1"
-                            class="mt-2 block w-full rounded-md
-                                border-gray-400 bg-white
-                                text-gray-900 text-[3vh]
-                                shadow-sm
-                                focus:border-indigo-600
-                                focus:ring-indigo-600"
-                        >
-
-                        <datalist id="tipoDocumentoReferencia">
-                            <option value="80">CUIT</option>
-                            <option value="86">CUIL</option>
-                            <option value="96">DNI</option>
-                            <option value="99">Consumidor Final</option>
-                        </datalist>
-
-                        <p class="mt-2 text-gray-700 text-[3vh]">
-                            Dejar vacío si no se conoce — se factura como Consumidor Final.
+                    @error('issued_at')
+                        <p class="mt-2 text-red-700 text-[3vh]">
+                            {{ $message }}
                         </p>
+                    @enderror
 
-                        @error('client_document_type')
-                            <p class="mt-2 text-red-700 text-[3vh]">
-                                {{ $message }}
-                            </p>
-                        @enderror
-
-                    </div>
+                </div>
 
 
-                    {{-- Condición frente al IVA (opcional) --}}
+                {{-- Cliente --}}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
                     <div>
 
                         <label
-                            for="client_iva_condition"
+                            for="client_name"
                             class="block font-semibold text-gray-900 text-[3vh]"
                         >
-                            Condición frente al IVA (código AFIP)
+                            Nombre del cliente
                         </label>
 
                         <input
-                            id="client_iva_condition"
-                            name="client_iva_condition"
-                            type="number"
-                            list="condicionIvaReferenciaCliente"
-                            value="{{ old('client_iva_condition') }}"
-                            min="1"
-                            class="mt-2 block w-full rounded-md
-                                border-gray-400 bg-white
-                                text-gray-900 text-[3vh]
-                                shadow-sm
-                                focus:border-indigo-600
-                                focus:ring-indigo-600"
-                        >
-
-                        <datalist id="condicionIvaReferenciaCliente">
-                            <option value="1">IVA Responsable Inscripto</option>
-                            <option value="4">IVA Sujeto Exento</option>
-                            <option value="5">Consumidor Final</option>
-                            <option value="6">Responsable Monotributo</option>
-                        </datalist>
-
-                        <p class="mt-2 text-gray-700 text-[3vh]">
-                            Dejar vacío si no se conoce — se factura como Consumidor Final.
-                        </p>
-
-                        @error('client_iva_condition')
-                            <p class="mt-2 text-red-700 text-[3vh]">
-                                {{ $message }}
-                            </p>
-                        @enderror
-
-                    </div>
-
-
-                    {{-- Servicio --}}
-                    <div>
-
-                        <label
-                            for="service_id"
-                            class="block font-semibold text-gray-900 text-[3vh]"
-                        >
-                            Servicio asociado
-                        </label>
-
-                        <select
-                            id="service_id"
-                            name="service_id"
-                            required
-                            class="mt-2 block w-full rounded-md
-                                   border-gray-400 bg-white
-                                   text-gray-900 text-[3vh]
-                                   shadow-sm
-                                   focus:border-indigo-600
-                                   focus:ring-indigo-600"
-                        >
-
-                            <option value="">
-                                Seleccioná un servicio
-                            </option>
-
-                            @foreach ($services as $service)
-
-                                <option
-                                    value="{{ $service->id }}"
-                                    data-name="{{ $service->service }}"
-                                    data-price="{{ $service->price }}"
-                                    @selected(
-                                        old('service_id') == $service->id
-                                    )
-                                >
-                                    {{ $service->service }}
-                                </option>
-
-                            @endforeach
-
-                        </select>
-
-                        @error('service_id')
-                            <p class="mt-2 text-red-700 text-[3vh]">
-                                {{ $message }}
-                            </p>
-                        @enderror
-
-                    </div>
-
-
-                    {{-- Nombre histórico del servicio --}}
-                    <div>
-
-                        <label
-                            for="service_name"
-                            class="block font-semibold text-gray-900 text-[3vh]"
-                        >
-                            Nombre del servicio
-                        </label>
-
-                        <input
-                            id="service_name"
-                            name="service_name"
+                            id="client_name"
+                            name="client_name"
                             type="text"
-                            value="{{ old('service_name') }}"
+                            value="{{ old('client_name') }}"
                             required
-                            readonly
                             class="mt-2 block w-full rounded-md
-                                   border-gray-400 bg-gray-100
+                                   border-gray-400 bg-white
                                    text-gray-900 text-[3vh]
-                                   shadow-sm"
+                                   shadow-sm
+                                   focus:border-indigo-600
+                                   focus:ring-indigo-600"
                         >
 
-                        <p class="mt-2 text-gray-700 text-[3vh]">
-                            Se guarda el nombre del servicio tal como
-                            estaba al momento de cargar la factura.
-                        </p>
-
-                        @error('service_name')
+                        @error('client_name')
                             <p class="mt-2 text-red-700 text-[3vh]">
                                 {{ $message }}
                             </p>
@@ -386,94 +172,21 @@
                     </div>
 
 
-                    {{-- Datos económicos --}}
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                        <div>
-
-                            <label
-                                for="price"
-                                class="block font-semibold text-gray-900 text-[3vh]"
-                            >
-                                Precio
-                            </label>
-
-                            <input
-                                id="price"
-                                name="price"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value="{{ old('price') }}"
-                                required
-                                class="mt-2 block w-full rounded-md
-                                       border-gray-400 bg-white
-                                       text-gray-900 text-[3vh]
-                                       shadow-sm
-                                       focus:border-indigo-600
-                                       focus:ring-indigo-600"
-                            >
-
-                            @error('price')
-                                <p class="mt-2 text-red-700 text-[3vh]">
-                                    {{ $message }}
-                                </p>
-                            @enderror
-
-                        </div>
-
-
-                        <div>
-
-                            <label
-                                for="overdue_price"
-                                class="block font-semibold text-gray-900 text-[3vh]"
-                            >
-                                Precio vencido
-                            </label>
-
-                            <input
-                                id="overdue_price"
-                                name="overdue_price"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value="{{ old('overdue_price') }}"
-                                required
-                                class="mt-2 block w-full rounded-md
-                                       border-gray-400 bg-white
-                                       text-gray-900 text-[3vh]
-                                       shadow-sm
-                                       focus:border-indigo-600
-                                       focus:ring-indigo-600"
-                            >
-
-                            @error('overdue_price')
-                                <p class="mt-2 text-red-700 text-[3vh]">
-                                    {{ $message }}
-                                </p>
-                            @enderror
-
-                        </div>
-
-                    </div>
-
-
-                    {{-- Vencimiento --}}
                     <div>
 
                         <label
-                            for="due_date"
+                            for="client_document"
                             class="block font-semibold text-gray-900 text-[3vh]"
                         >
-                            Fecha de vencimiento
+                            DNI
                         </label>
 
                         <input
-                            id="due_date"
-                            name="due_date"
-                            type="date"
-                            value="{{ old('due_date') }}"
+                            id="client_document"
+                            name="client_document"
+                            type="number"
+                            value="{{ old('client_document') }}"
+                            min="1"
                             required
                             class="mt-2 block w-full rounded-md
                                    border-gray-400 bg-white
@@ -483,7 +196,7 @@
                                    focus:ring-indigo-600"
                         >
 
-                        @error('due_date')
+                        @error('client_document')
                             <p class="mt-2 text-red-700 text-[3vh]">
                                 {{ $message }}
                             </p>
@@ -491,20 +204,203 @@
 
                     </div>
 
+                </div>
 
-                    {{-- Estado --}}
+
+                {{-- CUIT (opcional) --}}
+                <div>
+
+                    <label
+                        for="client_cuit"
+                        class="block font-semibold text-gray-900 text-[3vh]"
+                    >
+                        CUIT (opcional)
+                    </label>
+
+                    <input
+                        id="client_cuit"
+                        name="client_cuit"
+                        type="text"
+                        value="{{ old('client_cuit') }}"
+                        inputmode="numeric"
+                        maxlength="11"
+                        pattern="\d{11}"
+                        placeholder="Ej. 20123456789"
+                        class="mt-2 block w-full rounded-md
+                               border-gray-400 bg-white
+                               text-gray-900 text-[3vh]
+                               shadow-sm
+                               focus:border-indigo-600
+                               focus:ring-indigo-600"
+                    >
+
+                    <p class="mt-2 text-gray-700 text-[3vh]">
+                        Dejar vacío si el cliente no tiene CUIT.
+                    </p>
+
+                    @error('client_cuit')
+                        <p class="mt-2 text-red-700 text-[3vh]">
+                            {{ $message }}
+                        </p>
+                    @enderror
+
+                </div>
+
+
+                {{-- Condición frente al IVA (opcional) --}}
+                <div>
+
+                    <label
+                        for="client_iva_condition"
+                        class="block font-semibold text-gray-900 text-[3vh]"
+                    >
+                        Condición frente al IVA (código AFIP)
+                    </label>
+
+                    <input
+                        id="client_iva_condition"
+                        name="client_iva_condition"
+                        type="number"
+                        list="condicionIvaReferenciaCliente"
+                        value="{{ old('client_iva_condition') }}"
+                        min="1"
+                        class="mt-2 block w-full rounded-md
+                            border-gray-400 bg-white
+                            text-gray-900 text-[3vh]
+                            shadow-sm
+                            focus:border-indigo-600
+                            focus:ring-indigo-600"
+                    >
+
+                    <datalist id="condicionIvaReferenciaCliente">
+                        <option value="1">IVA Responsable Inscripto</option>
+                        <option value="4">IVA Sujeto Exento</option>
+                        <option value="5">Consumidor Final</option>
+                        <option value="6">Responsable Monotributo</option>
+                    </datalist>
+
+                    <p class="mt-2 text-gray-700 text-[3vh]">
+                        Dejar vacío si no se conoce — se factura como Consumidor Final.
+                    </p>
+
+                    @error('client_iva_condition')
+                        <p class="mt-2 text-red-700 text-[3vh]">
+                            {{ $message }}
+                        </p>
+                    @enderror
+
+                </div>
+
+
+                {{-- Servicio --}}
+                <div>
+
+                    <label
+                        for="service_id"
+                        class="block font-semibold text-gray-900 text-[3vh]"
+                    >
+                        Servicio asociado
+                    </label>
+
+                    <select
+                        id="service_id"
+                        name="service_id"
+                        required
+                        class="mt-2 block w-full rounded-md
+                               border-gray-400 bg-white
+                               text-gray-900 text-[3vh]
+                               shadow-sm
+                               focus:border-indigo-600
+                               focus:ring-indigo-600"
+                    >
+
+                        <option value="">
+                            Seleccioná un servicio
+                        </option>
+
+                        @foreach ($services as $service)
+
+                            <option
+                                value="{{ $service->id }}"
+                                data-name="{{ $service->service }}"
+                                data-price="{{ $service->price }}"
+                                @selected(
+                                    old('service_id') == $service->id
+                                )
+                            >
+                                {{ $service->service }}
+                            </option>
+
+                        @endforeach
+
+                    </select>
+
+                    @error('service_id')
+                        <p class="mt-2 text-red-700 text-[3vh]">
+                            {{ $message }}
+                        </p>
+                    @enderror
+
+                </div>
+
+
+                {{-- Nombre histórico del servicio --}}
+                <div>
+
+                    <label
+                        for="service_name"
+                        class="block font-semibold text-gray-900 text-[3vh]"
+                    >
+                        Nombre del servicio
+                    </label>
+
+                    <input
+                        id="service_name"
+                        name="service_name"
+                        type="text"
+                        value="{{ old('service_name') }}"
+                        required
+                        readonly
+                        class="mt-2 block w-full rounded-md
+                               border-gray-400 bg-gray-100
+                               text-gray-900 text-[3vh]
+                               shadow-sm"
+                    >
+
+                    <p class="mt-2 text-gray-700 text-[3vh]">
+                        Se guarda el nombre del servicio tal como
+                        estaba al momento de cargar la factura.
+                    </p>
+
+                    @error('service_name')
+                        <p class="mt-2 text-red-700 text-[3vh]">
+                            {{ $message }}
+                        </p>
+                    @enderror
+
+                </div>
+
+
+                {{-- Datos económicos --}}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
                     <div>
 
                         <label
-                            for="payment_status"
+                            for="price"
                             class="block font-semibold text-gray-900 text-[3vh]"
                         >
-                            Estado
+                            Precio
                         </label>
 
-                        <select
-                            id="payment_status"
-                            name="payment_status"
+                        <input
+                            id="price"
+                            name="price"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value="{{ old('price') }}"
+                            required
                             class="mt-2 block w-full rounded-md
                                    border-gray-400 bg-white
                                    text-gray-900 text-[3vh]
@@ -513,27 +409,7 @@
                                    focus:ring-indigo-600"
                         >
 
-                            <option
-                                value="pending"
-                                @selected(
-                                    old('payment_status', 'pending') === 'pending'
-                                )
-                            >
-                                Pendiente
-                            </option>
-
-                            <option
-                                value="paid"
-                                @selected(
-                                    old('payment_status') === 'paid'
-                                )
-                            >
-                                Pagada
-                            </option>
-
-                        </select>
-
-                        @error('payment_status')
+                        @error('price')
                             <p class="mt-2 text-red-700 text-[3vh]">
                                 {{ $message }}
                             </p>
@@ -542,118 +418,237 @@
                     </div>
 
 
-                    {{-- Datos del pago --}}
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
 
-                        <div>
+                        <label
+                            for="overdue_price"
+                            class="block font-semibold text-gray-900 text-[3vh]"
+                        >
+                            Precio vencido
+                        </label>
 
-                            <label
-                                for="amount_paid"
-                                class="block font-semibold text-gray-900 text-[3vh]"
-                            >
-                                Importe pagado
-                            </label>
+                        <input
+                            id="overdue_price"
+                            name="overdue_price"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value="{{ old('overdue_price') }}"
+                            required
+                            class="mt-2 block w-full rounded-md
+                                   border-gray-400 bg-white
+                                   text-gray-900 text-[3vh]
+                                   shadow-sm
+                                   focus:border-indigo-600
+                                   focus:ring-indigo-600"
+                        >
 
-                            <input
-                                id="amount_paid"
-                                name="amount_paid"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value="{{ old('amount_paid') }}"
-                                class="mt-2 block w-full rounded-md
-                                       border-gray-400 bg-white
-                                       text-gray-900 text-[3vh]
-                                       shadow-sm
-                                       focus:border-indigo-600
-                                       focus:ring-indigo-600"
-                            >
+                        @error('overdue_price')
+                            <p class="mt-2 text-red-700 text-[3vh]">
+                                {{ $message }}
+                            </p>
+                        @enderror
 
-                        </div>
+                    </div>
 
-
-                        <div>
-
-                            <label
-                                for="paid_at"
-                                class="block font-semibold text-gray-900 text-[3vh]"
-                            >
-                                Fecha de pago
-                            </label>
-
-                            <input
-                                id="paid_at"
-                                name="paid_at"
-                                type="date"
-                                value="{{ old('paid_at') }}"
-                                class="mt-2 block w-full rounded-md
-                                       border-gray-400 bg-white
-                                       text-gray-900 text-[3vh]
-                                       shadow-sm
-                                       focus:border-indigo-600
-                                       focus:ring-indigo-600"
-                            >
-
-                        </div>
+                </div>
 
 
-                        <div>
+                {{-- Vencimiento --}}
+                <div>
 
-                            <label
-                                for="payment_method"
-                                class="block font-semibold text-gray-900 text-[3vh]"
-                            >
-                                Método de pago
-                            </label>
+                    <label
+                        for="due_date"
+                        class="block font-semibold text-gray-900 text-[3vh]"
+                    >
+                        Fecha de vencimiento
+                    </label>
 
-                            <input
-                                id="payment_method"
-                                name="payment_method"
-                                type="text"
-                                value="{{ old('payment_method') }}"
-                                placeholder="Ej. efectivo"
-                                class="mt-2 block w-full rounded-md
-                                       border-gray-400 bg-white
-                                       text-gray-900 text-[3vh]
-                                       shadow-sm
-                                       focus:border-indigo-600
-                                       focus:ring-indigo-600"
-                            >
+                    <input
+                        id="due_date"
+                        name="due_date"
+                        type="date"
+                        value="{{ old('due_date') }}"
+                        required
+                        class="mt-2 block w-full rounded-md
+                               border-gray-400 bg-white
+                               text-gray-900 text-[3vh]
+                               shadow-sm
+                               focus:border-indigo-600
+                               focus:ring-indigo-600"
+                    >
 
-                        </div>
+                    @error('due_date')
+                        <p class="mt-2 text-red-700 text-[3vh]">
+                            {{ $message }}
+                        </p>
+                    @enderror
+
+                </div>
+
+
+                {{-- Estado --}}
+                <div>
+
+                    <label
+                        for="payment_status"
+                        class="block font-semibold text-gray-900 text-[3vh]"
+                    >
+                        Estado
+                    </label>
+
+                    <select
+                        id="payment_status"
+                        name="payment_status"
+                        class="mt-2 block w-full rounded-md
+                               border-gray-400 bg-white
+                               text-gray-900 text-[3vh]
+                               shadow-sm
+                               focus:border-indigo-600
+                               focus:ring-indigo-600"
+                    >
+
+                        <option
+                            value="pending"
+                            @selected(
+                                old('payment_status', 'pending') === 'pending'
+                            )
+                        >
+                            Pendiente
+                        </option>
+
+                        <option
+                            value="paid"
+                            @selected(
+                                old('payment_status') === 'paid'
+                            )
+                        >
+                            Pagada
+                        </option>
+
+                    </select>
+
+                    @error('payment_status')
+                        <p class="mt-2 text-red-700 text-[3vh]">
+                            {{ $message }}
+                        </p>
+                    @enderror
+
+                </div>
+
+
+                {{-- Datos del pago --}}
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                    <div>
+
+                        <label
+                            for="amount_paid"
+                            class="block font-semibold text-gray-900 text-[3vh]"
+                        >
+                            Importe pagado
+                        </label>
+
+                        <input
+                            id="amount_paid"
+                            name="amount_paid"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value="{{ old('amount_paid') }}"
+                            class="mt-2 block w-full rounded-md
+                                   border-gray-400 bg-white
+                                   text-gray-900 text-[3vh]
+                                   shadow-sm
+                                   focus:border-indigo-600
+                                   focus:ring-indigo-600"
+                        >
 
                     </div>
 
 
-                    {{-- Botones --}}
-                    <div class="pt-4 flex items-center justify-end gap-4">
+                    <div>
 
-                        <a
-                            href="{{ route('admin.invoices.index') }}"
-                            class="btn"
+                        <label
+                            for="paid_at"
+                            class="block font-semibold text-gray-900 text-[3vh]"
                         >
-                            Cancelar
-                        </a>
+                            Fecha de pago
+                        </label>
 
-                        <button
-                            type="submit"
-                            class="btn"
+                        <input
+                            id="paid_at"
+                            name="paid_at"
+                            type="date"
+                            value="{{ old('paid_at') }}"
+                            class="mt-2 block w-full rounded-md
+                                   border-gray-400 bg-white
+                                   text-gray-900 text-[3vh]
+                                   shadow-sm
+                                   focus:border-indigo-600
+                                   focus:ring-indigo-600"
                         >
-                            Cargar factura
-                        </button>
 
                     </div>
 
-                </form>
 
-            </div>
+                    <div>
+
+                        <label
+                            for="payment_method"
+                            class="block font-semibold text-gray-900 text-[3vh]"
+                        >
+                            Método de pago
+                        </label>
+
+                        <input
+                            id="payment_method"
+                            name="payment_method"
+                            type="text"
+                            value="{{ old('payment_method') }}"
+                            placeholder="Ej. efectivo"
+                            class="mt-2 block w-full rounded-md
+                                   border-gray-400 bg-white
+                                   text-gray-900 text-[3vh]
+                                   shadow-sm
+                                   focus:border-indigo-600
+                                   focus:ring-indigo-600"
+                        >
+
+                    </div>
+
+                </div>
+
+
+                {{-- Botones --}}
+                <div class="pt-4 flex items-center justify-end gap-4">
+
+                    <a
+                        href="{{ route('admin.invoices.index') }}"
+                        class="btn"
+                    >
+                        Cancelar
+                    </a>
+
+                    <button
+                        type="submit"
+                        class="btn"
+                    >
+                        Cargar factura
+                    </button>
+
+                </div>
+
+            </form>
 
         </div>
 
     </div>
 
 </div>
+```
 
+</div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -682,6 +677,5 @@
 
     });
 </script>
-```
 
 </x-app-layout>

@@ -175,7 +175,7 @@
 
                 <div class="field">
                     <label for="document">
-                        Documento
+                        DNI
                     </label>
 
                     <input
@@ -189,25 +189,26 @@
                 </div>
 
                 <div class="field">
-                    <label for="arca_document_type">
-                        Tipo de documento (código AFIP)
+                    <label for="cuit">
+                        CUIT (opcional)
                     </label>
 
                     <input
-                        type="number"
-                        id="arca_document_type"
-                        name="arca_document_type"
-                        list="tipoDocumentoReferencia"
-                        value="{{ old('arca_document_type') }}"
-                        min="1"
+                        type="text"
+                        id="cuit"
+                        name="cuit"
+                        value="{{ old('cuit') }}"
+                        inputmode="numeric"
+                        maxlength="11"
+                        pattern="\d{11}"
+                        placeholder="Ej. 20123456789"
                     >
 
-                    <datalist id="tipoDocumentoReferencia">
-                        <option value="80">CUIT</option>
-                        <option value="86">CUIL</option>
-                        <option value="96">DNI</option>
-                        <option value="99">Consumidor Final</option>
-                    </datalist>
+                    @error('cuit')
+                        <p style="margin-top: 8px; color: #b91c1c;">
+                            {{ $message }}
+                        </p>
+                    @enderror
                 </div>
 
                 <div class="field">

@@ -15,8 +15,7 @@ class WsaaClient
     ) {}
 
     /**
-     * Devuelve Token/Sign válidos, reutilizando los guardados
-     * si todavía no vencieron.
+     * Devuelve Token/Sign válidos.
      *
      * @return array{token: string, sign: string}
      */
@@ -41,18 +40,15 @@ class WsaaClient
     }
 
     /**
-     * Ejecuta el flujo completo del WSAA:
-     *
-     * 1. Genera el Login Ticket Request.
-     * 2. Firma el XML con certificado + clave privada.
-     * 3. Extrae correctamente el CMS Base64.
-     * 4. Envía el CMS al WSAA.
-     * 5. Guarda Token/Sign.
+     * Genera el TRA, lo firma como CMS y obtiene Token/Sign
+     * desde el WSAA.
      */
     private function autenticar(): array
     {
         $ticketXml = $this->generarLoginTicketRequest();
+
         $cms = $this->firmarTicket($ticketXml);
+
         $respuesta = $this->llamarWsaa($cms);
 
         $this->config->update([
@@ -85,6 +81,7 @@ class WsaaClient
             ->format('Y-m-d\TH:i:sP');
 
         $uniqueId = $ahora->timestamp;
+
         $servicio = config('arca.servicio');
 
         return <<<XML
@@ -101,11 +98,14 @@ XML;
     }
 
     /**
-     * Firma el Login Ticket Request utilizando PKCS#7/CMS.
+     * Firma el XML utilizando PKCS#7/CMS.
      *
-     * Los certificados y la clave privada llegan desde Render
-     * codificados en Base64 y se reconstruyen como archivos PEM
-     * temporales para OpenSSL.
+     * IMPORTANTE:
+     *
+     * ARCA requiere un CMS SignedData que contenga el
+     * LoginTicketRequest firmado.
+     *
+     * Por eso NO utilizamos PKCS7_DETACHED.
      */
     private function firmarTicket(string $xml): string
     {
@@ -119,8 +119,8 @@ XML;
         }
 
         /*
-         * Los valores almacenados en Render son Base64 del contenido
-         * completo de los archivos .crt y .key.
+         * Render contiene el certificado y la clave privada
+         * como Base64 del contenido completo de los archivos PEM.
          */
         $certificadoPem = base64_decode($certificadoBase64, true);
         $clavePem = base64_decode($claveBase64, true);
@@ -137,16 +137,31 @@ XML;
             );
         }
 
-        $archivoCert = tempnam(sys_get_temp_dir(), 'arca_crt_');
-        $archivoKey = tempnam(sys_get_temp_dir(), 'arca_key_');
-        $archivoXml = tempnam(sys_get_temp_dir(), 'arca_xml_');
-        $archivoFirmado = tempnam(sys_get_temp_dir(), 'arca_cms_');
+        $archivoCert = tempnam(
+            sys_get_temp_dir(),
+            'arca_crt_'
+        );
+
+        $archivoKey = tempnam(
+            sys_get_temp_dir(),
+            'arca_key_'
+        );
+
+        $archivoXml = tempnam(
+            sys_get_temp_dir(),
+            'arca_xml_'
+        );
+
+        $archivoCms = tempnam(
+            sys_get_temp_dir(),
+            'arca_cms_'
+        );
 
         if (
-            $archivoCert === false ||
-            $archivoKey === false ||
-            $archivoXml === false ||
-            $archivoFirmado === false
+            $archivoCert === false
+            || $archivoKey === false
+            || $archivoXml === false
+            || $archivoCms === false
         ) {
             throw new RuntimeException(
                 'No se pudieron crear los archivos temporales para la firma ARCA.'
@@ -154,31 +169,55 @@ XML;
         }
 
         try {
-            if (file_put_contents($archivoCert, $certificadoPem) === false) {
+            if (
+                file_put_contents(
+                    $archivoCert,
+                    $certificadoPem
+                ) === false
+            ) {
                 throw new RuntimeException(
                     'No se pudo escribir el certificado temporal de ARCA.'
                 );
             }
 
-            if (file_put_contents($archivoKey, $clavePem) === false) {
+            if (
+                file_put_contents(
+                    $archivoKey,
+                    $clavePem
+                ) === false
+            ) {
                 throw new RuntimeException(
                     'No se pudo escribir la clave privada temporal de ARCA.'
                 );
             }
 
-            if (file_put_contents($archivoXml, $xml) === false) {
+            if (
+                file_put_contents(
+                    $archivoXml,
+                    $xml
+                ) === false
+            ) {
                 throw new RuntimeException(
                     'No se pudo escribir el Login Ticket Request temporal.'
                 );
             }
 
+            /*
+             * NO usamos PKCS7_DETACHED.
+             *
+             * Esto genera un CMS SignedData que contiene
+             * el XML firmado, equivalente al procedimiento
+             * indicado por ARCA con:
+             *
+             * openssl cms -sign ... -nodetach
+             */
             $firmado = openssl_pkcs7_sign(
                 $archivoXml,
-                $archivoFirmado,
+                $archivoCms,
                 'file://' . $archivoCert,
                 'file://' . $archivoKey,
                 [],
-                PKCS7_DETACHED | PKCS7_BINARY
+                PKCS7_BINARY
             );
 
             if (!$firmado) {
@@ -189,73 +228,111 @@ XML;
                 }
 
                 throw new RuntimeException(
-                    'No se pudo firmar el ticket de acceso: '
-                    . ($errores ? implode(' | ', $errores) : 'error desconocido de OpenSSL.')
+                    'No se pudo generar el CMS para ARCA: '
+                    . (
+                        $errores
+                            ? implode(' | ', $errores)
+                            : 'error desconocido de OpenSSL.'
+                    )
                 );
             }
 
-            $contenidoMime = file_get_contents($archivoFirmado);
+            $contenido = file_get_contents($archivoCms);
 
-            if ($contenidoMime === false || $contenidoMime === '') {
+            if (
+                $contenido === false
+                || trim($contenido) === ''
+            ) {
                 throw new RuntimeException(
-                    'OpenSSL no produjo contenido para la firma CMS.'
+                    'OpenSSL no produjo el CMS de ARCA.'
                 );
             }
 
-            /*
-             * IMPORTANTE:
-             *
-             * openssl_pkcs7_sign() genera un mensaje MIME.
-             *
-             * La salida tiene aproximadamente esta estructura:
-             *
-             * MIME-Version: 1.0
-             * Content-Type: multipart/signed...
-             *
-             * [contenido original]
-             *
-             * ------boundary
-             * Content-Type: application/x-pkcs7-signature...
-             * Content-Transfer-Encoding: base64
-             *
-             * MIIF...
-             * ...
-             *
-             * ------boundary--
-             *
-             * WSAA necesita únicamente el bloque Base64 del CMS,
-             * no todo el mensaje MIME.
-             */
-            return $this->extraerBase64DelMime($contenidoMime);
+            return $this->extraerCmsBase64($contenido);
 
         } finally {
             @unlink($archivoCert);
             @unlink($archivoKey);
             @unlink($archivoXml);
-            @unlink($archivoFirmado);
+            @unlink($archivoCms);
         }
     }
 
     /**
-     * Extrae exclusivamente el CMS Base64 de la parte
-     * application/x-pkcs7-signature generada por OpenSSL.
+     * Extrae el Base64 del CMS generado por openssl_pkcs7_sign().
      *
-     * No se utiliza explode("\n\n") porque la salida de OpenSSL
-     * contiene varias secciones MIME antes del CMS.
+     * Al utilizar PKCS7_BINARY sin PKCS7_DETACHED,
+     * OpenSSL genera una estructura S/MIME cuyo cuerpo
+     * contiene directamente el CMS en Base64.
      */
-    private function extraerBase64DelMime(string $contenidoMime): string
+    private function extraerCmsBase64(string $contenido): string
     {
-        $patron = '/Content-Transfer-Encoding:\s*base64\s*\r?\n\r?\n'
-            . '([A-Za-z0-9+\/=\r\n]+)'
-            . '/i';
+        /*
+         * Buscamos el comienzo del cuerpo MIME.
+         *
+         * Normalmente aparece después de:
+         *
+         * Content-Transfer-Encoding: base64
+         *
+         * pero aceptamos tanto CRLF como LF.
+         */
+        $posicion = stripos(
+            $contenido,
+            'Content-Transfer-Encoding: base64'
+        );
 
-        if (!preg_match($patron, $contenidoMime, $coincidencias)) {
+        if ($posicion === false) {
             throw new RuntimeException(
-                'No se encontró el bloque Base64 de la firma PKCS#7.'
+                'OpenSSL no generó una salida S/MIME con contenido Base64.'
             );
         }
 
-        $cms = preg_replace('/\s+/', '', $coincidencias[1]);
+        /*
+         * Buscamos el final de los headers MIME.
+         */
+        $inicioCuerpo = strpos(
+            $contenido,
+            "\n\n",
+            $posicion
+        );
+
+        if ($inicioCuerpo === false) {
+            $inicioCuerpo = strpos(
+                $contenido,
+                "\r\n\r\n",
+                $posicion
+            );
+
+            if ($inicioCuerpo !== false) {
+                $inicioCuerpo += 4;
+            }
+        } else {
+            $inicioCuerpo += 2;
+        }
+
+        if ($inicioCuerpo === false) {
+            throw new RuntimeException(
+                'No se pudo localizar el cuerpo Base64 del CMS generado por OpenSSL.'
+            );
+        }
+
+        /*
+         * Todo lo que queda después de los headers es el
+         * CMS codificado en Base64.
+         */
+        $cms = substr(
+            $contenido,
+            $inicioCuerpo
+        );
+
+        /*
+         * Eliminamos únicamente espacios y saltos de línea.
+         */
+        $cms = preg_replace(
+            '/\s+/',
+            '',
+            $cms
+        );
 
         if (!is_string($cms) || $cms === '') {
             throw new RuntimeException(
@@ -264,8 +341,9 @@ XML;
         }
 
         /*
-         * Validamos que lo que vamos a enviar realmente sea
-         * Base64 válido. No mostramos su contenido en los logs.
+         * Validación local:
+         * si esto falla, el problema está en la generación
+         * del CMS y todavía ni siquiera llegamos a WSAA.
          */
         if (base64_decode($cms, true) === false) {
             throw new RuntimeException(
@@ -292,10 +370,13 @@ XML;
         }
 
         try {
-            $client = new SoapClient($wsdl, [
-                'trace' => true,
-                'exceptions' => true,
-            ]);
+            $client = new SoapClient(
+                $wsdl,
+                [
+                    'trace' => true,
+                    'exceptions' => true,
+                ]
+            );
 
             $resultado = $client->loginCms([
                 'in0' => $cms,
@@ -331,9 +412,15 @@ XML;
         $sign = (string) $xmlRespuesta->credentials->sign;
         $expiracion = (string) $xmlRespuesta->header->expirationTime;
 
-        if ($token === '' || $sign === '') {
+        if ($token === '') {
             throw new RuntimeException(
-                'El WSAA respondió sin Token o Sign.'
+                'El WSAA respondió sin Token.'
+            );
+        }
+
+        if ($sign === '') {
+            throw new RuntimeException(
+                'El WSAA respondió sin Sign.'
             );
         }
 

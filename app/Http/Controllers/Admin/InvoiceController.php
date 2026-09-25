@@ -60,12 +60,16 @@ class InvoiceController extends Controller
         }
 
         /*
-         * Facturas más recientes primero.
+         * Facturas modificadas más recientemente primero.
+         * El ID se utiliza como segundo criterio para
+         * mantener un orden determinista cuando dos
+         * facturas tienen el mismo updated_at.
          */
         $invoices = $query
-            ->latest('issued_at')
-            ->paginate(15)
-            ->withQueryString();
+        ->orderByDesc('updated_at')
+        ->orderByDesc('id')
+        ->paginate(15)
+        ->withQueryString();
 
         return view(
             'admin.invoices.index',

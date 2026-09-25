@@ -79,7 +79,11 @@ return new class extends Migration
              */
 
             // Token utilizado para autenticarse contra ARCA.
-            $table->text('token');
+            //
+            // Nullable: la fila de configuración se puede crear
+            // antes de que el sistema se autentique por primera vez
+            // contra el WSAA (recién ahí se completa solo).
+            $table->text('token')->nullable();
 
             // Sign devuelto por el WSAA junto con el Token.
             //

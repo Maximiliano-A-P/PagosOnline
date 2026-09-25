@@ -34,9 +34,9 @@ class DemoDataSeeder extends Seeder
             /*
              * Porcentaje de impuesto aplicable al servicio.
              *
-             * 0    = sin impuesto
+             * 0     = sin impuesto
              * 10.50 = 10,5 %
-             * 21   = 21 %
+             * 21    = 21 %
              */
             $taxPercentage = fake()->randomElement([
                 0,
@@ -75,10 +75,8 @@ class DemoDataSeeder extends Seeder
             /*
              * Datos fiscales del cliente.
              *
-             * Se utilizan códigos AFIP habituales:
-             *
-             * 80 = CUIT
-             * 96 = DNI
+             * document = DNI
+             * cuit     = CUIT, cuando corresponde
              *
              * Para la condición frente al IVA:
              *
@@ -86,11 +84,6 @@ class DemoDataSeeder extends Seeder
              * 5 = Consumidor Final
              * 6 = Monotributista
              */
-            $arcaDocumentType = fake()->randomElement([
-                80,
-                96,
-            ]);
-
             $arcaIvaCondition = fake()->randomElement([
                 1,
                 5,
@@ -101,14 +94,25 @@ class DemoDataSeeder extends Seeder
                 'name' =>
                     fake()->name(),
 
+                /*
+                 * DNI del cliente.
+                 */
                 'document' =>
                     fake()->unique()->numberBetween(
                         10000000,
                         99999999
                     ),
 
-                'arca_document_type' =>
-                    $arcaDocumentType,
+                /*
+                 * Los clientes Responsable Inscripto
+                 * reciben una CUIT de prueba.
+                 *
+                 * Los demás quedan sin CUIT.
+                 */
+                'cuit' =>
+                    $arcaIvaCondition === 1
+                        ? fake()->numerify('###########')
+                        : null,
 
                 'arca_iva_condition' =>
                     $arcaIvaCondition,

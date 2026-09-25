@@ -35,6 +35,11 @@ return new class extends Migration
             // Documento numérico del cliente.
             $table->unsignedBigInteger('document');
 
+            // CUIT del cliente.
+            // NULL = el cliente no tiene CUIT cargada.
+            $table->string('cuit', 11)
+                ->nullable();
+
 
             /*
              * =====================================================
@@ -44,22 +49,9 @@ return new class extends Migration
              * Estos datos permiten determinar qué tipo de
              * comprobante corresponde emitir al cliente.
              *
-             * Ambos campos son nullable a propósito: al crear un
-             * cliente puede no conocerse todavía su condición fiscal.
-             *
-             * El sistema trata a un cliente sin estos datos como
-             * Consumidor Final hasta que alguien confirme lo contrario.
+             * La condición frente al IVA puede no conocerse
+             * todavía al crear el cliente.
              */
-
-            // Código AFIP del tipo de documento:
-            // 80 = CUIT
-            // 96 = DNI
-            // 99 = Consumidor Final
-            //
-            // NULL = todavía no se cargó.
-            $table->unsignedSmallInteger('arca_document_type')
-                ->nullable()
-                ->after('document');
 
             // Condición frente al IVA:
             // 1 = Responsable Inscripto
@@ -70,7 +62,7 @@ return new class extends Migration
             // NULL = condición desconocida.
             $table->unsignedSmallInteger('arca_iva_condition')
                 ->nullable()
-                ->after('arca_document_type');
+                ->after('cuit');
 
 
             /*

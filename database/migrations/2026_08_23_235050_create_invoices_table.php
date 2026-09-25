@@ -52,14 +52,19 @@ return new class extends Migration
             // Nombre histórico del cliente.
             $table->string('client_name');
 
-            // Documento histórico del cliente.
+            // DNI histórico del cliente.
             $table->unsignedBigInteger('client_document');
+
+            // CUIT histórica del cliente.
+            // NULL = el cliente no tenía CUIT cargada al emitir.
+            $table->string('client_cuit', 11)
+                ->nullable();
 
             /*
              * Snapshot: código AFIP del tipo de documento del
              * cliente al momento de facturar.
              *
-             * NULL = se trató como Consumidor Final.
+             * Actualmente se utiliza 96 para DNI.
              */
             $table->unsignedSmallInteger('client_document_type')
                 ->nullable();

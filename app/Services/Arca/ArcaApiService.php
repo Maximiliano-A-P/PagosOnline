@@ -27,10 +27,21 @@ class ArcaApiService
         private readonly ArcaConfig $config,
     ) {}
 
-    public function emitir(Invoice $invoice): void
-    {
+    /**
+     * Emite una factura ante ARCA.
+     *
+     * $automatico = true
+     *     cuando viene del proceso automático.
+     *
+     * $automatico = false
+     *     cuando viene del webhook o del botón manual.
+     */
+    public function emitir(
+        Invoice $invoice,
+        bool $automatico = false
+    ): void {
         /*
-         * Una factura ya autorizada no vuelve a emitirse.
+         * Una factura ya autorizada nunca vuelve a emitirse.
          */
         if (
             $invoice->arca_status === 'aprobado'
@@ -40,15 +51,79 @@ class ArcaApiService
         }
 
         /*
-         * Registramos cuándo se intentó emitir.
+         * Solo el proceso automático respeta
+         * el horario programado.
+         *
+         * El botón manual ignora arca_retry_at.
+         */
+        if (
+            $automatico
+            && $invoice->arca_retry_at
+            && $invoice->arca_retry_at->isFuture()
+        ) {
+            return;
+        }
+
+        /*
+         * Registramos el último intento.
          */
         $invoice->update([
             'arca_last_attempt_at' => now(),
         ]);
 
-        $credenciales = $this->wsaaClient->obtenerCredenciales();
+        /*
+         * ==========================================================
+         * WSAA
+         * ==========================================================
+         */
 
-        $condicionCliente = $invoice->client_iva_condition
+        try {
+            $credenciales =
+                $this->wsaaClient->obtenerCredenciales();
+
+        } catch (\Throwable $e) {
+
+            $mensaje =
+                'Error al autenticar contra WSAA: '
+                . $e->getMessage();
+
+            /*
+             * Si parece un error transitorio,
+             * programamos reintento.
+             */
+            if (
+                $this->esErrorTransitorio(
+                    $e->getMessage()
+                )
+            ) {
+                $this->registrarFalloTransitorio(
+                    $invoice,
+                    $mensaje,
+                    $automatico
+                );
+
+                return;
+            }
+
+            /*
+             * Error permanente de autenticación/configuración.
+             */
+            $this->marcarError(
+                $invoice,
+                $mensaje
+            );
+
+            return;
+        }
+
+        /*
+         * ==========================================================
+         * TIPO DE COMPROBANTE
+         * ==========================================================
+         */
+
+        $condicionCliente =
+            $invoice->client_iva_condition
             ?? self::CONSUMIDOR_FINAL_IVA;
 
         $tipoComprobante =
@@ -60,11 +135,12 @@ class ArcaApiService
         /*
          * Factura A requiere CUIT.
          *
-         * Esto es un error de datos y no debe entrar
-         * en el reintento automático.
+         * Error permanente de datos.
          */
         if (
-            ComprobanteResolver::requiereCuit($tipoComprobante)
+            ComprobanteResolver::requiereCuit(
+                $tipoComprobante
+            )
             && empty($invoice->client_cuit)
         ) {
             $this->marcarError(
@@ -74,6 +150,12 @@ class ArcaApiService
 
             return;
         }
+
+        /*
+         * ==========================================================
+         * DOCUMENTO DEL RECEPTOR
+         * ==========================================================
+         */
 
         [$docTipo, $docNro] =
             array_values(
@@ -86,7 +168,7 @@ class ArcaApiService
 
         /*
          * ==========================================================
-         * FECHA DEL COMPROBANTE
+         * FECHAS
          * ==========================================================
          */
 
@@ -95,24 +177,15 @@ class ArcaApiService
                 ->copy()
                 ->startOfDay();
 
-        /*
-         * ==========================================================
-         * FECHA DE VENCIMIENTO DEL PAGO
-         * ==========================================================
-         *
-         * ARCA no permite que FchVtoPago sea anterior
-         * a la fecha del comprobante.
-         *
-         * Si por alguna razón una factura existente tiene
-         * un vencimiento anterior, usamos como mínimo la fecha
-         * del comprobante.
-         */
-
         $fechaVencimiento =
             $invoice->due_date
                 ->copy()
                 ->startOfDay();
 
+        /*
+         * ARCA no permite vencimiento anterior
+         * a la fecha del comprobante.
+         */
         if (
             $fechaVencimiento->lt(
                 $fechaComprobante
@@ -138,7 +211,8 @@ class ArcaApiService
 
         $neto =
             round(
-                $total / (1 + $porcentajeIva / 100),
+                $total
+                / (1 + $porcentajeIva / 100),
                 2
             );
 
@@ -205,11 +279,15 @@ class ArcaApiService
         ];
 
         /*
-         * Factura A/M:
-         * se discrimina el IVA.
+         * ==========================================================
+         * IVA DISCRIMINADO
+         * ==========================================================
          */
+
         if (
-            ComprobanteResolver::discriminaIva($tipoComprobante)
+            ComprobanteResolver::discriminaIva(
+                $tipoComprobante
+            )
             && $iva > 0
         ) {
             $payload['alicuotasIva'] = [[
@@ -228,7 +306,7 @@ class ArcaApiService
 
         /*
          * ==========================================================
-         * LLAMADA A LA API ARCA
+         * LLAMADA A API ARCA
          * ==========================================================
          */
 
@@ -247,10 +325,11 @@ class ArcaApiService
 
         } catch (ConnectionException $e) {
 
-            $this->marcarReintento(
+            $this->registrarFalloTransitorio(
                 $invoice,
                 'Error de conexión con la API ARCA: '
-                . $e->getMessage()
+                . $e->getMessage(),
+                $automatico
             );
 
             return;
@@ -261,9 +340,9 @@ class ArcaApiService
          * ERRORES HTTP TRANSITORIOS
          * ==========================================================
          *
-         * 408 = Request Timeout
-         * 429 = Too Many Requests
-         * 5xx = Error del servidor
+         * 408 = timeout
+         * 429 = demasiadas solicitudes
+         * 5xx = error de servidor
          */
 
         if (
@@ -271,13 +350,14 @@ class ArcaApiService
             || $respuesta->status() === 429
             || $respuesta->serverError()
         ) {
-            $this->marcarReintento(
+            $this->registrarFalloTransitorio(
                 $invoice,
                 sprintf(
                     'HTTP %s. Respuesta API ARCA: %s',
                     $respuesta->status(),
                     trim($respuesta->body())
-                )
+                ),
+                $automatico
             );
 
             return;
@@ -313,7 +393,7 @@ class ArcaApiService
 
         /*
          * ==========================================================
-         * COMPROBANTE APROBADO
+         * APROBADO
          * ==========================================================
          */
 
@@ -357,11 +437,8 @@ class ArcaApiService
 
         /*
          * ==========================================================
-         * ERROR FUNCIONAL DE ARCA
+         * ERROR FUNCIONAL
          * ==========================================================
-         *
-         * Estos errores no se reintentan automáticamente porque
-         * normalmente requieren corregir los datos del comprobante.
          */
 
         $mensaje =
@@ -371,10 +448,6 @@ class ArcaApiService
                 ->pluck('mensaje')
                 ->implode(' | ');
 
-        /*
-         * Algunas respuestas pueden utilizar "error"
-         * en lugar de "errores".
-         */
         if (
             !$mensaje
             && isset($datos['error'])
@@ -383,10 +456,6 @@ class ArcaApiService
                 (string) $datos['error'];
         }
 
-        /*
-         * Último recurso si no conseguimos un mensaje
-         * estructurado.
-         */
         if (!$mensaje) {
             $mensaje =
                 sprintf(
@@ -396,6 +465,10 @@ class ArcaApiService
                 );
         }
 
+        /*
+         * Los errores funcionales de ARCA no se
+         * reintentan automáticamente.
+         */
         $this->marcarError(
             $invoice,
             $mensaje
@@ -415,40 +488,88 @@ class ArcaApiService
         )->startOfDay();
     }
 
-    private function marcarReintento(
+    /**
+     * Registra un error transitorio.
+     *
+     * En automático:
+     *   aumenta el contador.
+     *
+     * En manual:
+     *   NO aumenta el contador.
+     *
+     * En ambos casos queda programado un próximo
+     * intento automático.
+     */
+    private function registrarFalloTransitorio(
         Invoice $invoice,
-        string $mensaje
+        string $mensaje,
+        bool $automatico
     ): void {
-        $intentos =
-            ((int) $invoice->arca_retry_attempts) + 1;
+        $intentosActuales =
+            (int) (
+                $invoice->arca_retry_attempts ?? 0
+            );
 
         $maxIntentos =
-            (int) config(
-                'arca.retry.max_attempts',
-                8
+            max(
+                1,
+                (int) config(
+                    'arca.retry.max_attempts',
+                    8
+                )
             );
 
         /*
-         * Se alcanzó el máximo de intentos.
+         * Si fue un intento automático, este fallo
+         * consume un intento.
          */
-        if (
-            $intentos > $maxIntentos
-        ) {
+        if ($automatico) {
+
+            $proximoIntento =
+                $intentosActuales + 1;
+
+            if (
+                $proximoIntento > $maxIntentos
+            ) {
+                $invoice->update([
+                    'arca_status' =>
+                        'error: '
+                        . $mensaje
+                        . ' Se agotaron los reintentos automáticos.',
+
+                    'arca_retry_attempts' =>
+                        $proximoIntento,
+
+                    'arca_retry_at' =>
+                        null,
+                ]);
+
+                return;
+            }
+
             $invoice->update([
-                'arca_status' =>
-                    'error: '
-                    . $mensaje
-                    . ' Se agotaron los reintentos automáticos.',
-
                 'arca_retry_attempts' =>
-                    $intentos,
-
-                'arca_retry_at' =>
-                    null,
+                    $proximoIntento,
             ]);
 
-            return;
+        } else {
+
+            /*
+             * El intento manual NO consume un intento
+             * automático.
+             */
+            $proximoIntento =
+                max(
+                    1,
+                    $intentosActuales + 1
+                );
         }
+
+        /*
+         * ==========================================================
+         * BACKOFF
+         * ==========================================================
+         */
 
         $base =
             max(
@@ -468,18 +589,10 @@ class ArcaApiService
                 )
             );
 
-        /*
-         * Backoff exponencial:
-         *
-         * intento 1 -> 10 min
-         * intento 2 -> 20 min
-         * intento 3 -> 40 min
-         * intento 4 -> 80 min
-         * intento 5+ -> 120 min
-         */
         $delay =
             min(
-                $base * (2 ** ($intentos - 1)),
+                $base
+                * (2 ** ($proximoIntento - 1)),
                 $maxBackoff
             );
 
@@ -491,12 +604,53 @@ class ArcaApiService
                 . $delay
                 . ' minutos.',
 
-            'arca_retry_attempts' =>
-                $intentos,
-
             'arca_retry_at' =>
                 now()->addMinutes($delay),
         ]);
+    }
+
+    private function esErrorTransitorio(
+        string $mensaje
+    ): bool {
+        $mensaje =
+            strtolower($mensaje);
+
+        return str_contains(
+            $mensaje,
+            '429'
+        )
+        || str_contains(
+            $mensaje,
+            'too many requests'
+        )
+        || str_contains(
+            $mensaje,
+            'timeout'
+        )
+        || str_contains(
+            $mensaje,
+            'timed out'
+        )
+        || str_contains(
+            $mensaje,
+            'connection'
+        )
+        || str_contains(
+            $mensaje,
+            'temporarily unavailable'
+        )
+        || str_contains(
+            $mensaje,
+            '502'
+        )
+        || str_contains(
+            $mensaje,
+            '503'
+        )
+        || str_contains(
+            $mensaje,
+            '504'
+        );
     }
 
     private function marcarError(
@@ -508,8 +662,7 @@ class ArcaApiService
                 'error: ' . $mensaje,
 
             /*
-             * Error permanente:
-             * no entra al reintento automático.
+             * Error funcional/permanente.
              */
             'arca_retry_at' =>
                 null,

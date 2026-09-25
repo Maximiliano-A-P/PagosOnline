@@ -19,7 +19,8 @@ class RetryPendingArcaInvoices extends Command
 
     public function handle(): int
     {
-        $config = ArcaConfig::first();
+        $config =
+            ArcaConfig::first();
 
         if (!$config) {
             $this->warn(
@@ -29,39 +30,58 @@ class RetryPendingArcaInvoices extends Command
             return self::SUCCESS;
         }
 
-        $limite = max(
-            1,
-            (int) config(
-                'arca.retry.max_per_run',
-                1
-            )
-        );
+        $limite =
+            max(
+                1,
+                (int) config(
+                    'arca.retry.max_per_run',
+                    1
+                )
+            );
 
-        $invoices = Invoice::query()
-            ->where(
-                'payment_status',
-                'paid'
-            )
-            ->whereNull('arca_cae')
-            ->whereNotNull('arca_retry_at')
-            ->where(
-                'arca_retry_at',
-                '<=',
-                now()
-            )
-            ->orderBy(
-                'arca_retry_at'
-            )
-            ->orderBy(
-                'issued_at'
-            )
-            ->orderBy(
-                'id'
-            )
-            ->limit($limite)
-            ->get();
+        $maxIntentos =
+            max(
+                1,
+                (int) config(
+                    'arca.retry.max_attempts',
+                    8
+                )
+            );
 
-        if ($invoices->isEmpty()) {
+        $invoices =
+            Invoice::query()
+                ->where(
+                    'payment_status',
+                    'paid'
+                )
+                ->whereNull(
+                    'arca_cae'
+                )
+                ->whereNotNull(
+                    'arca_retry_at'
+                )
+                ->where(
+                    'arca_retry_at',
+                    '<=',
+                    now()
+                )
+                ->where(
+                    'arca_retry_attempts',
+                    '<',
+                    $maxIntentos
+                )
+                ->orderBy(
+                    'issued_at'
+                )
+                ->orderBy(
+                    'id'
+                )
+                ->limit($limite)
+                ->get();
+
+        if (
+            $invoices->isEmpty()
+        ) {
             $this->info(
                 'No hay facturas pendientes de reintento ARCA.'
             );
@@ -69,22 +89,30 @@ class RetryPendingArcaInvoices extends Command
             return self::SUCCESS;
         }
 
-        $service = new ArcaApiService(
-            new WsaaClient($config),
-            $config
-        );
+        $service =
+            new ArcaApiService(
+                new WsaaClient($config),
+                $config
+            );
 
         foreach ($invoices as $invoice) {
+
             try {
+
                 $this->info(
                     "Reintentando factura #{$invoice->id}"
                 );
 
+                /*
+                 * TRUE = intento automático.
+                 */
                 $service->emitir(
-                    $invoice->fresh()
+                    $invoice->fresh(),
+                    true
                 );
 
             } catch (\Throwable $e) {
+
                 Log::error(
                     'Error en reintento automático ARCA.',
                     [
@@ -100,7 +128,9 @@ class RetryPendingArcaInvoices extends Command
                 );
 
                 $this->error(
-                    "Factura #{$invoice->id}: "
+                    'Factura #'
+                    . $invoice->id
+                    . ': '
                     . $e->getMessage()
                 );
             }

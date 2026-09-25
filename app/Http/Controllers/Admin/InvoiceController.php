@@ -651,9 +651,12 @@ class InvoiceController extends Controller
             );
     }
 
-    public function retryArca(Invoice $invoice)
-    {
-        if ($invoice->payment_status !== 'paid') {
+    public function retryArca(
+        Invoice $invoice
+    ) {
+        if (
+            $invoice->payment_status !== 'paid'
+        ) {
             return redirect()
                 ->route(
                     'admin.invoices.show',
@@ -680,7 +683,8 @@ class InvoiceController extends Controller
                 );
         }
 
-        $config = ArcaConfig::first();
+        $config =
+            ArcaConfig::first();
 
         if (!$config) {
             return redirect()
@@ -694,23 +698,22 @@ class InvoiceController extends Controller
                 );
         }
 
-        /*
-        * El reintento manual empieza inmediatamente
-        * y reinicia el contador automático.
-        */
-        $invoice->update([
-            'arca_retry_attempts' => 0,
-            'arca_retry_at' => now(),
-        ]);
-
         try {
-            $service = new ArcaApiService(
-                new WsaaClient($config),
-                $config
-            );
 
+            $service =
+                new ArcaApiService(
+                    new WsaaClient($config),
+                    $config
+                );
+
+            /*
+            * FALSE = reintento manual.
+            *
+            * Ignora el temporizador automático.
+            */
             $service->emitir(
-                $invoice->fresh()
+                $invoice->fresh(),
+                false
             );
 
         } catch (\Throwable $e) {

@@ -11,6 +11,7 @@ class Service extends Model
     protected $fillable = [
         'service',
         'price',
+        'tax_percentage',
         'due_day',
         'overdue_price',
         'period',
@@ -20,6 +21,7 @@ class Service extends Model
     {
         return [
             'price' => 'decimal:2',
+            'tax_percentage' => 'decimal:2',
             'due_day' => 'integer',
             'overdue_price' => 'decimal:2',
             'period' => 'integer',

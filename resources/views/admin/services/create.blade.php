@@ -1,7 +1,7 @@
 <x-app-layout>
 
     <x-slot name="header">
-        <h2 class="font-semibold text-white leading-tight text-[4vh]">
+        <h2 class="font-semibold text-white leading-tight text-[32px]">
             Crear servicio
         </h2>
     </x-slot>
@@ -15,13 +15,13 @@
         .card-header h3 {
             color: #ffffff;
             font-weight: 600;
-            font-size: 20px;
+            font-size: 24px;
             margin: 0;
         }
 
         .card-header p {
             color: #d1d5db; /* gray-300 */
-            font-size: 14px;
+            font-size: 21px;
             margin: 8px 0 0;
         }
 
@@ -30,16 +30,18 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            height: 42px;
             padding: 6px 14px;
             background-color: #111827; /* gray-900 */
             border: 1px solid #111827;
             border-radius: 6px;
             font-weight: 600;
             color: #ffffff;
-            font-size: 14px;
+            font-size: 21px;
             line-height: normal;
             font-family: inherit;
             text-decoration: none;
+            white-space: nowrap;
             cursor: pointer;
             appearance: none;
             -webkit-appearance: none;
@@ -64,7 +66,7 @@
 
     <div class="py-12">
 
-        <div class="max-w-3xl mx-auto px-6 lg:px-8">
+        <div class="mx-auto" style="width: 90vw;">
 
             {{-- Errores --}}
             @if($errors->any())
@@ -73,7 +75,7 @@
                     class="mb-8 rounded-lg bg-red-700 border border-red-800
                            text-white px-6 py-4 shadow-sm"
                 >
-                    <ul class="list-disc list-inside space-y-1 text-[3vh]">
+                    <ul class="list-disc list-inside space-y-1 text-[21px]">
 
                         @foreach($errors->all() as $error)
                             <li>{{ $error }}</li>
@@ -119,7 +121,7 @@
 
                             <label
                                 for="service"
-                                class="block font-semibold text-gray-900 text-[3vh]"
+                                class="block font-semibold text-gray-900 text-[21px]"
                             >
                                 Nombre del servicio
                             </label>
@@ -135,7 +137,7 @@
                                        border-gray-400
                                        bg-white
                                        text-gray-900
-                                       text-[3vh]
+                                       text-[21px]
                                        shadow-sm
                                        focus:border-indigo-600
                                        focus:ring-indigo-600"
@@ -149,7 +151,7 @@
 
                             <label
                                 for="price"
-                                class="block font-semibold text-gray-900 text-[3vh]"
+                                class="block font-semibold text-gray-900 text-[21px]"
                             >
                                 Precio (NETO)
                             </label>
@@ -166,7 +168,7 @@
                                        border-gray-400
                                        bg-white
                                        text-gray-900
-                                       text-[3vh]
+                                       text-[21px]
                                        shadow-sm
                                        focus:border-indigo-600
                                        focus:ring-indigo-600"
@@ -179,7 +181,7 @@
 
                             <label
                                 for="tax_percentage"
-                                class="block font-semibold text-gray-900 text-[3vh]"
+                                class="block font-semibold text-gray-900 text-[21px]"
                             >
                                 Impuestos (IVA) %
                             </label>
@@ -196,13 +198,13 @@
                                     border-gray-400
                                     bg-white
                                     text-gray-900
-                                    text-[3vh]
+                                    text-[21px]
                                     shadow-sm
                                     focus:border-indigo-600
                                     focus:ring-indigo-600"
                             >
 
-                            <p class="mt-2 text-gray-700 text-[3vh]">
+                            <p class="mt-2 text-gray-700 text-[21px]">
                                 Porcentaje a sumar sobre el precio neto (ej. 21 para IVA
                                 21%). Dejar vacío o en 0 si no corresponde aplicar impuesto.
                             </p>
@@ -215,7 +217,7 @@
 
                             <label
                                 for="due_day"
-                                class="block font-semibold text-gray-900 text-[3vh]"
+                                class="block font-semibold text-gray-900 text-[21px]"
                             >
                                 Día de vencimiento
                             </label>
@@ -232,13 +234,13 @@
                                        border-gray-400
                                        bg-white
                                        text-gray-900
-                                       text-[3vh]
+                                       text-[21px]
                                        shadow-sm
                                        focus:border-indigo-600
                                        focus:ring-indigo-600"
                             >
 
-                            <p class="mt-2 text-gray-700 text-[3vh]">
+                            <p class="mt-2 text-gray-700 text-[21px]">
                                 Día del mes en que vence el servicio.
                             </p>
 
@@ -250,7 +252,7 @@
 
                             <label
                                 for="overdue_price"
-                                class="block font-semibold text-gray-900 text-[3vh]"
+                                class="block font-semibold text-gray-900 text-[21px]"
                             >
                                 Precio vencido (NETO)
                             </label>
@@ -267,7 +269,7 @@
                                        border-gray-400
                                        bg-white
                                        text-gray-900
-                                       text-[3vh]
+                                       text-[21px]
                                        shadow-sm
                                        focus:border-indigo-600
                                        focus:ring-indigo-600"
@@ -281,7 +283,7 @@
 
                             <label
                                 for="period"
-                                class="block font-semibold text-gray-900 text-[3vh]"
+                                class="block font-semibold text-gray-900 text-[21px]"
                             >
                                 Período de facturación
                             </label>
@@ -297,13 +299,13 @@
                                        border-gray-400
                                        bg-white
                                        text-gray-900
-                                       text-[3vh]
+                                       text-[21px]
                                        shadow-sm
                                        focus:border-indigo-600
                                        focus:ring-indigo-600"
                             >
 
-                            <p class="mt-2 text-gray-700 text-[3vh]">
+                            <p class="mt-2 text-gray-700 text-[21px]">
                                 Cantidad de meses entre cada factura.
                                 Por ejemplo, 1 = mensual y 3 = trimestral.
                             </p>

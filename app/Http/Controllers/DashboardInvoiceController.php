@@ -163,6 +163,7 @@ class DashboardInvoiceController extends Controller
                 'client_document',
                 $clientDocuments
             )
+                ->where('payment_status', 'paid')
                 ->orderBy(
                     'issued_at',
                     'desc'

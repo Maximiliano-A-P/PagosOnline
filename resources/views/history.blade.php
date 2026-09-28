@@ -1,14 +1,82 @@
 <x-app-layout>
 
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <h2 class="font-semibold text-white leading-tight text-[32px]">
             Historial de facturas
         </h2>
     </x-slot>
 
+
+    <style>
+        /*
+         * Medidas tomadas del dashboard general:
+         * texto base 21px, botones de 42px de alto,
+         * contenedor del 90% del ancho de la pantalla.
+         */
+        .btn {
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 42px;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 21px;
+            line-height: normal;
+            font-family: inherit;
+            text-decoration: none;
+            white-space: nowrap;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            margin: 0;
+            transition: background-color 0.15s ease-in-out;
+        }
+
+        .btn-primary {
+            background-color: #111827; /* gray-900 */
+            border: 1px solid #111827;
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background-color: #374151; /* gray-700 */
+        }
+
+        .btn-secondary {
+            background-color: #ffffff;
+            border: 1px solid #9ca3af; /* gray-400 */
+            color: #111827;
+        }
+
+        .btn-secondary:hover {
+            background-color: #f3f4f6; /* gray-100 */
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 18px;
+            color: #ffffff;
+        }
+
+        .badge-on-time {
+            background-color: #15803d; /* green-700 */
+        }
+
+        .badge-overdue {
+            background-color: #b91c1c; /* red-700 */
+        }
+    </style>
+
+
     <div class="py-12">
 
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="mx-auto" style="width: 90vw;">
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
 
@@ -16,12 +84,12 @@
                 {{-- TÍTULO --}}
                 {{-- ================================================== --}}
 
-                <h3 class="text-lg font-semibold text-gray-900">
+                <h3 class="text-[24px] font-semibold text-gray-900">
                     Historial de facturas
                 </h3>
 
-                <p class="mt-1 text-sm text-gray-600">
-                    Consulte todas las facturas emitidas para los documentos
+                <p class="mt-1 text-[21px] text-gray-600">
+                    Consulte todas las facturas pagadas para los documentos
                     agregados a su cuenta.
                 </p>
 
@@ -40,7 +108,7 @@
                                 <tr>
 
                                     <th
-                                        class="px-4 py-3 text-left text-xs
+                                        class="px-4 py-3 text-left text-[21px]
                                                font-medium text-gray-500
                                                uppercase"
                                     >
@@ -48,7 +116,7 @@
                                     </th>
 
                                     <th
-                                        class="px-4 py-3 text-left text-xs
+                                        class="px-4 py-3 text-left text-[21px]
                                                font-medium text-gray-500
                                                uppercase"
                                     >
@@ -56,7 +124,7 @@
                                     </th>
 
                                     <th
-                                        class="px-4 py-3 text-left text-xs
+                                        class="px-4 py-3 text-left text-[21px]
                                                font-medium text-gray-500
                                                uppercase"
                                     >
@@ -64,7 +132,7 @@
                                     </th>
 
                                     <th
-                                        class="px-4 py-3 text-left text-xs
+                                        class="px-4 py-3 text-left text-[21px]
                                                font-medium text-gray-500
                                                uppercase"
                                     >
@@ -72,7 +140,7 @@
                                     </th>
 
                                     <th
-                                        class="px-4 py-3 text-left text-xs
+                                        class="px-4 py-3 text-left text-[21px]
                                                font-medium text-gray-500
                                                uppercase"
                                     >
@@ -80,15 +148,15 @@
                                     </th>
 
                                     <th
-                                        class="px-4 py-3 text-left text-xs
+                                        class="px-4 py-3 text-left text-[21px]
                                                font-medium text-gray-500
                                                uppercase"
                                     >
-                                        Importe
+                                        Importe pagado
                                     </th>
 
                                     <th
-                                        class="px-4 py-3 text-left text-xs
+                                        class="px-4 py-3 text-left text-[21px]
                                                font-medium text-gray-500
                                                uppercase"
                                     >
@@ -96,7 +164,7 @@
                                     </th>
 
                                     <th
-                                        class="px-4 py-3 text-right text-xs
+                                        class="px-4 py-3 text-right text-[21px]
                                                font-medium text-gray-500
                                                uppercase"
                                     >
@@ -110,83 +178,82 @@
 
                                 @foreach($invoices as $invoice)
 
+                                    @php
+                                        /*
+                                         * Pagada después del vencimiento =
+                                         * se cobró el precio vencido.
+                                         */
+                                        $pagadaVencida =
+                                            $invoice->paid_at
+                                            && $invoice->due_date
+                                            && $invoice->paid_at->gt($invoice->due_date);
+                                    @endphp
+
                                     <tr>
 
                                         <td
-                                            class="px-4 py-4 text-sm
+                                            class="px-4 py-4 text-[21px]
                                                    text-gray-900"
                                         >
                                             {{ $invoice->client_document }}
                                         </td>
 
                                         <td
-                                            class="px-4 py-4 text-sm
+                                            class="px-4 py-4 text-[21px]
                                                    text-gray-900"
                                         >
                                             {{ $invoice->client_name }}
                                         </td>
 
                                         <td
-                                            class="px-4 py-4 text-sm
+                                            class="px-4 py-4 text-[21px]
                                                    text-gray-900"
                                         >
                                             {{ $invoice->service_name }}
                                         </td>
 
                                         <td
-                                            class="px-4 py-4 text-sm
+                                            class="px-4 py-4 text-[21px]
                                                    text-gray-600"
                                         >
                                             {{ $invoice->issued_at }}
                                         </td>
 
                                         <td
-                                            class="px-4 py-4 text-sm
+                                            class="px-4 py-4 text-[21px]
                                                    text-gray-600"
                                         >
                                             {{ $invoice->due_date }}
                                         </td>
 
                                         <td
-                                            class="px-4 py-4 text-sm
+                                            class="px-4 py-4 text-[21px]
                                                    font-medium text-gray-900"
                                         >
                                             ${{ number_format(
-                                                $invoice->price,
+                                                $invoice->amount_paid,
                                                 2,
                                                 ',',
                                                 '.'
                                             ) }}
+
+                                            <div class="text-[21px] font-normal text-gray-600">
+                                                {{ $pagadaVencida ? '(precio vencido)' : '(precio normal)' }}
+                                            </div>
                                         </td>
 
-                                        <td class="px-4 py-4 text-sm">
+                                        <td class="px-4 py-4 text-[21px]">
 
-                                            @if($invoice->payment_status === 'paid')
+                                            @if($pagadaVencida)
 
-                                                <span
-                                                    class="inline-flex items-center
-                                                           rounded-full
-                                                           bg-green-100
-                                                           px-3 py-1
-                                                           text-xs
-                                                           font-semibold
-                                                           text-green-800"
-                                                >
-                                                    Pagada
+                                                <span class="badge badge-overdue">
+                                                    Vencida
                                                 </span>
 
                                             @else
 
-                                                <span
-                                                    class="inline-flex items-center
-                                                           rounded-full
-                                                           bg-yellow-100
-                                                           px-3 py-1
-                                                           text-xs
-                                                           font-semibold
-                                                           text-yellow-800"
-                                                >
-                                                    Pendiente
+                                                <span class="badge badge-on-time">
+                                                    A tiempo
                                                 </span>
 
                                             @endif
@@ -202,47 +269,12 @@
                                                        gap-2"
                                             >
 
-                                                @if($invoice->payment_status !== 'paid')
-
-                                                    <a
-                                                        href="{{ route(
-                                                            'dashboard.invoices.pay',
-                                                            $invoice
-                                                        ) }}"
-                                                        class="inline-flex
-                                                               items-center
-                                                               px-3 py-2
-                                                               bg-gray-800
-                                                               rounded-md
-                                                               text-xs
-                                                               font-semibold
-                                                               text-white
-                                                               uppercase
-                                                               tracking-widest
-                                                               hover:bg-gray-700"
-                                                    >
-                                                        Pagar
-                                                    </a>
-
-                                                @endif
-
                                                 <a
                                                     href="{{ route(
                                                         'dashboard.invoices.pdf',
                                                         $invoice
                                                     ) }}"
-                                                    class="inline-flex
-                                                           items-center
-                                                           px-3 py-2
-                                                           border
-                                                           border-gray-300
-                                                           rounded-md
-                                                           text-xs
-                                                           font-semibold
-                                                           text-gray-700
-                                                           uppercase
-                                                           tracking-widest
-                                                           hover:bg-gray-50"
+                                                    class="btn btn-secondary"
                                                 >
                                                     Descargar PDF
                                                 </a>
@@ -274,8 +306,8 @@
 
                 @else
 
-                    <p class="mt-6 text-sm text-gray-600">
-                        No hay facturas para los documentos agregados.
+                    <p class="mt-6 text-[21px] text-gray-600">
+                        No hay facturas pagadas para los documentos agregados.
                     </p>
 
                 @endif
@@ -289,17 +321,7 @@
 
                     <a
                         href="{{ route('dashboard') }}"
-                        class="inline-flex items-center
-                               px-4 py-2
-                               bg-gray-800
-                               border border-transparent
-                               rounded-md
-                               font-semibold
-                               text-xs
-                               text-white
-                               uppercase
-                               tracking-widest
-                               hover:bg-gray-700"
+                        class="btn btn-primary"
                     >
                         Volver al dashboard
                     </a>

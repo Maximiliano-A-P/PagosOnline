@@ -454,6 +454,62 @@
 
                         </div>
 
+
+                        {{-- Fecha de emisión desde --}}
+                        <div>
+
+                            <label
+                                for="date_from"
+                                class="block font-semibold text-gray-900 text-[21px]"
+                            >
+                                Emisión desde
+                            </label>
+
+                            <input
+                                id="date_from"
+                                name="date_from"
+                                type="date"
+                                value="{{ request('date_from') }}"
+                                class="mt-2 block w-full rounded-md
+                                       border-gray-400
+                                       bg-white
+                                       text-gray-900
+                                       text-[21px]
+                                       shadow-sm
+                                       focus:border-indigo-600
+                                       focus:ring-indigo-600"
+                            >
+
+                        </div>
+
+
+                        {{-- Fecha de emisión hasta --}}
+                        <div>
+
+                            <label
+                                for="date_to"
+                                class="block font-semibold text-gray-900 text-[21px]"
+                            >
+                                Emisión hasta
+                            </label>
+
+                            <input
+                                id="date_to"
+                                name="date_to"
+                                type="date"
+                                value="{{ request('date_to') }}"
+                                class="mt-2 block w-full rounded-md
+                                       border-gray-400
+                                       bg-white
+                                       text-gray-900
+                                       text-[21px]
+                                       shadow-sm
+                                       focus:border-indigo-600
+                                       focus:ring-indigo-600"
+                            >
+
+                        </div>
+
                     </form>
 
                 </div>

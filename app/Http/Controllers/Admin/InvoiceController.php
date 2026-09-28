@@ -64,10 +64,24 @@ class InvoiceController extends Controller
         }
 
         /*
+         * Filtro por rango de fecha de emisión (ambos límites opcionales).
+         */
+        $request->validate([
+            'date_from' => ['nullable', 'date'],
+            'date_to'   => ['nullable', 'date'],
+        ]);
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('issued_at', '>=', $request->input('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('issued_at', '<=', $request->input('date_to'));
+        }
+
+        /*
          * Facturas modificadas más recientemente primero.
-         * El ID se utiliza como segundo criterio para
-         * mantener un orden determinista cuando dos
-         * facturas tienen el mismo updated_at.
+         * El ID se utiliza como segundo criterio para mantener un orden determinista cuando dos facturas tienen el mismo updated_at.
          */
         $invoices = $query
         ->orderByDesc('updated_at')

@@ -1,98 +1,28 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+<x-app-layout>
 
-    <title>Crear cliente</title>
+    <x-slot name="header">
+        <h2 class="font-semibold text-white leading-tight text-[32px]">
+            Crear cliente
+        </h2>
+    </x-slot>
 
     <style>
-        * {
-            box-sizing: border-box;
+        .card-header {
+            background-color: #111827; /* gray-900 */
+            padding: 20px 24px;
         }
 
-        body {
-            margin: 0;
-            padding: 40px 20px;
-            background-color: #f3f4f6; /* gray-100 */
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-        }
-
-        .container {
-            max-width: 640px;
-            margin: 0 auto;
-        }
-
-        h1 {
-            font-size: 24px;
-            font-weight: 700;
-            color: #111827;
-            margin: 0 0 24px;
-        }
-
-        .card {
-            background-color: #ffffff;
-            border: 1px solid #d1d5db; /* gray-300 */
-            border-radius: 8px;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-            padding: 24px;
-        }
-
-        .error-box {
-            background-color: #b91c1c; /* red-700 */
-            border: 1px solid #991b1b; /* red-800 */
+        .card-header h3 {
             color: #ffffff;
-            border-radius: 8px;
-            padding: 16px 20px;
-            margin-bottom: 24px;
-        }
-
-        .error-box ul {
-            margin: 0;
-            padding-left: 20px;
-            list-style: disc;
-        }
-
-        .field {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
             font-weight: 600;
-            color: #111827;
-            font-size: 14px;
-            margin-bottom: 6px;
+            font-size: 24px;
+            margin: 0;
         }
 
-        input[type="text"],
-        input[type="number"] {
-            width: 100%;
-            padding: 10px 12px;
-            font-size: 14px;
-            color: #111827;
-            background-color: #ffffff;
-            border: 1px solid #9ca3af; /* gray-400 */
-            border-radius: 6px;
-            line-height: normal;
-            font-family: inherit;
-        }
-
-        input[type="text"]:focus,
-        input[type="number"]:focus {
-            outline: none;
-            border-color: #4f46e5; /* indigo-600 */
-            box-shadow: 0 0 0 1px #4f46e5;
-        }
-
-        .actions {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-top: 24px;
+        .card-header p {
+            color: #d1d5db; /* gray-300 */
+            font-size: 21px;
+            margin: 8px 0 0;
         }
 
         .btn {
@@ -100,16 +30,18 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            height: 42px;
             padding: 6px 14px;
             background-color: #111827; /* gray-900 */
             border: 1px solid #111827;
             border-radius: 6px;
             font-weight: 600;
             color: #ffffff;
-            font-size: 14px;
+            font-size: 21px;
             line-height: normal;
             font-family: inherit;
             text-decoration: none;
+            white-space: nowrap;
             cursor: pointer;
             appearance: none;
             -webkit-appearance: none;
@@ -131,123 +63,220 @@
             background-color: #f3f4f6; /* gray-100 */
         }
     </style>
-</head>
 
-<body>
+    <div class="py-12">
 
-    <div class="container">
+        <div class="mx-auto" style="width: 90vw;">
 
-        <h1>Crear cliente</h1>
+            {{-- Errores --}}
+            @if($errors->any())
 
-        <div class="card">
+                <div
+                    class="mb-8 rounded-lg bg-red-700 border border-red-800
+                           text-white px-6 py-4 shadow-sm"
+                >
+                    <ul class="list-disc list-inside space-y-1 text-[21px]">
 
-            @if ($errors->any())
-                <div class="error-box">
-                    <ul>
-                        @foreach ($errors->all() as $error)
+                        @foreach($errors->all() as $error)
                             <li>{{ $error }}</li>
                         @endforeach
+
                     </ul>
                 </div>
+
             @endif
 
-            <form
-                method="POST"
-                action="{{ route('admin.clients.store') }}"
-            >
 
-                @csrf
+            {{-- Tarjeta principal --}}
+            <div class="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden">
 
-                <div class="field">
-                    <label for="name">
-                        Nombre
-                    </label>
+                {{-- Encabezado --}}
+                <div class="card-header">
 
-                    <input
-                        type="text"
-                        id="name"
-                        name="name"
-                        value="{{ old('name') }}"
-                        required
-                        maxlength="255"
-                    >
+                    <h3>
+                        Nuevo cliente
+                    </h3>
+
+                    <p>
+                        Completá los datos del cliente.
+                    </p>
+
                 </div>
 
-                <div class="field">
-                    <label for="document">
-                        DNI
-                    </label>
 
-                    <input
-                        type="number"
-                        id="document"
-                        name="document"
-                        value="{{ old('document') }}"
-                        min="1"
-                        required
-                    >
-                </div>
+                {{-- Formulario --}}
+                <div class="p-6">
 
-                <div class="field">
-                    <label for="cuit">
-                        CUIT (opcional)
-                    </label>
-
-                    <input
-                        type="text"
-                        id="cuit"
-                        name="cuit"
-                        value="{{ old('cuit') }}"
-                        inputmode="numeric"
-                        maxlength="11"
-                        pattern="\d{11}"
-                        placeholder="Ej. 20123456789"
+                    <form
+                        action="{{ route('admin.clients.store') }}"
+                        method="POST"
+                        class="space-y-7"
                     >
 
-                    @error('cuit')
-                        <p style="margin-top: 8px; color: #b91c1c;">
-                            {{ $message }}
-                        </p>
-                    @enderror
+                        @csrf
+
+                        {{-- Nombre --}}
+                        <div>
+
+                            <label
+                                for="name"
+                                class="block font-semibold text-gray-900 text-[21px]"
+                            >
+                                Nombre
+                            </label>
+
+                            <input
+                                type="text"
+                                id="name"
+                                name="name"
+                                value="{{ old('name') }}"
+                                required
+                                maxlength="255"
+                                class="mt-2 block w-full rounded-md
+                                       border-gray-400
+                                       bg-white
+                                       text-gray-900
+                                       text-[21px]
+                                       shadow-sm
+                                       focus:border-indigo-600
+                                       focus:ring-indigo-600"
+                            >
+
+                        </div>
+
+
+                        {{-- DNI --}}
+                        <div>
+
+                            <label
+                                for="document"
+                                class="block font-semibold text-gray-900 text-[21px]"
+                            >
+                                DNI
+                            </label>
+
+                            <input
+                                type="number"
+                                id="document"
+                                name="document"
+                                value="{{ old('document') }}"
+                                min="1"
+                                required
+                                class="mt-2 block w-full rounded-md
+                                       border-gray-400
+                                       bg-white
+                                       text-gray-900
+                                       text-[21px]
+                                       shadow-sm
+                                       focus:border-indigo-600
+                                       focus:ring-indigo-600"
+                            >
+
+                        </div>
+
+
+                        {{-- CUIT --}}
+                        <div>
+
+                            <label
+                                for="cuit"
+                                class="block font-semibold text-gray-900 text-[21px]"
+                            >
+                                CUIT (opcional)
+                            </label>
+
+                            <input
+                                type="text"
+                                id="cuit"
+                                name="cuit"
+                                value="{{ old('cuit') }}"
+                                inputmode="numeric"
+                                maxlength="11"
+                                pattern="\d{11}"
+                                placeholder="Ej. 20123456789"
+                                class="mt-2 block w-full rounded-md
+                                       border-gray-400
+                                       bg-white
+                                       text-gray-900
+                                       text-[21px]
+                                       shadow-sm
+                                       focus:border-indigo-600
+                                       focus:ring-indigo-600"
+                            >
+
+                            @error('cuit')
+                                <p class="mt-2 text-[21px]" style="color: #b91c1c;">
+                                    {{ $message }}
+                                </p>
+                            @enderror
+
+                        </div>
+
+
+                        {{-- Condición frente al IVA --}}
+                        <div>
+
+                            <label
+                                for="arca_iva_condition"
+                                class="block font-semibold text-gray-900 text-[21px]"
+                            >
+                                Condición frente al IVA (código AFIP)
+                            </label>
+
+                            <input
+                                type="number"
+                                id="arca_iva_condition"
+                                name="arca_iva_condition"
+                                list="condicionIvaReferencia"
+                                value="{{ old('arca_iva_condition') }}"
+                                min="1"
+                                class="mt-2 block w-full rounded-md
+                                       border-gray-400
+                                       bg-white
+                                       text-gray-900
+                                       text-[21px]
+                                       shadow-sm
+                                       focus:border-indigo-600
+                                       focus:ring-indigo-600"
+                            >
+
+                            <datalist id="condicionIvaReferencia">
+                                <option value="1">IVA Responsable Inscripto</option>
+                                <option value="4">IVA Sujeto Exento</option>
+                                <option value="5">Consumidor Final</option>
+                                <option value="6">Responsable Monotributo</option>
+                            </datalist>
+
+                        </div>
+
+
+                        {{-- Botones --}}
+                        <div class="pt-4 flex items-center justify-end gap-4">
+
+                            <a
+                                href="{{ route('admin.clients.index') }}"
+                                class="btn btn-secondary"
+                            >
+                                Cancelar
+                            </a>
+
+                            <button
+                                type="submit"
+                                class="btn"
+                            >
+                                Crear cliente
+                            </button>
+
+                        </div>
+
+                    </form>
+
                 </div>
 
-                <div class="field">
-                    <label for="arca_iva_condition">
-                        Condición frente al IVA (código AFIP)
-                    </label>
-
-                    <input
-                        type="number"
-                        id="arca_iva_condition"
-                        name="arca_iva_condition"
-                        list="condicionIvaReferencia"
-                        value="{{ old('arca_iva_condition') }}"
-                        min="1"
-                    >
-
-                    <datalist id="condicionIvaReferencia">
-                        <option value="1">IVA Responsable Inscripto</option>
-                        <option value="4">IVA Sujeto Exento</option>
-                        <option value="5">Consumidor Final</option>
-                        <option value="6">Responsable Monotributo</option>
-                    </datalist>
-                </div>
-
-                <div class="actions">
-                    <button type="submit" class="btn">
-                        Crear cliente
-                    </button>
-
-                    <a href="{{ route('admin.clients.index') }}" class="btn btn-secondary">
-                        Cancelar
-                    </a>
-                </div>
-
-            </form>
+            </div>
 
         </div>
 
     </div>
 
-</body>
-</html>
+</x-app-layout>

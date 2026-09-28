@@ -2,7 +2,7 @@
 
     <x-slot name="header">
 
-        <h2 class="font-semibold text-white leading-tight text-[4vh]">
+        <h2 class="font-semibold text-white leading-tight text-[32px]">
             Clientes
         </h2>
 
@@ -10,32 +10,42 @@
 
 
     <style>
+        /*
+         * Botones: misma medida para <a> y <button>
+         * (mismo alto, mismo tamaño de letra, misma alineación).
+         * Medidas tomadas del dashboard general.
+         */
         .btn {
+            box-sizing: border-box;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
+            height: 42px;
             padding: 6px 14px;
             background-color: #111827; /* gray-900 */
             border: 1px solid #111827;
             border-radius: 6px;
             font-weight: 600;
             color: #ffffff;
-            font-size: 14px;
-            text-decoration: none;
-            cursor: pointer;
-            transition: background-color 0.15s ease-in-out;
-        }
-
-        button.btn {
-            box-sizing: border-box;
+            font-size: 21px;
             line-height: normal;
+            font-family: inherit;
+            text-decoration: none;
+            white-space: nowrap;
+            cursor: pointer;
             appearance: none;
             -webkit-appearance: none;
-            font-family: inherit;
             margin: 0;
+            transition: background-color 0.15s ease-in-out;
         }
 
         .btn:hover {
             background-color: #374151; /* gray-700 */
+        }
+
+        .btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #4b5563; /* ring-gray-600 + offset */
         }
 
         .table-header th {
@@ -43,20 +53,25 @@
             font-weight: 600;
             padding: 16px 24px;
             text-align: left;
-            font-size: 14px;
+            font-size: 21px;
             border-bottom: 2px solid #d1d5db;
         }
 
-        .btn:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #4b5563; /* ring-gray-600 + offset */
+        .row-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .row-actions form {
+            margin: 0;
         }
     </style>
 
 
     <div class="py-12">
 
-        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+        <div class="mx-auto" style="width: 90vw;">
 
             {{-- ================================================== --}}
             {{-- Mensaje de éxito --}}
@@ -66,7 +81,7 @@
 
                 <div
                     class="mb-8 rounded-lg bg-green-700 border border-green-800
-                           text-white px-6 py-4 shadow-sm text-[3vh]"
+                           text-white px-6 py-4 shadow-sm text-[21px]"
                 >
                     {{ session('success') }}
                 </div>
@@ -84,7 +99,7 @@
                     class="mb-8 rounded-lg bg-red-700 border border-red-800
                            text-white px-6 py-4 shadow-sm"
                 >
-                    <ul class="list-disc list-inside space-y-1 text-[3vh]">
+                    <ul class="list-disc list-inside space-y-1 text-[21px]">
 
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
@@ -102,7 +117,7 @@
 
             <div class="mb-8 flex items-center justify-between">
 
-                <h3 class="font-semibold text-white text-[4vh]">
+                <h3 class="font-semibold text-white text-[32px]">
                     Clientes registrados
                 </h3>
 
@@ -146,7 +161,7 @@
 
                                 <label
                                     for="search"
-                                    class="block font-semibold text-gray-900 text-[3vh]"
+                                    class="block font-semibold text-gray-900 text-[21px]"
                                 >
                                     Buscar cliente
                                 </label>
@@ -161,10 +176,11 @@
                                            border-gray-400
                                            bg-white
                                            text-gray-900
-                                           text-[3vh]
+                                           text-[21px]
                                            shadow-sm
                                            focus:border-indigo-600
                                            focus:ring-indigo-600"
+                                    style="height: 42px;"
                                 >
 
                             </div>
@@ -254,7 +270,7 @@
                                             <td
                                                 class="px-6 py-5
                                                        text-gray-900
-                                                       text-[3vh]"
+                                                       text-[21px]"
                                             >
                                                 {{ $client->id }}
                                             </td>
@@ -264,7 +280,7 @@
                                                 class="px-6 py-5
                                                        text-gray-900
                                                        font-medium
-                                                       text-[3vh]"
+                                                       text-[21px]"
                                             >
                                                 {{ $client->name }}
                                             </td>
@@ -273,7 +289,7 @@
                                             <td
                                                 class="px-6 py-5
                                                        text-gray-900
-                                                       text-[3vh]"
+                                                       text-[21px]"
                                             >
                                                 {{ $client->document }}
                                             </td>
@@ -282,15 +298,15 @@
                                             <td
                                                 class="px-6 py-5
                                                        text-gray-900
-                                                       text-[3vh]"
+                                                       text-[21px]"
                                             >
                                                 {{ $client->created_at->format('d/m/Y H:i') }}
                                             </td>
 
 
-                                            <td class="px-6 py-5 text-[3vh]">
+                                            <td class="px-6 py-5 text-[21px]">
 
-                                                <div class="flex items-center gap-12">
+                                                <div class="row-actions">
 
                                                     <a
                                                         href="{{ route(
@@ -352,7 +368,7 @@
 
                         <div class="py-12 text-center">
 
-                            <p class="text-gray-900 font-semibold text-[3vh]">
+                            <p class="text-gray-900 font-semibold text-[21px]">
                                 No hay clientes registrados.
                             </p>
 

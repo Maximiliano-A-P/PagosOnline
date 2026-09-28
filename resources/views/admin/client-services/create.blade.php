@@ -3,11 +3,11 @@
     <x-slot name="header">
 
         <div>
-            <h2 class="font-semibold text-white leading-tight text-[4vh]">
+            <h2 class="font-semibold text-white leading-tight text-[32px]">
                 Agregar servicio
             </h2>
 
-            <p class="mt-2 text-gray-200 text-[3vh]">
+            <p class="mt-2 text-gray-200 text-[21px]">
                 Administrá los servicios del cliente seleccionado.
             </p>
         </div>
@@ -20,16 +20,18 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            height: 42px;
             padding: 6px 14px;
             background-color: #111827; /* gray-900 */
             border: 1px solid #111827;
             border-radius: 6px;
             font-weight: 600;
             color: #ffffff;
-            font-size: 14px;
+            font-size: 21px;
             line-height: normal;
             font-family: inherit;
             text-decoration: none;
+            white-space: nowrap;
             cursor: pointer;
             appearance: none;
             -webkit-appearance: none;
@@ -45,7 +47,7 @@
 
     <div class="py-12">
 
-        <div class="max-w-3xl mx-auto px-6 lg:px-8">
+        <div class="mx-auto" style="width: 90vw;">
 
             {{-- Errores --}}
             @if ($errors->any())
@@ -54,7 +56,7 @@
                     class="mb-8 rounded-lg bg-red-700 border border-red-800
                            text-white px-6 py-4 shadow-sm"
                 >
-                    <ul class="list-disc list-inside space-y-1 text-[3vh]">
+                    <ul class="list-disc list-inside space-y-1 text-[21px]">
 
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
@@ -74,13 +76,13 @@
 
                 <div class="bg-white border-b border-gray-300 px-6 py-6">
 
-                    <h3 class="font-semibold text-gray-900 text-[3.5vh]">
+                    <h3 class="font-semibold text-gray-900 text-[24px]">
                         Cliente seleccionado
                     </h3>
 
                     <div class="mt-5 space-y-2">
 
-                        <p class="text-gray-900 text-[3vh]">
+                        <p class="text-gray-900 text-[21px]">
                             <span class="font-semibold">
                                 Nombre:
                             </span>
@@ -88,7 +90,7 @@
                             {{ $client->name }}
                         </p>
 
-                        <p class="text-gray-900 text-[3vh]">
+                        <p class="text-gray-900 text-[21px]">
                             <span class="font-semibold">
                                 Documento:
                             </span>
@@ -107,7 +109,7 @@
 
                 <div class="px-6 py-6 border-b border-gray-300">
 
-                    <h3 class="font-semibold text-gray-900 text-[3.5vh]">
+                    <h3 class="font-semibold text-gray-900 text-[24px]">
                         Servicios actuales
                     </h3>
 
@@ -130,11 +132,11 @@
 
                                     <div>
 
-                                        <p class="font-semibold text-gray-900 text-[3vh]">
+                                        <p class="font-semibold text-gray-900 text-[21px]">
                                             {{ $service->service }}
                                         </p>
 
-                                        <p class="mt-1 text-gray-700 text-[3vh]">
+                                        <p class="mt-1 text-gray-700 text-[21px]">
                                             ${{ number_format(
                                                 $service->price,
                                                 2,
@@ -187,7 +189,7 @@
                             class="mt-5 bg-gray-100 border border-gray-300
                                    rounded-lg px-5 py-4"
                         >
-                            <p class="text-gray-900 text-[3vh]">
+                            <p class="text-gray-900 text-[21px]">
                                 Este cliente no tiene servicios asignados.
                             </p>
                         </div>
@@ -203,7 +205,7 @@
 
                 <div class="px-6 py-6">
 
-                    <h3 class="font-semibold text-gray-900 text-[3.5vh]">
+                    <h3 class="font-semibold text-gray-900 text-[24px]">
                         Agregar servicio
                     </h3>
 
@@ -225,7 +227,7 @@
                             <label
                                 for="service_id"
                                 class="block font-semibold
-                                       text-gray-900 text-[3vh]"
+                                       text-gray-900 text-[21px]"
                             >
                                 Servicio
                             </label>
@@ -238,7 +240,7 @@
                                        border-gray-400
                                        bg-white
                                        text-gray-900
-                                       text-[3vh]
+                                       text-[21px]
                                        shadow-sm
                                        focus:border-indigo-600
                                        focus:ring-indigo-600"
@@ -271,7 +273,7 @@
 
                             @error('service_id')
 
-                                <p class="mt-2 text-red-700 text-[3vh]">
+                                <p class="mt-2 text-red-700 text-[21px]">
                                     {{ $message }}
                                 </p>
 

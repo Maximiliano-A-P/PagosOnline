@@ -3,11 +3,11 @@
     <x-slot name="header">
 
         <div>
-            <h2 class="font-semibold text-white leading-tight text-[4vh]">
+            <h2 class="font-semibold text-white leading-tight text-[32px]">
                 Servicios de clientes
             </h2>
 
-            <p class="mt-2 text-gray-200 text-[3vh]">
+            <p class="mt-2 text-gray-200 text-[21px]">
                 Buscá un cliente para consultar y modificar sus servicios.
             </p>
         </div>
@@ -20,16 +20,18 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            height: 42px;
             padding: 6px 14px;
             background-color: #111827; /* gray-900 */
             border: 1px solid #111827;
             border-radius: 6px;
             font-weight: 600;
             color: #ffffff;
-            font-size: 14px;
+            font-size: 21px;
             line-height: normal;
             font-family: inherit;
             text-decoration: none;
+            white-space: nowrap;
             cursor: pointer;
             appearance: none;
             -webkit-appearance: none;
@@ -48,13 +50,13 @@
         .card-header h3 {
             color: #111827;
             font-weight: 600;
-            font-size: 20px;
+            font-size: 21px;
             margin: 0;
         }
 
         .card-header p {
             color: #374151; /* gray-700 */
-            font-size: 14px;
+            font-size: 21px;
             margin: 8px 0 0;
         }
     </style>
@@ -62,7 +64,7 @@
 
     <div class="py-12">
 
-        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+        <div class="mx-auto" style="width: 90vw;">
 
             {{-- ================================================== --}}
             {{-- Mensaje de éxito --}}
@@ -72,7 +74,7 @@
 
                 <div
                     class="mb-8 rounded-lg bg-green-700 border border-green-800
-                           text-white px-6 py-4 shadow-sm text-[3vh]"
+                           text-white px-6 py-4 shadow-sm text-[21px]"
                 >
                     {{ session('success') }}
                 </div>
@@ -90,7 +92,7 @@
                     class="mb-8 rounded-lg bg-red-700 border border-red-800
                            text-white px-6 py-4 shadow-sm"
                 >
-                    <ul class="list-disc list-inside space-y-1 text-[3vh]">
+                    <ul class="list-disc list-inside space-y-1 text-[21px]">
 
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
@@ -121,7 +123,7 @@
 
                                 <label
                                     for="search"
-                                    class="block font-semibold text-gray-900 text-[3vh]"
+                                    class="block font-semibold text-gray-900 text-[21px]"
                                 >
                                     Buscar cliente
                                 </label>
@@ -136,10 +138,11 @@
                                            border-gray-400
                                            bg-white
                                            text-gray-900
-                                           text-[3vh]
+                                           text-[21px]
                                            shadow-sm
                                            focus:border-indigo-600
                                            focus:ring-indigo-600"
+                                    style="height: 42px;"
                                 >
 
                             </div>
@@ -232,7 +235,7 @@
                             {{-- Servicios asignados --}}
                             <div class="p-6">
 
-                                <h4 class="font-semibold text-gray-900 text-[3vh] mb-5">
+                                <h4 class="font-semibold text-gray-900 text-[21px] mb-5">
                                     Servicios asignados
                                 </h4>
 
@@ -255,11 +258,11 @@
 
                                                 <div>
 
-                                                    <p class="font-semibold text-gray-900 text-[3vh]">
+                                                    <p class="font-semibold text-gray-900 text-[21px]">
                                                         {{ $service->service }}
                                                     </p>
 
-                                                    <p class="mt-1 text-gray-700 text-[3vh]">
+                                                    <p class="mt-1 text-gray-700 text-[21px]">
                                                         ${{ number_format(
                                                             $service->price,
                                                             2,
@@ -313,7 +316,7 @@
                                         class="border border-gray-300 rounded-lg
                                                bg-gray-100 px-5 py-5"
                                     >
-                                        <p class="text-gray-900 text-[3vh]">
+                                        <p class="text-gray-900 text-[21px]">
                                             Este cliente no tiene servicios asignados.
                                         </p>
                                     </div>
@@ -330,13 +333,13 @@
 
                             @if (request('search'))
 
-                                <p class="text-gray-900 font-semibold text-[3vh]">
+                                <p class="text-gray-900 font-semibold text-[21px]">
                                     No se encontró ningún cliente con esa búsqueda.
                                 </p>
 
                             @else
 
-                                <p class="text-gray-900 font-semibold text-[3vh]">
+                                <p class="text-gray-900 font-semibold text-[21px]">
                                     Buscá un cliente por nombre o documento.
                                 </p>
 

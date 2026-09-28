@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Client;
+use App\Models\Invoice;
 use Illuminate\Http\Request;
 
 class ClientController extends Controller
@@ -86,6 +87,28 @@ class ClientController extends Controller
         return redirect()
             ->route('admin.clients.index')
             ->with('success', 'Cliente creado correctamente.');
+    }
+
+    /**
+     * Muestra el detalle de un cliente y sus facturas.
+     * Primero las pendientes (por vencimiento más próximo)
+     * y después las pagadas (más recientes primero).
+     */
+    public function show(Client $client)
+    {
+        $todas = Invoice::where('client_document', $client->document)->get();
+
+        $pendientes = $todas
+            ->where('payment_status', '!=', 'paid')
+            ->sortBy(fn ($invoice) => $invoice->due_date->timestamp);
+
+        $pagadas = $todas
+            ->where('payment_status', 'paid')
+            ->sortByDesc(fn ($invoice) => $invoice->issued_at->timestamp);
+
+        $invoices = $pendientes->concat($pagadas)->values();
+
+        return view('admin.clients.show', compact('client', 'invoices'));
     }
 
     /**

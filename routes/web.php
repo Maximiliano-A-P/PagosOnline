@@ -151,7 +151,7 @@ Route::middleware(['auth', 'admin'])
         Route::resource(
             'clients',
             ClientController::class
-        )->except(['show']);
+        );
 
 
         // ==================================================

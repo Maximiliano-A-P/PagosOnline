@@ -27,12 +27,6 @@ class ArcaConfigController extends Controller
     public function update(Request $request)
     {
         $validated = $request->validate([
-            'cuit' => [
-                'required',
-                'string',
-                'max:20',
-            ],
-
             'condicion_iva' => [
                 'required',
                 'integer',

@@ -236,7 +236,11 @@ class ArcaApiService
                 $credenciales['sign'],
 
             'cuit' =>
-                $this->config->cuit,
+                preg_replace(
+                    '/\D/',
+                    '',
+                    (string) config('arca.cuit')
+                ),
 
             'puntoVenta' =>
                 $this->config->punto_venta,

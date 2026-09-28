@@ -9,7 +9,6 @@ class ArcaConfig extends Model
     protected $table = 'arca_config';
 
     protected $fillable = [
-        'cuit',
         'condicion_iva',
         'punto_venta',
         'token',

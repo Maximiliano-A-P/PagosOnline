@@ -137,28 +137,22 @@
                         @csrf
                         @method('PUT')
 
-                        {{-- CUIT --}}
-                        <div>
-                            <label
-                                for="cuit"
-                                class="block font-medium text-gray-900 text-[24px]"
-                            >
+                        {{-- CUIT (desde .env) --}}
+                        <div class="info-box">
+
+                            <h4>
                                 CUIT
-                            </label>
+                            </h4>
 
-                            <input
-                                id="cuit"
-                                name="cuit"
-                                type="text"
-                                value="{{ old('cuit', $config?->cuit) }}"
-                                required
-                                class="mt-2 block w-full rounded-md border-gray-400 shadow-sm text-[24px] text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
-                            >
-
-                            <p class="mt-2 text-gray-700 text-[24px]">
-                                CUIT de la empresa utilizada para operar
-                                con ARCA.
+                            <p>
+                                {{ config('arca.cuit') ?: 'No configurado' }}
                             </p>
+
+                            <p>
+                                No se carga desde acá: sale de la variable de
+                                entorno ARCA_CUIT configurada en el servidor.
+                            </p>
+
                         </div>
 
                         {{-- Condición frente al IVA (emisor) --}}
@@ -212,7 +206,7 @@
                                 for="punto_venta"
                                 class="block font-medium text-gray-900 text-[24px]"
                             >
-                                Punto de venta
+                                Punto de venta (número en ARCA)
                             </label>
 
                             <input
@@ -220,15 +214,27 @@
                                 name="punto_venta"
                                 type="number"
                                 min="1"
+                                list="puntoVentaReferencia"
                                 value="{{ old('punto_venta', $config?->punto_venta) }}"
                                 required
                                 class="mt-2 block w-full rounded-md border-gray-400 shadow-sm text-[24px] text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
                             >
 
+                            <datalist id="puntoVentaReferencia">
+                                <option value="1">Homologación / primer punto de venta</option>
+                                <option value="2">Segundo punto de venta habilitado</option>
+                                <option value="3">Tercer punto de venta habilitado</option>
+                                <option value="4">Cuarto punto de venta habilitado</option>
+                                <option value="5">Quinto punto de venta habilitado</option>
+                            </datalist>
+
                             <p class="mt-2 text-gray-700 text-[24px]">
-                                Punto de venta habilitado en ARCA que se usa
-                                para pedir el CAE. En homologación normalmente
-                                alcanza con el 1. Ver "Explicaciones" más abajo.
+                                Se puede escribir cualquier número. La lista es solo
+                                de referencia: en producción se usa el número del
+                                punto de venta que la empresa tenga habilitado en ARCA
+                                para "Factura Electrónica – Web Services". En
+                                homologación normalmente alcanza con el 1. Ver
+                                "Explicaciones" más abajo.
                             </p>
                         </div>
 

@@ -253,7 +253,7 @@
                                             @else
 
                                                 <span class="badge badge-on-time">
-                                                    A tiempo
+                                                    A_tiempo
                                                 </span>
 
                                             @endif

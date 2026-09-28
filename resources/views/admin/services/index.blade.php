@@ -213,13 +213,6 @@
                                                 <div class="row-actions">
 
                                                     <a
-                                                        href="{{ route('admin.clients.show', $client) }}"
-                                                        class="btn"
-                                                    >
-                                                        Ver
-                                                    </a>
-
-                                                    <a
                                                         href="{{ route('admin.services.edit', $service) }}"
                                                         class="btn"
                                                     >

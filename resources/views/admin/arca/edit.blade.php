@@ -137,24 +137,6 @@
                         @csrf
                         @method('PUT')
 
-                        {{-- CUIT (desde .env) --}}
-                        <div class="info-box">
-
-                            <h4>
-                                CUIT
-                            </h4>
-
-                            <p>
-                                {{ config('arca.cuit') ?: 'No configurado' }}
-                            </p>
-
-                            <p>
-                                No se carga desde acá: sale de la variable de
-                                entorno ARCA_CUIT configurada en el servidor.
-                            </p>
-
-                        </div>
-
                         {{-- Condición frente al IVA (emisor) --}}
                         <div>
                             <label
@@ -206,7 +188,7 @@
                                 for="punto_venta"
                                 class="block font-medium text-gray-900 text-[24px]"
                             >
-                                Punto de venta (número en ARCA)
+                                Punto de venta
                             </label>
 
                             <input
@@ -214,27 +196,18 @@
                                 name="punto_venta"
                                 type="number"
                                 min="1"
-                                list="puntoVentaReferencia"
+                                max="99999"
                                 value="{{ old('punto_venta', $config?->punto_venta) }}"
                                 required
                                 class="mt-2 block w-full rounded-md border-gray-400 shadow-sm text-[24px] text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
                             >
 
-                            <datalist id="puntoVentaReferencia">
-                                <option value="1">Homologación / primer punto de venta</option>
-                                <option value="2">Segundo punto de venta habilitado</option>
-                                <option value="3">Tercer punto de venta habilitado</option>
-                                <option value="4">Cuarto punto de venta habilitado</option>
-                                <option value="5">Quinto punto de venta habilitado</option>
-                            </datalist>
-
                             <p class="mt-2 text-gray-700 text-[24px]">
-                                Se puede escribir cualquier número. La lista es solo
-                                de referencia: en producción se usa el número del
-                                punto de venta que la empresa tenga habilitado en ARCA
-                                para "Factura Electrónica – Web Services". En
-                                homologación normalmente alcanza con el 1. Ver
-                                "Explicaciones" más abajo.
+                                Número entero de 1 a 99999: el punto de venta que la
+                                empresa tiene habilitado en ARCA para Web Services y
+                                que se usa para pedir el CAE. En homologación
+                                normalmente alcanza con el 1. Ver "Explicaciones" más
+                                abajo.
                             </p>
                         </div>
 
@@ -419,17 +392,25 @@
                         </h4>
 
                         <p class="text-gray-700 text-[16px]">
-                            Es el número que identifica, dentro del CUIT configurado,
+                            Es el número que identifica, dentro del CUIT del emisor,
                             el canal por el que se factura (por ejemplo, "sucursal web").
-                            Cada punto de venta tiene su propia numeración correlativa
-                            de comprobantes en ARCA: al pedir un CAE, el sistema informa
-                            este número para que ARCA sepa qué numeración de factura
-                            corresponde. En el ambiente de producción, el punto de venta
-                            tiene que estar dado de alta en ARCA (Administrador de puntos
-                            de venta y domicilios) como habilitado para "Factura
-                            Electrónica – Web Services" antes de poder usarlo acá. En el
-                            ambiente de homologación (pruebas) no hace falta darlo de
-                            alta — alcanza con usar el 1.
+                            Puede ser cualquier entero de 1 a 99999 (lo define la
+                            empresa al darlo de alta en ARCA), por eso no hay una lista
+                            fija de valores para explicar. Cada punto de venta tiene su
+                            propia numeración correlativa de comprobantes: al pedir un
+                            CAE, el sistema informa este número para que ARCA sepa qué
+                            numeración corresponde.
+                        </p>
+
+                        <p class="text-gray-700 text-[16px] mt-3">
+                            En producción el punto de venta tiene que estar dado de alta
+                            en ARCA (Administración de puntos de venta y domicilios) con
+                            el sistema "RECE para aplicativo y webservices" si el emisor
+                            es Responsable Inscripto, o "Factura electrónica –
+                            Monotributo – Webservices" si es Monotributista. Si ya se
+                            usa el 1 para facturas manuales o "Comprobantes en línea",
+                            hay que crear uno nuevo. En homologación (pruebas) no hace
+                            falta darlo de alta: alcanza con usar el 1.
                         </p>
                     </div>
 

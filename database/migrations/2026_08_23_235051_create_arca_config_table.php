@@ -35,16 +35,13 @@ return new class extends Migration
 
             /*
              * =====================================================
-             * DATOS DEL CONTRIBUYENTE
+             * NOTA SOBRE EL CUIT
              * =====================================================
+             *
+             * El CUIT del emisor no se guarda en esta tabla:
+             * sale de la variable de entorno ARCA_CUIT
+             * (config('arca.cuit')).
              */
-
-            // CUIT del contribuyente ante ARCA.
-            //
-            // Se almacena como string porque el CUIT contiene
-            // guiones cuando se muestra en formato habitual
-            // (30-12345678-9).
-            $table->string('cuit');
 
 
             /*
@@ -60,8 +57,7 @@ return new class extends Migration
             // 6 = Monotributista
             // etc.
             $table->unsignedSmallInteger('condicion_iva')
-                ->nullable()
-                ->after('cuit');
+                ->nullable();
 
             // Punto de venta habilitado en ARCA.
             //

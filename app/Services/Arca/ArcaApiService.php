@@ -71,6 +71,15 @@ class ArcaApiService
             'arca_last_attempt_at' => now(),
         ]);
 
+        if (! config('arca.cuit')) {
+            $this->marcarError(
+                $invoice,
+                'Falta configurar ARCA_CUIT en el .env.'
+            );
+
+            return;
+        }
+
         /*
          * ==========================================================
          * WSAA

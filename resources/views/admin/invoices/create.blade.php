@@ -1,7 +1,7 @@
 <x-app-layout>
 
 <x-slot name="header">
-    <h2 class="font-semibold text-white leading-tight text-[4vh]">
+    <h2 class="font-semibold text-white leading-tight text-[32px]">
         Nueva factura manual
     </h2>
 </x-slot>
@@ -15,13 +15,13 @@
     .card-header h3 {
         color: #ffffff;
         font-weight: 600;
-        font-size: 20px;
+        font-size: 24px;
         margin: 0;
     }
 
     .card-header p {
         color: #d1d5db;
-        font-size: 14px;
+        font-size: 21px;
         margin: 8px 0 0;
     }
 
@@ -30,16 +30,18 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        height: 42px;
         padding: 6px 14px;
-        background-color: #111827;
+        background-color: #111827; /* gray-900 */
         border: 1px solid #111827;
         border-radius: 6px;
         font-weight: 600;
         color: #ffffff;
-        font-size: 14px;
+        font-size: 21px;
         line-height: normal;
         font-family: inherit;
         text-decoration: none;
+        white-space: nowrap;
         cursor: pointer;
         appearance: none;
         -webkit-appearance: none;
@@ -48,14 +50,19 @@
     }
 
     .btn:hover {
-        background-color: #374151;
+        background-color: #374151; /* gray-700 */
+    }
+
+    .btn:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #4b5563; /* ring-gray-600 + offset */
     }
 </style>
 
 <div class="py-12">
 
 ```
-<div class="max-w-4xl mx-auto px-6 lg:px-8">
+<div class="mx-auto" style="width: 90vw;">
 
     {{-- Errores --}}
     @if ($errors->any())
@@ -64,7 +71,7 @@
             class="mb-8 rounded-lg bg-red-700 border border-red-800
                    text-white px-6 py-4 shadow-sm"
         >
-            <ul class="list-disc list-inside space-y-1 text-[3vh]">
+            <ul class="list-disc list-inside space-y-1 text-[21px]">
 
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>
@@ -109,7 +116,7 @@
 
                     <label
                         for="issued_at"
-                        class="block font-semibold text-gray-900 text-[3vh]"
+                        class="block font-semibold text-gray-900 text-[21px]"
                     >
                         Fecha de emisión
                     </label>
@@ -122,14 +129,14 @@
                         required
                         class="mt-2 block w-full rounded-md
                                border-gray-400 bg-white
-                               text-gray-900 text-[3vh]
+                               text-gray-900 text-[21px]
                                shadow-sm
                                focus:border-indigo-600
                                focus:ring-indigo-600"
                     >
 
                     @error('issued_at')
-                        <p class="mt-2 text-red-700 text-[3vh]">
+                        <p class="mt-2 text-red-700 text-[21px]">
                             {{ $message }}
                         </p>
                     @enderror
@@ -144,7 +151,7 @@
 
                         <label
                             for="client_name"
-                            class="block font-semibold text-gray-900 text-[3vh]"
+                            class="block font-semibold text-gray-900 text-[21px]"
                         >
                             Nombre del cliente
                         </label>
@@ -157,14 +164,14 @@
                             required
                             class="mt-2 block w-full rounded-md
                                    border-gray-400 bg-white
-                                   text-gray-900 text-[3vh]
+                                   text-gray-900 text-[21px]
                                    shadow-sm
                                    focus:border-indigo-600
                                    focus:ring-indigo-600"
                         >
 
                         @error('client_name')
-                            <p class="mt-2 text-red-700 text-[3vh]">
+                            <p class="mt-2 text-red-700 text-[21px]">
                                 {{ $message }}
                             </p>
                         @enderror
@@ -176,7 +183,7 @@
 
                         <label
                             for="client_document"
-                            class="block font-semibold text-gray-900 text-[3vh]"
+                            class="block font-semibold text-gray-900 text-[21px]"
                         >
                             DNI
                         </label>
@@ -190,14 +197,14 @@
                             required
                             class="mt-2 block w-full rounded-md
                                    border-gray-400 bg-white
-                                   text-gray-900 text-[3vh]
+                                   text-gray-900 text-[21px]
                                    shadow-sm
                                    focus:border-indigo-600
                                    focus:ring-indigo-600"
                         >
 
                         @error('client_document')
-                            <p class="mt-2 text-red-700 text-[3vh]">
+                            <p class="mt-2 text-red-700 text-[21px]">
                                 {{ $message }}
                             </p>
                         @enderror
@@ -212,7 +219,7 @@
 
                     <label
                         for="client_cuit"
-                        class="block font-semibold text-gray-900 text-[3vh]"
+                        class="block font-semibold text-gray-900 text-[21px]"
                     >
                         CUIT (opcional)
                     </label>
@@ -228,18 +235,18 @@
                         placeholder="Ej. 20123456789"
                         class="mt-2 block w-full rounded-md
                                border-gray-400 bg-white
-                               text-gray-900 text-[3vh]
+                               text-gray-900 text-[21px]
                                shadow-sm
                                focus:border-indigo-600
                                focus:ring-indigo-600"
                     >
 
-                    <p class="mt-2 text-gray-700 text-[3vh]">
+                    <p class="mt-2 text-gray-700 text-[21px]">
                         Dejar vacío si el cliente no tiene CUIT.
                     </p>
 
                     @error('client_cuit')
-                        <p class="mt-2 text-red-700 text-[3vh]">
+                        <p class="mt-2 text-red-700 text-[21px]">
                             {{ $message }}
                         </p>
                     @enderror
@@ -252,7 +259,7 @@
 
                     <label
                         for="client_iva_condition"
-                        class="block font-semibold text-gray-900 text-[3vh]"
+                        class="block font-semibold text-gray-900 text-[21px]"
                     >
                         Condición frente al IVA (código AFIP)
                     </label>
@@ -266,7 +273,7 @@
                         min="1"
                         class="mt-2 block w-full rounded-md
                             border-gray-400 bg-white
-                            text-gray-900 text-[3vh]
+                            text-gray-900 text-[21px]
                             shadow-sm
                             focus:border-indigo-600
                             focus:ring-indigo-600"
@@ -279,12 +286,12 @@
                         <option value="6">Responsable Monotributo</option>
                     </datalist>
 
-                    <p class="mt-2 text-gray-700 text-[3vh]">
+                    <p class="mt-2 text-gray-700 text-[21px]">
                         Dejar vacío si no se conoce — se factura como Consumidor Final.
                     </p>
 
                     @error('client_iva_condition')
-                        <p class="mt-2 text-red-700 text-[3vh]">
+                        <p class="mt-2 text-red-700 text-[21px]">
                             {{ $message }}
                         </p>
                     @enderror
@@ -297,7 +304,7 @@
 
                     <label
                         for="service_id"
-                        class="block font-semibold text-gray-900 text-[3vh]"
+                        class="block font-semibold text-gray-900 text-[21px]"
                     >
                         Servicio asociado
                     </label>
@@ -308,7 +315,7 @@
                         required
                         class="mt-2 block w-full rounded-md
                                border-gray-400 bg-white
-                               text-gray-900 text-[3vh]
+                               text-gray-900 text-[21px]
                                shadow-sm
                                focus:border-indigo-600
                                focus:ring-indigo-600"
@@ -336,7 +343,7 @@
                     </select>
 
                     @error('service_id')
-                        <p class="mt-2 text-red-700 text-[3vh]">
+                        <p class="mt-2 text-red-700 text-[21px]">
                             {{ $message }}
                         </p>
                     @enderror
@@ -349,7 +356,7 @@
 
                     <label
                         for="service_name"
-                        class="block font-semibold text-gray-900 text-[3vh]"
+                        class="block font-semibold text-gray-900 text-[21px]"
                     >
                         Nombre del servicio
                     </label>
@@ -363,17 +370,17 @@
                         readonly
                         class="mt-2 block w-full rounded-md
                                border-gray-400 bg-gray-100
-                               text-gray-900 text-[3vh]
+                               text-gray-900 text-[21px]
                                shadow-sm"
                     >
 
-                    <p class="mt-2 text-gray-700 text-[3vh]">
+                    <p class="mt-2 text-gray-700 text-[21px]">
                         Se guarda el nombre del servicio tal como
                         estaba al momento de cargar la factura.
                     </p>
 
                     @error('service_name')
-                        <p class="mt-2 text-red-700 text-[3vh]">
+                        <p class="mt-2 text-red-700 text-[21px]">
                             {{ $message }}
                         </p>
                     @enderror
@@ -388,7 +395,7 @@
 
                         <label
                             for="price"
-                            class="block font-semibold text-gray-900 text-[3vh]"
+                            class="block font-semibold text-gray-900 text-[21px]"
                         >
                             Precio
                         </label>
@@ -403,14 +410,14 @@
                             required
                             class="mt-2 block w-full rounded-md
                                    border-gray-400 bg-white
-                                   text-gray-900 text-[3vh]
+                                   text-gray-900 text-[21px]
                                    shadow-sm
                                    focus:border-indigo-600
                                    focus:ring-indigo-600"
                         >
 
                         @error('price')
-                            <p class="mt-2 text-red-700 text-[3vh]">
+                            <p class="mt-2 text-red-700 text-[21px]">
                                 {{ $message }}
                             </p>
                         @enderror
@@ -422,7 +429,7 @@
 
                         <label
                             for="overdue_price"
-                            class="block font-semibold text-gray-900 text-[3vh]"
+                            class="block font-semibold text-gray-900 text-[21px]"
                         >
                             Precio vencido
                         </label>
@@ -437,14 +444,14 @@
                             required
                             class="mt-2 block w-full rounded-md
                                    border-gray-400 bg-white
-                                   text-gray-900 text-[3vh]
+                                   text-gray-900 text-[21px]
                                    shadow-sm
                                    focus:border-indigo-600
                                    focus:ring-indigo-600"
                         >
 
                         @error('overdue_price')
-                            <p class="mt-2 text-red-700 text-[3vh]">
+                            <p class="mt-2 text-red-700 text-[21px]">
                                 {{ $message }}
                             </p>
                         @enderror
@@ -459,7 +466,7 @@
 
                     <label
                         for="due_date"
-                        class="block font-semibold text-gray-900 text-[3vh]"
+                        class="block font-semibold text-gray-900 text-[21px]"
                     >
                         Fecha de vencimiento
                     </label>
@@ -472,14 +479,14 @@
                         required
                         class="mt-2 block w-full rounded-md
                                border-gray-400 bg-white
-                               text-gray-900 text-[3vh]
+                               text-gray-900 text-[21px]
                                shadow-sm
                                focus:border-indigo-600
                                focus:ring-indigo-600"
                     >
 
                     @error('due_date')
-                        <p class="mt-2 text-red-700 text-[3vh]">
+                        <p class="mt-2 text-red-700 text-[21px]">
                             {{ $message }}
                         </p>
                     @enderror
@@ -492,7 +499,7 @@
 
                     <label
                         for="payment_status"
-                        class="block font-semibold text-gray-900 text-[3vh]"
+                        class="block font-semibold text-gray-900 text-[21px]"
                     >
                         Estado
                     </label>
@@ -502,7 +509,7 @@
                         name="payment_status"
                         class="mt-2 block w-full rounded-md
                                border-gray-400 bg-white
-                               text-gray-900 text-[3vh]
+                               text-gray-900 text-[21px]
                                shadow-sm
                                focus:border-indigo-600
                                focus:ring-indigo-600"
@@ -529,7 +536,7 @@
                     </select>
 
                     @error('payment_status')
-                        <p class="mt-2 text-red-700 text-[3vh]">
+                        <p class="mt-2 text-red-700 text-[21px]">
                             {{ $message }}
                         </p>
                     @enderror
@@ -544,7 +551,7 @@
 
                         <label
                             for="amount_paid"
-                            class="block font-semibold text-gray-900 text-[3vh]"
+                            class="block font-semibold text-gray-900 text-[21px]"
                         >
                             Importe pagado
                         </label>
@@ -558,7 +565,7 @@
                             value="{{ old('amount_paid') }}"
                             class="mt-2 block w-full rounded-md
                                    border-gray-400 bg-white
-                                   text-gray-900 text-[3vh]
+                                   text-gray-900 text-[21px]
                                    shadow-sm
                                    focus:border-indigo-600
                                    focus:ring-indigo-600"
@@ -571,7 +578,7 @@
 
                         <label
                             for="paid_at"
-                            class="block font-semibold text-gray-900 text-[3vh]"
+                            class="block font-semibold text-gray-900 text-[21px]"
                         >
                             Fecha de pago
                         </label>
@@ -583,7 +590,7 @@
                             value="{{ old('paid_at') }}"
                             class="mt-2 block w-full rounded-md
                                    border-gray-400 bg-white
-                                   text-gray-900 text-[3vh]
+                                   text-gray-900 text-[21px]
                                    shadow-sm
                                    focus:border-indigo-600
                                    focus:ring-indigo-600"
@@ -596,7 +603,7 @@
 
                         <label
                             for="payment_method"
-                            class="block font-semibold text-gray-900 text-[3vh]"
+                            class="block font-semibold text-gray-900 text-[21px]"
                         >
                             Método de pago
                         </label>
@@ -609,7 +616,7 @@
                             placeholder="Ej. efectivo"
                             class="mt-2 block w-full rounded-md
                                    border-gray-400 bg-white
-                                   text-gray-900 text-[3vh]
+                                   text-gray-900 text-[21px]
                                    shadow-sm
                                    focus:border-indigo-600
                                    focus:ring-indigo-600"

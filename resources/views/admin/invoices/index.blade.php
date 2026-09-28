@@ -4,7 +4,7 @@
 
         <div class="flex items-center justify-between">
 
-            <h2 class="font-semibold text-white leading-tight text-[4vh]">
+            <h2 class="font-semibold text-white leading-tight text-[32px]">
                 Facturas
             </h2>
 
@@ -51,16 +51,18 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            height: 42px;
             padding: 6px 14px;
-            background-color: #111827;
+            background-color: #111827; /* gray-900 */
             border: 1px solid #111827;
             border-radius: 6px;
             font-weight: 600;
             color: #ffffff;
-            font-size: 14px;
+            font-size: 21px;
             line-height: normal;
             font-family: inherit;
             text-decoration: none;
+            white-space: nowrap;
             cursor: pointer;
             appearance: none;
             -webkit-appearance: none;
@@ -69,7 +71,12 @@
         }
 
         .btn:hover {
-            background-color: #374151;
+            background-color: #374151; /* gray-700 */
+        }
+
+        .btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #4b5563; /* ring-gray-600 + offset */
         }
 
         .btn-secondary {
@@ -97,16 +104,9 @@
          * ==========================================================
          */
 
-        .header-actions .btn {
-            width: 220px;
-            height: 50px;
-            box-sizing: border-box;
-            font-size: 17px;
-        }
-
         .invoice-list,
         .invoice-filters {
-            width: 90%;
+            width: 100%;
             margin: 0 auto 40px auto;
         }
 
@@ -151,21 +151,21 @@
         }
 
         .invoice-label {
-            font-size: 13px;
+            font-size: 18px;
             font-weight: 600;
             color: #6b7280;
             margin-bottom: 4px;
         }
 
         .invoice-value {
-            font-size: 18px;
+            font-size: 21px;
             font-weight: 600;
             color: #111827;
             overflow-wrap: anywhere;
         }
 
         .invoice-value-normal {
-            font-size: 16px;
+            font-size: 21px;
             font-weight: 500;
             color: #111827;
             overflow-wrap: anywhere;
@@ -192,12 +192,6 @@
 
         .invoice-filters input,
         .invoice-filters select {
-            height: 48px;
-            box-sizing: border-box;
-        }
-
-        .invoice-filters .btn {
-            width: 160px;
             height: 42px;
             box-sizing: border-box;
         }
@@ -208,7 +202,7 @@
             padding: 4px 12px;
             border-radius: 9999px;
             font-weight: 600;
-            font-size: 13px;
+            font-size: 18px;
             color: #ffffff;
         }
 
@@ -227,7 +221,7 @@
             padding: 40px;
             text-align: center;
             color: #111827;
-            font-size: 20px;
+            font-size: 21px;
         }
 
         @media (max-width: 1100px) {
@@ -295,7 +289,7 @@
 
     <div class="py-12">
 
-        <div class="w-full px-6 lg:px-8">
+        <div class="mx-auto" style="width: 90vw;">
 
 
             {{-- ================================================== --}}
@@ -306,7 +300,7 @@
 
                 <div
                     class="mb-8 rounded-lg bg-green-700 border border-green-800
-                           text-white px-6 py-4 shadow-sm text-[3vh]"
+                           text-white px-6 py-4 shadow-sm text-[21px]"
                 >
                     {{ session('success') }}
                 </div>
@@ -322,7 +316,7 @@
 
                 <div
                     class="mb-8 rounded-lg bg-red-700 border border-red-800
-                           text-white px-6 py-4 shadow-sm text-[3vh]"
+                           text-white px-6 py-4 shadow-sm text-[21px]"
                 >
                     {{ session('error') }}
                 </div>
@@ -334,9 +328,9 @@
             {{-- Encabezado --}}
             {{-- ================================================== --}}
 
-            <div class="mb-8 max-w-7xl mx-auto">
+            <div class="mb-8">
 
-                <h3 class="font-semibold text-white text-[4vh]">
+                <h3 class="font-semibold text-white text-[32px]">
                     Facturas registradas
                 </h3>
 
@@ -365,7 +359,7 @@
 
                             <label
                                 for="search"
-                                class="block font-semibold text-gray-900 text-[3vh]"
+                                class="block font-semibold text-gray-900 text-[21px]"
                             >
                                 Buscar
                             </label>
@@ -380,7 +374,7 @@
                                        border-gray-400
                                        bg-white
                                        text-gray-900
-                                       text-[3vh]
+                                       text-[21px]
                                        shadow-sm
                                        focus:border-indigo-600
                                        focus:ring-indigo-600"
@@ -394,7 +388,7 @@
 
                             <label
                                 for="payment_status"
-                                class="block font-semibold text-gray-900 text-[3vh]"
+                                class="block font-semibold text-gray-900 text-[21px]"
                             >
                                 Estado
                             </label>
@@ -406,7 +400,7 @@
                                        border-gray-400
                                        bg-white
                                        text-gray-900
-                                       text-[3vh]
+                                       text-[21px]
                                        shadow-sm
                                        focus:border-indigo-600
                                        focus:ring-indigo-600"

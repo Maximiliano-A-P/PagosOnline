@@ -2,7 +2,7 @@
 
     <x-slot name="header">
 
-        <h2 class="font-semibold text-white leading-tight text-[4vh]">
+        <h2 class="font-semibold text-white leading-tight text-[32px]">
             Registrar pago
         </h2>
 
@@ -17,13 +17,13 @@
         .card-header h3 {
             color: #ffffff;
             font-weight: 600;
-            font-size: 20px;
+            font-size: 24px;
             margin: 0;
         }
 
         .card-header p {
             color: #d1d5db; /* gray-300 */
-            font-size: 14px;
+            font-size: 21px;
             margin: 8px 0 0;
         }
 
@@ -32,16 +32,18 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            height: 42px;
             padding: 6px 14px;
             background-color: #111827; /* gray-900 */
             border: 1px solid #111827;
             border-radius: 6px;
             font-weight: 600;
             color: #ffffff;
-            font-size: 14px;
+            font-size: 21px;
             line-height: normal;
             font-family: inherit;
             text-decoration: none;
+            white-space: nowrap;
             cursor: pointer;
             appearance: none;
             -webkit-appearance: none;
@@ -52,12 +54,17 @@
         .btn:hover {
             background-color: #374151; /* gray-700 */
         }
+
+        .btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #4b5563; /* ring-gray-600 + offset */
+        }
     </style>
 
 
     <div class="py-12">
 
-        <div class="max-w-3xl mx-auto px-6 lg:px-8">
+        <div class="mx-auto" style="width: 90vw;">
 
             {{-- Errores --}}
             @if ($errors->any())
@@ -66,7 +73,7 @@
                     class="mb-8 rounded-lg bg-red-700 border border-red-800
                            text-white px-6 py-4 shadow-sm"
                 >
-                    <ul class="list-disc list-inside space-y-1 text-[3vh]">
+                    <ul class="list-disc list-inside space-y-1 text-[21px]">
 
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
@@ -103,11 +110,11 @@
 
                             <div class="flex flex-col md:flex-row md:justify-between gap-2">
 
-                                <dt class="font-semibold text-gray-700 text-[3vh]">
+                                <dt class="font-semibold text-gray-700 text-[21px]">
                                     Cliente
                                 </dt>
 
-                                <dd class="text-gray-900 text-[3vh]">
+                                <dd class="text-gray-900 text-[21px]">
                                     {{ $invoice->client_name }}
                                 </dd>
 
@@ -116,11 +123,11 @@
 
                             <div class="flex flex-col md:flex-row md:justify-between gap-2">
 
-                                <dt class="font-semibold text-gray-700 text-[3vh]">
+                                <dt class="font-semibold text-gray-700 text-[21px]">
                                     Documento
                                 </dt>
 
-                                <dd class="text-gray-900 text-[3vh]">
+                                <dd class="text-gray-900 text-[21px]">
                                     {{ $invoice->client_document }}
                                 </dd>
 
@@ -129,11 +136,11 @@
 
                             <div class="flex flex-col md:flex-row md:justify-between gap-2">
 
-                                <dt class="font-semibold text-gray-700 text-[3vh]">
+                                <dt class="font-semibold text-gray-700 text-[21px]">
                                     Servicio
                                 </dt>
 
-                                <dd class="text-gray-900 text-[3vh]">
+                                <dd class="text-gray-900 text-[21px]">
                                     {{ $invoice->service_name }}
                                 </dd>
 
@@ -142,11 +149,11 @@
 
                             <div class="flex flex-col md:flex-row md:justify-between gap-2">
 
-                                <dt class="font-semibold text-gray-700 text-[3vh]">
+                                <dt class="font-semibold text-gray-700 text-[21px]">
                                     Precio original
                                 </dt>
 
-                                <dd class="text-gray-900 font-semibold text-[3vh]">
+                                <dd class="text-gray-900 font-semibold text-[21px]">
                                     ${{ number_format($invoice->price, 2, ',', '.') }}
                                 </dd>
 
@@ -155,11 +162,11 @@
 
                             <div class="flex flex-col md:flex-row md:justify-between gap-2">
 
-                                <dt class="font-semibold text-gray-700 text-[3vh]">
+                                <dt class="font-semibold text-gray-700 text-[21px]">
                                     Precio vencido
                                 </dt>
 
-                                <dd class="text-gray-900 font-semibold text-[3vh]">
+                                <dd class="text-gray-900 font-semibold text-[21px]">
                                     ${{ number_format($invoice->overdue_price, 2, ',', '.') }}
                                 </dd>
 
@@ -168,11 +175,11 @@
 
                             <div class="flex flex-col md:flex-row md:justify-between gap-2">
 
-                                <dt class="font-semibold text-gray-700 text-[3vh]">
+                                <dt class="font-semibold text-gray-700 text-[21px]">
                                     Vencimiento
                                 </dt>
 
-                                <dd class="text-gray-900 text-[3vh]">
+                                <dd class="text-gray-900 text-[21px]">
                                     {{ $invoice->due_date->format('d/m/Y') }}
                                 </dd>
 
@@ -198,7 +205,7 @@
 
                             <label
                                 for="amount_paid"
-                                class="block font-semibold text-gray-900 text-[3vh]"
+                                class="block font-semibold text-gray-900 text-[21px]"
                             >
                                 Importe pagado
                             </label>
@@ -215,7 +222,7 @@
                                        border-gray-400
                                        bg-white
                                        text-gray-900
-                                       text-[3vh]
+                                       text-[21px]
                                        shadow-sm
                                        focus:border-indigo-600
                                        focus:ring-indigo-600"
@@ -223,7 +230,7 @@
 
                             @error('amount_paid')
 
-                                <p class="mt-2 text-red-700 text-[3vh]">
+                                <p class="mt-2 text-red-700 text-[21px]">
                                     {{ $message }}
                                 </p>
 
@@ -237,7 +244,7 @@
 
                             <label
                                 for="payment_method"
-                                class="block font-semibold text-gray-900 text-[3vh]"
+                                class="block font-semibold text-gray-900 text-[21px]"
                             >
                                 Método de pago
                             </label>
@@ -250,7 +257,7 @@
                                        border-gray-400
                                        bg-white
                                        text-gray-900
-                                       text-[3vh]
+                                       text-[21px]
                                        shadow-sm
                                        focus:border-indigo-600
                                        focus:ring-indigo-600"
@@ -292,7 +299,7 @@
 
                             @error('payment_method')
 
-                                <p class="mt-2 text-red-700 text-[3vh]">
+                                <p class="mt-2 text-red-700 text-[21px]">
                                     {{ $message }}
                                 </p>
 
@@ -306,7 +313,7 @@
 
                             <label
                                 for="paid_at"
-                                class="block font-semibold text-gray-900 text-[3vh]"
+                                class="block font-semibold text-gray-900 text-[21px]"
                             >
                                 Fecha y hora del pago
                             </label>
@@ -324,7 +331,7 @@
                                        border-gray-400
                                        bg-white
                                        text-gray-900
-                                       text-[3vh]
+                                       text-[21px]
                                        shadow-sm
                                        focus:border-indigo-600
                                        focus:ring-indigo-600"
@@ -332,7 +339,7 @@
 
                             @error('paid_at')
 
-                                <p class="mt-2 text-red-700 text-[3vh]">
+                                <p class="mt-2 text-red-700 text-[21px]">
                                     {{ $message }}
                                 </p>
 

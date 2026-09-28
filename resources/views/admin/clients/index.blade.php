@@ -226,6 +226,22 @@
 
                 <div class="p-6">
 
+                    @php
+                        $condicionesIva = [
+                            1  => 'IVA Responsable Inscripto',
+                            4  => 'IVA Sujeto Exento',
+                            5  => 'Consumidor Final',
+                            6  => 'Responsable Monotributo',
+                            7  => 'Sujeto No Categorizado',
+                            8  => 'Proveedor del Exterior',
+                            9  => 'Cliente del Exterior',
+                            10 => 'IVA Liberado – Ley N° 19.640',
+                            13 => 'Monotributista Social',
+                            15 => 'IVA No Alcanzado',
+                            16 => 'Monotributo Trabajador Independiente Promovido',
+                        ];
+                    @endphp
+
                     @if ($clients->count())
 
                         <div class="overflow-x-auto">
@@ -246,6 +262,14 @@
 
                                         <th>
                                             Documento
+                                        </th>
+
+                                        <th>
+                                            CUIT
+                                        </th>
+
+                                        <th>
+                                            Condición frente al IVA
                                         </th>
 
                                         <th>
@@ -292,6 +316,31 @@
                                                        text-[21px]"
                                             >
                                                 {{ $client->document }}
+                                            </td>
+
+
+                                            <td
+                                                class="px-6 py-5
+                                                       text-gray-900
+                                                       text-[21px]"
+                                            >
+                                                {{ $client->cuit ?: 'N/A' }}
+                                            </td>
+
+
+                                            <td
+                                                class="px-6 py-5
+                                                       text-gray-900
+                                                       text-[21px]"
+                                            >
+                                                @php
+                                                    $codigoIva = $client->arca_iva_condition ?: 5;
+                                                @endphp
+
+                                                {{ $codigoIva }}
+                                                @if (isset($condicionesIva[$codigoIva]))
+                                                    — {{ $condicionesIva[$codigoIva] }}
+                                                @endif
                                             </td>
 
 

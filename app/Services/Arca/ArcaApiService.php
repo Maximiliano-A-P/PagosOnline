@@ -210,26 +210,45 @@ class ArcaApiService
          * ==========================================================
          */
 
-        $total =
-            (float) $invoice->amount_paid;
+        $total = round((float) $invoice->amount_paid,2);
 
-        $porcentajeIva =
-            (float) (
-                $invoice->tax_percentage ?? 0
-            );
+        $porcentajeIva = (float) ($invoice->tax_percentage ?? 0);
 
-        $neto =
-            round(
-                $total
-                / (1 + $porcentajeIva / 100),
+        /*
+        * Factura C:
+        * ARCA no recibe IVA separado.
+        * El total de la operación se informa como subtotal/neto y ImpIVA debe ser 0.
+        */
+        if (
+            in_array(
+                $tipoComprobante,
+                [11, 12, 13],
+                true
+            )
+        ) {
+            $neto = $total;
+            $iva = 0.00;
+        } else {
+
+            /*
+            * A, B y M:
+            * El total contiene el IVA.
+            * Lo separamos para informar:
+            *
+            * ImpNeto = base
+            * ImpIVA  = IVA
+            * ImpTotal = base + IVA
+            */
+            $neto = round(
+                $total / (1 + $porcentajeIva / 100),
                 2
             );
 
-        $iva =
-            round(
+            $iva = round(
                 $total - $neto,
                 2
             );
+        }
 
         /*
          * ==========================================================

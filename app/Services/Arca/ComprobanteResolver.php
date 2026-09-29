@@ -84,19 +84,21 @@ class ComprobanteResolver
     {
         return in_array(
             $tipoComprobante,
-            [1, 2, 3],
+            [1, 2, 3, 51, 52, 53],
             true
         );
     }
 
     /**
-     * Indica si el comprobante discrimina IVA.
+     * Indica si el comprobante utiliza IVA en WSFE.
+     * A, B y M informan IVA mediante ImpIVA  y, cuando corresponde, el detalle Iva.
+     * C no informa IVA.
      */
     public static function discriminaIva(int $tipoComprobante): bool
     {
         return in_array(
             $tipoComprobante,
-            [1, 2, 3, 51, 52, 53],
+            [1, 2, 3, 6, 7, 8, 51, 52, 53],
             true
         );
     }

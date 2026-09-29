@@ -62,6 +62,7 @@
             font-weight: 600;
             font-size: 18px;
             color: #ffffff;
+            white-space: nowrap;
         }
 
         .badge-on-time {
@@ -253,7 +254,7 @@
                                             @else
 
                                                 <span class="badge badge-on-time">
-                                                    A_tiempo
+                                                    A tiempo
                                                 </span>
 
                                             @endif

@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Invoice;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class ClientController extends Controller
 {
@@ -94,8 +96,13 @@ class ClientController extends Controller
      * Primero las pendientes (por vencimiento más próximo)
      * y después las pagadas (más recientes primero).
      */
-    public function show(Client $client)
+    public function show(Request $request, Client $client)
     {
+        $request->validate([
+            'desde' => ['nullable', 'date'],
+            'hasta' => ['nullable', 'date', 'after_or_equal:desde'],
+        ]);
+
         $todas = Invoice::where('client_document', $client->document)->get();
 
         $pendientes = $todas
@@ -108,7 +115,152 @@ class ClientController extends Controller
 
         $invoices = $pendientes->concat($pagadas)->values();
 
-        return view('admin.clients.show', compact('client', 'invoices'));
+        /*
+         * Saldos a fecha (estado de cuenta estilo asiento contable).
+         * "hasta" vacío se interpreta como "hasta hoy".
+         */
+        $desde = $request->filled('desde')
+            ? Carbon::parse($request->input('desde'))->startOfDay()
+            : null;
+
+        $hasta = $request->filled('hasta')
+            ? Carbon::parse($request->input('hasta'))->startOfDay()
+            : null;
+
+        $cuenta = $this->estadoDeCuenta($todas, $desde, $hasta);
+
+        return view(
+            'admin.clients.show',
+            array_merge(
+                compact('client', 'invoices', 'desde', 'hasta'),
+                $cuenta
+            )
+        );
+    }
+
+    /**
+     * Arma el estado de cuenta del cliente.
+     *
+     * Debe:  cada factura en su fecha de emisión (precio + impuestos)
+     *        y, si se pagó con precio vencido, el recargo por mora
+     *        en la fecha de pago.
+     * Haber: cada pago (amount_paid) en su fecha de pago.
+     * Saldo: debe - haber acumulado (positivo = el cliente debe).
+     */
+    private function estadoDeCuenta(
+        Collection $facturas,
+        ?Carbon $desde,
+        ?Carbon $hasta
+    ): array {
+        $movimientos = collect();
+
+        foreach ($facturas as $invoice) {
+            $tax = (float) ($invoice->tax_percentage ?? 0);
+
+            $totalNormal = round(
+                (float) $invoice->price * (1 + ($tax / 100)),
+                2
+            );
+
+            $fechaEmision = $invoice->issued_at->copy()->startOfDay();
+
+            $movimientos->push([
+                'fecha'   => $fechaEmision,
+                'orden'   => 0,
+                'id'      => $invoice->id,
+                'detalle' => "Factura #{$invoice->id} — {$invoice->service_name}",
+                'debe'    => $totalNormal,
+                'haber'   => 0.0,
+            ]);
+
+            if ($invoice->payment_status !== 'paid') {
+                continue;
+            }
+
+            $fechaPago = ($invoice->paid_at ?? $invoice->issued_at)
+                ->copy()
+                ->startOfDay();
+
+            $pagado  = round((float) $invoice->amount_paid, 2);
+            $recargo = round($pagado - $totalNormal, 2);
+
+            if ($recargo > 0) {
+                $movimientos->push([
+                    'fecha'   => $fechaPago,
+                    'orden'   => 0,
+                    'id'      => $invoice->id,
+                    'detalle' => "Recargo por mora — Factura #{$invoice->id}",
+                    'debe'    => $recargo,
+                    'haber'   => 0.0,
+                ]);
+            }
+
+            $movimientos->push([
+                'fecha'   => $fechaPago,
+                'orden'   => 1,
+                'id'      => $invoice->id,
+                'detalle' => "Pago factura #{$invoice->id}",
+                'debe'    => 0.0,
+                'haber'   => $pagado,
+            ]);
+        }
+
+        // Orden cronológico; en la misma fecha primero el debe y luego el haber.
+        $movimientos = $movimientos
+            ->sortBy([
+                fn ($a, $b) => $a['fecha']->timestamp <=> $b['fecha']->timestamp,
+                fn ($a, $b) => $a['orden'] <=> $b['orden'],
+                fn ($a, $b) => $a['id'] <=> $b['id'],
+            ])
+            ->values();
+
+        $hoy           = now()->startOfDay();
+        $hastaEfectivo = $hasta ?? $hoy;
+
+        // Saldo anterior al "desde".
+        $saldoAnterior = $desde
+            ? round(
+                $movimientos
+                    ->filter(fn ($m) => $m['fecha']->lt($desde))
+                    ->sum(fn ($m) => $m['debe'] - $m['haber']),
+                2
+            )
+            : 0.0;
+
+        // Movimientos dentro del rango, con saldo acumulado.
+        $saldo = $saldoAnterior;
+
+        $asientos = $movimientos
+            ->filter(fn ($m) =>
+                (! $desde || $m['fecha']->gte($desde))
+                && $m['fecha']->lte($hastaEfectivo)
+            )
+            ->map(function ($m) use (&$saldo) {
+                $saldo = round($saldo + $m['debe'] - $m['haber'], 2);
+                $m['saldo'] = $saldo;
+
+                return $m;
+            })
+            ->values();
+
+        // Saldo al día de hoy (todos los movimientos hasta hoy).
+        $saldoHoy = round(
+            $movimientos
+                ->filter(fn ($m) => $m['fecha']->lte($hoy))
+                ->sum(fn ($m) => $m['debe'] - $m['haber']),
+            2
+        );
+
+        return [
+            'hastaEfectivo' => $hastaEfectivo,
+            'saldoAnterior' => $saldoAnterior,
+            'asientos'      => $asientos,
+            'totalDebe'     => round($asientos->sum('debe'), 2),
+            'totalHaber'    => round($asientos->sum('haber'), 2),
+            'saldoFinal'    => $saldo,
+            'saldoHoy'      => $saldoHoy,
+            'hoy'           => $hoy,
+        ];
     }
 
     /**

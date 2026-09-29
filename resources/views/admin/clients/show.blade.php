@@ -109,6 +109,28 @@
         .badge-pending {
             background-color: #111827; /* gray-900 */
         }
+        .ledger th.num,
+        .ledger td.num {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .ledger-row-strong td {
+            background-color: #f3f4f6; /* gray-100 */
+            font-weight: 600;
+        }
+
+        .ledger-input {
+            box-sizing: border-box;
+            height: 42px;
+            padding: 6px 12px;
+            border: 1px solid #9ca3af; /* gray-400 */
+            border-radius: 6px;
+            font-size: 21px;
+            font-family: inherit;
+            background-color: #ffffff;
+            color: #111827;
+        }
     </style>
 
 
@@ -244,6 +266,209 @@
                         </div>
 
                     </dl>
+
+                </div>
+
+            </div>
+
+
+            {{-- ================================================== --}}
+            {{-- Tarjeta: saldos a fecha --}}
+            {{-- ================================================== --}}
+
+            @php
+                $money = function (float $amount): string {
+                    return ($amount < 0 ? '-' : '')
+                        . '$'
+                        . number_format(abs($amount), 2, ',', '.');
+                };
+            @endphp
+
+            <div id="saldos" class="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden mb-10">
+
+                <div class="card-header">
+
+                    <h3>
+                        Saldos a fecha
+                    </h3>
+
+                    <p>
+                        Movimientos de cuenta: las facturas suman al debe y los pagos al haber.
+                    </p>
+
+                </div>
+
+
+                <div class="p-6">
+
+                    {{-- Filtro de fechas --}}
+                    <form
+                        method="GET"
+                        action="{{ route('admin.clients.show', $client) }}#saldos"
+                        class="flex flex-wrap items-end gap-4 mb-8"
+                    >
+
+                        <div>
+                            <label for="desde" class="block font-semibold text-gray-700 text-[21px] mb-2">
+                                Desde
+                            </label>
+
+                            <input
+                                id="desde"
+                                name="desde"
+                                type="{{ $desde ? 'date' : 'text' }}"
+                                value="{{ $desde?->format('Y-m-d') }}"
+                                placeholder="Desde el inicio"
+                                class="ledger-input"
+                                onfocus="this.type='date'; try { this.showPicker(); } catch (e) {}"
+                                onblur="if (!this.value) this.type='text';"
+                            >
+                        </div>
+
+                        <div>
+                            <label for="hasta" class="block font-semibold text-gray-700 text-[21px] mb-2">
+                                Hasta
+                            </label>
+
+                            <input
+                                id="hasta"
+                                name="hasta"
+                                type="{{ $hasta ? 'date' : 'text' }}"
+                                value="{{ $hasta?->format('Y-m-d') }}"
+                                placeholder="Hasta hoy"
+                                class="ledger-input"
+                                onfocus="this.type='date'; try { this.showPicker(); } catch (e) {}"
+                                onblur="if (!this.value) this.type='text';"
+                            >
+                        </div>
+
+                        <button type="submit" class="btn">
+                            Filtrar
+                        </button>
+
+                        @if ($desde || $hasta)
+                            <a
+                                href="{{ route('admin.clients.show', $client) }}#saldos"
+                                class="btn"
+                            >
+                                Limpiar
+                            </a>
+                        @endif
+
+                    </form>
+
+                    @if ($errors->has('desde') || $errors->has('hasta'))
+                        <div class="mb-6 rounded-lg bg-red-700 text-white px-6 py-4 text-[21px]">
+                            {{ $errors->first('desde') ?: $errors->first('hasta') }}
+                        </div>
+                    @endif
+
+
+                    <div class="overflow-x-auto">
+
+                        <table class="ledger min-w-full divide-y divide-gray-300">
+
+                            <thead class="table-header">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Detalle</th>
+                                    <th class="num">Debe</th>
+                                    <th class="num">Haber</th>
+                                    <th class="num">Saldo</th>
+                                </tr>
+                            </thead>
+
+                            <tbody class="bg-white divide-y divide-gray-200">
+
+                                {{-- Saldo anterior al "desde" --}}
+                                @if ($desde)
+                                    <tr class="ledger-row-strong">
+                                        <td class="px-6 py-4 text-gray-900 text-[21px]" colspan="4">
+                                            Saldo al {{ $desde->copy()->subDay()->format('d/m/Y') }}
+                                        </td>
+                                        <td class="num px-6 py-4 text-gray-900 text-[21px]">
+                                            {{ $money($saldoAnterior) }}
+                                        </td>
+                                    </tr>
+                                @endif
+
+
+                                @forelse ($asientos as $asiento)
+
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 text-gray-900 text-[21px]">
+                                            {{ $asiento['fecha']->format('d/m/Y') }}
+                                        </td>
+                                        <td class="px-6 py-4 text-gray-900 text-[21px]">
+                                            {{ $asiento['detalle'] }}
+                                        </td>
+                                        <td class="num px-6 py-4 text-gray-900 text-[21px]">
+                                            {{ $asiento['debe'] > 0 ? $money($asiento['debe']) : '' }}
+                                        </td>
+                                        <td class="num px-6 py-4 text-gray-900 text-[21px]">
+                                            {{ $asiento['haber'] > 0 ? $money($asiento['haber']) : '' }}
+                                        </td>
+                                        <td class="num px-6 py-4 text-gray-900 text-[21px]">
+                                            {{ $money($asiento['saldo']) }}
+                                        </td>
+                                    </tr>
+
+                                @empty
+
+                                    <tr>
+                                        <td class="px-6 py-8 text-center text-gray-800 text-[21px]" colspan="5">
+                                            No hay movimientos en el período seleccionado.
+                                        </td>
+                                    </tr>
+
+                                @endforelse
+
+
+                                {{-- Totales del período --}}
+                                @if ($asientos->isNotEmpty())
+                                    <tr class="ledger-row-strong">
+                                        <td class="px-6 py-4 text-gray-900 text-[21px]" colspan="2">
+                                            Totales
+                                        </td>
+                                        <td class="num px-6 py-4 text-gray-900 text-[21px]">
+                                            {{ $money($totalDebe) }}
+                                        </td>
+                                        <td class="num px-6 py-4 text-gray-900 text-[21px]">
+                                            {{ $money($totalHaber) }}
+                                        </td>
+                                        <td class="px-6 py-4"></td>
+                                    </tr>
+                                @endif
+
+
+                                {{-- Saldo al final del rango --}}
+                                <tr class="ledger-row-strong">
+                                    <td class="px-6 py-4 text-gray-900 text-[21px]" colspan="4">
+                                        Saldo al {{ $hasta ? $hasta->format('d/m/Y') : 'día de hoy' }}
+                                    </td>
+                                    <td class="num px-6 py-4 text-gray-900 text-[21px]">
+                                        {{ $money($saldoFinal) }}
+                                    </td>
+                                </tr>
+
+
+                                {{-- Saldo al día de hoy (si el rango termina antes) --}}
+                                @if ($hasta && $hasta->lt($hoy))
+                                    <tr class="ledger-row-strong">
+                                        <td class="px-6 py-4 text-gray-900 text-[21px]" colspan="4">
+                                            Saldo al día de hoy
+                                        </td>
+                                        <td class="num px-6 py-4 text-gray-900 text-[21px]">
+                                            {{ $money($saldoHoy) }}
+                                        </td>
+                                    </tr>
+                                @endif
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
 
                 </div>
 

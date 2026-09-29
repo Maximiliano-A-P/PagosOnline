@@ -138,6 +138,20 @@
 
                 <div class="p-6">
 
+                    @php
+                        $taxPercentage = (float) ($invoice->tax_percentage ?? 0);
+
+                        $priceWithTax = round(
+                            (float) $invoice->price * (1 + ($taxPercentage / 100)),
+                            2
+                        );
+
+                        $overduePriceWithTax = round(
+                            (float) $invoice->overdue_price * (1 + ($taxPercentage / 100)),
+                            2
+                        );
+                    @endphp
+
                     <dl class="grid grid-cols-1 md:grid-cols-2 gap-8">
 
                         <div>
@@ -158,6 +172,17 @@
 
                             <dd class="mt-2 text-gray-900 text-[21px]">
                                 {{ $invoice->issued_at->format('d/m/Y H:i') }}
+                            </dd>
+                        </div>
+
+
+                        <div>
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                Vencimiento
+                            </dt>
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
+                                {{ $invoice->due_date->format('d/m/Y') }}
                             </dd>
                         </div>
 
@@ -230,11 +255,33 @@
 
                         <div>
                             <dt class="font-semibold text-gray-700 text-[21px]">
-                                Vencimiento
+                                Impuestos %
                             </dt>
 
                             <dd class="mt-2 text-gray-900 text-[21px]">
-                                {{ $invoice->due_date->format('d/m/Y') }}
+                                {{ number_format($taxPercentage, 2, ',', '.') }}%
+                            </dd>
+                        </div>
+
+
+                        <div>
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                Neto + Impuestos
+                            </dt>
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
+                                ${{ number_format($priceWithTax, 2, ',', '.') }}
+                            </dd>
+                        </div>
+
+
+                        <div>
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                Vencido + Impuestos
+                            </dt>
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
+                                ${{ number_format($overduePriceWithTax, 2, ',', '.') }}
                             </dd>
                         </div>
 

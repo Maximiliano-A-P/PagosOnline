@@ -1,0 +1,192 @@
+==================================================================
+PANEL ADMIN — FACTURAS
+==================================================================
+Controlador: app/Http/Controllers/Admin/InvoiceController.php
+Rutas (todas bajo /admin, middleware auth + admin):
+
+   GET    /invoices                       index     listado
+   GET    /invoices/create                create    factura histórica
+   POST   /invoices                       store     guardar histórica
+   GET    /invoices/{invoice}             show      detalle
+   DELETE /invoices/{invoice}             destroy   eliminar (con reglas)
+   POST   /invoices/generate              generate  generación periódica
+   GET    /invoices/{invoice}/payment     payment   form. pago manual
+   POST   /invoices/{invoice}/pay         registerPayment
+   POST   /invoices/{invoice}/retry-arca  retryArca
+
+
+/// LISTADO Y FILTROS (index) ///
+
+Admin accede a Facturas
+        ↓
+¿Busca texto?
+   ↓ SÍ → nombre del cliente (sin importar mayúsculas)
+          o documento
+          o nombre del servicio
+        ↓
+¿Filtra por estado?  → pending / paid
+        ↓
+¿Rango de fecha de EMISIÓN? → date_from / date_to
+(ambos opcionales, se combinan con lo anterior)
+        ↓
+Orden: modificadas más recientemente primero
+       (updated_at desc, luego id desc)
+        ↓
+Paginado de 15 (conserva los filtros al cambiar de página)
+
+El listado se muestra en tarjetas (no en tabla) con:
+Emisión, Vencimiento, Estado, Precio neto, Precio vencido neto,
+Impuestos %, Neto + Impuestos, Vencido + Impuestos.
+
+
+/// DETALLE (show) ///
+
+Información de la factura:
+   ID, Emisión, Vencimiento, Cliente, Documento, Servicio,
+   ID del servicio, Precio, Precio vencido, Impuestos %,
+   Neto + Impuestos, Vencido + Impuestos, Estado, Importe pagado,
+   Fecha de pago, Método de pago
+
+Datos ARCA:
+   Estado ARCA, CAE, Tipo de comprobante, Punto de venta,
+   Número de comprobante, Vencimiento CAE
+
+Botones según el estado:
+
+   pendiente y sin pago                → Registrar pago
+   pagada, sin CAE y no aprobada       → Reintentar ARCA
+   sin pago, sin MP, sin CAE           → Eliminar
+
+
+/// GENERACIÓN PERIÓDICA (generate) ///
+
+Admin pulsa "Generar facturas"
+(conviene actualizar antes los precios de los servicios)
+        ↓
+Para cada cliente y cada servicio asignado
+        ↓
+Busca la última factura de ese cliente (por documento)
+y de ESE service_id  (no por nombre: el nombre puede cambiar)
+        ↓
+¿existe alguna?
+   ↓ NO → generar la primera
+   ↓ SÍ
+meses entre el mes de la última emisión y el mes actual
+        ↓
+¿meses >= period del servicio?
+   ↓ NO → no genera
+   ↓ SÍ → genera
+
+period:  1 mensual | 3 trimestral | 6 semestral | 12 anual
+
+Datos de la factura generada:
+
+   issued_at            hoy
+   due_date             día due_day del mes actual
+                        (si el mes tiene menos días, el último día;
+                         si ya pasó, se usa hoy)
+   service_period_start primer día del mes actual
+   service_period_end   start + period meses - 1 día
+   price, overdue_price, tax_percentage   copiados del servicio
+   client_*             copiados del cliente (nombre, documento,
+                        CUIT, condición IVA, tipo doc = 96)
+   service_name         copiado del servicio (dato histórico)
+   payment_status       pending
+   ARCA                 todo en null
+
+Resultado: "Se generaron X factura(s) correctamente."
+No hay automatismo: solo se ejecuta cuando el admin lo pide.
+
+
+/// FACTURA HISTÓRICA (create / store) ///
+
+Sirve para cargar facturas anteriores al sistema.
+
+Admin completa:
+   emisión, cliente (nombre, documento, tipo doc, CUIT, IVA),
+   servicio (opcional) + nombre del servicio, precio, precio
+   vencido, % impuestos, vencimiento, estado, y si está pagada:
+   importe, fecha y método de pago
+        ↓
+Validaciones destacadas:
+   vencimiento >= emisión
+   CUIT de 11 dígitos (opcional)
+   % impuestos entre 0 y 100
+   estado: pending o paid
+        ↓
+¿tiene service_id?
+   ↓ SÍ → guarda el id      ↓ NO → service_id = null
+        ↓
+service_name siempre se guarda (dato histórico)
+        ↓
+¿pagada y con fecha de pago? → paid_by = admin actual
+        ↓
+Crea la factura. ARCA queda en null y NO se emite sola.
+
+
+/// PAGO MANUAL (payment / registerPayment) ///
+
+Factura pendiente → "Registrar pago"
+        ↓
+¿ya estaba pagada?
+   ↓ SÍ → error "ya figura como pagada"
+   ↓ NO
+Formulario:
+   - importe pagado  (número >= 0)
+   - fecha de pago
+   - método de pago  (texto libre)
+        ↓
+Registra:
+   payment_status = paid
+   amount_paid, paid_at, payment_method
+   paid_by = ID del admin logueado
+        ↓
+IMPORTANTE: el pago manual NO emite ante ARCA.
+Para emitir hay que usar "Reintentar ARCA" en el detalle.
+
+El importe no se compara con el precio: el admin puede cargar
+cualquier valor (ARCA se emite por el importe cargado).
+
+
+/// ELIMINAR (destroy) ///
+
+Admin pulsa Eliminar
+        ↓
+¿la factura cumple alguna de estas?
+   - payment_status = paid
+   - amount_paid con valor
+   - tiene mercadopago_payment_id
+   - tiene CAE
+   - arca_status = aprobado
+   ↓ SÍ → no se elimina ("pagada o autorizada por ARCA")
+   ↓ NO → se elimina
+
+Motivo: un comprobante fiscal autorizado o un pago registrado no
+puede desaparecer. El botón solo aparece en facturas eliminables.
+
+
+/// REINTENTAR ARCA (retryArca) ///
+
+Botón "Reintentar ARCA"
+        ↓
+¿factura pagada?            NO → error
+        ↓ SÍ
+¿ya tiene CAE / aprobada?   SÍ → error
+        ↓ NO
+¿existe arca_config?        NO → error
+        ↓ SÍ
+ArcaApiService::emitir(factura, automatico = false)
+        ↓
+Vuelve al detalle (el resultado queda en "Estado ARCA")
+
+Detalle completo en: ARCA-Laravel-detalle.txt
+
+
+/// CICLO DE VIDA DE UNA FACTURA ///
+
+Generada (pending) ──► Pago online (MP) ──┐
+                  │                       ├─► paid ──► ARCA
+                  └──► Pago manual (admin)┘            │
+                                                       ├─ aprobado (CAE)
+                                                       └─ error (reintentar)
+Histórica: se crea con el estado que se cargue, sin ARCA.

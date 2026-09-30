@@ -1,0 +1,115 @@
+==================================================================
+DEPLOY — RENDER + DOCKER
+==================================================================
+
+/// STACK EN PRODUCCIÓN ///
+
+Render
+  ↓
+Docker (Dockerfile de 2 etapas)
+  ↓
+Supervisor (supervisord)
+  ├── PHP-FPM ────┐
+  └── NGINX  ◄────┘   escucha en el puerto 10000
+        ↓
+     Laravel
+        ↓
+   PostgreSQL
+
+
+/// DOCKERFILE ///
+
+Etapa 1: node:22
+   npm ci → npm run build   (Vite + Tailwind)
+   genera los assets del front
+        ↓
+Etapa 2: php:8.4-fpm
+   extensiones: pdo_pgsql, bcmath, soap, intl, zip, gd (entre otras)
+   composer install
+   copia el código y los assets de la etapa 1
+   copia la config de nginx, supervisord y start.sh
+   EXPOSE 10000
+   CMD start.sh
+
+La extensión soap (y openssl) son necesarias para el WSAA de ARCA.
+Ruta de control: /debug-extensions devuelve si soap y openssl están
+cargadas.
+
+
+/// start.sh (cada arranque/deploy) ///
+
+crear carpetas de storage y bootstrap/cache
+   ↓
+permisos (www-data, 775)
+   ↓
+storage:link (si falta)
+   ↓
+php artisan migrate --force
+(antes de tocar cachés: optimize:clear usa la tabla cache)
+   ↓
+php artisan db:seed --force
+   ├── AdminUserSeeder: crea/actualiza el admin (ADMIN_EMAIL,
+   │                    ADMIN_PASSWORD) — idempotente
+   └── DemoDataSeeder:  carga datos de demo solo si NO hay clientes
+   ↓
+optimize:clear
+   ↓
+config:cache · route:cache · view:cache
+   ↓
+supervisord (PHP-FPM + NGINX)
+
+
+/// VARIABLES DE ENTORNO (Render) ///
+
+Aplicación
+   APP_NAME, APP_ENV, APP_KEY, APP_DEBUG, APP_URL
+
+Base de datos (PostgreSQL)
+   DB_CONNECTION, DB_HOST, DB_PORT, DB_DATABASE,
+   DB_USERNAME, DB_PASSWORD
+
+Admin inicial (seeder)
+   ADMIN_EMAIL, ADMIN_PASSWORD
+
+Mercado Pago
+   MERCADOPAGO_ACCESS_TOKEN
+   MERCADOPAGO_WEBHOOK_SECRET
+   MERCADOPAGO_WEBHOOK_URL
+
+ARCA
+   ARCA_AMBIENTE        homologacion | produccion
+   ARCA_CUIT            CUIT del emisor
+   ARCA_CERTIFICATE_CRT certificado en Base64
+   ARCA_PRIVATE_KEY     clave privada en Base64
+   ARCA_API_URL         URL de la API ARCA (Node)
+   ARCA_API_KEY         clave interna (la misma que en la API)
+   ARCA_RETRY_* (opcionales, ver ARCA-Laravel-detalle.txt)
+
+Google Login
+   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT
+
+Correo (códigos de verificación y desbloqueo)
+   MAIL_MAILER, MAIL_HOST, MAIL_PORT, MAIL_USERNAME,
+   MAIL_PASSWORD, MAIL_ENCRYPTION, MAIL_FROM_ADDRESS, MAIL_FROM_NAME
+
+Sesión y logs
+   SESSION_SECURE_COOKIE  → true en HTTPS para cookie Secure
+   LOG_CHANNEL=stderr     → sin esto los Log::error() NO aparecen
+                            en los logs de Render (Laravel escribe
+                            en storage/logs/laravel.log, que no se ve)
+
+
+/// SISTEMA DE ARCHIVOS EFÍMERO ///
+
+Render borra el disco en cada deploy. Por eso:
+   - el certificado y la clave de ARCA van en variables de entorno
+     (Base64), no en archivos
+   - el token de WSAA se guarda en la base (arca_config), no en disco
+   - los logs van a stderr
+
+
+/// PROCESOS QUE FALTAN ///
+
+Hoy solo corren PHP-FPM y NGINX. No hay:
+   - scheduler / cron  → arca:retry-pending nunca se ejecuta solo
+   - queue worker      → no se usan colas hoy

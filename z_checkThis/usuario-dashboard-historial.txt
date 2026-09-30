@@ -1,0 +1,87 @@
+==================================================================
+USUARIO — DASHBOARD, DOCUMENTOS, PAGO E HISTORIAL
+==================================================================
+Controladores: DashboardController, DashboardInvoiceController
+Todas las rutas requieren login (middleware auth).
+
+Relación clave:
+   users ── client_user ── clients ── (documento) ── invoices
+
+Un usuario NO ve todas las facturas: solo las de los clientes
+(documentos) que vinculó a su cuenta.
+
+
+/// VINCULAR UN DOCUMENTO ///
+
+Usuario en el Dashboard
+        ↓
+Ingresa un número de documento
+        ↓
+¿existe un cliente con ese documento?
+   ↓ NO → error "no está registrado en el sistema"
+   ↓ SÍ
+¿ya estaba vinculado a este usuario?
+   ↓ SÍ → error "ya has agregado este documento"
+   ↓ NO
+Crea la relación en client_user
+        ↓
+Vuelve al Dashboard (aparecen sus facturas)
+
+Desvincular: quita la relación (no borra el cliente ni facturas).
+
+
+/// DASHBOARD ///
+
+documentos = clientes vinculados al usuario
+        ↓
+¿tiene documentos?
+   ↓ NO → sin facturas
+   ↓ SÍ
+facturas pendientes de esos documentos
+(payment_status = pending), emisión más reciente primero
+        ↓
+Por cada factura:
+   ┌────────────┴────────────┐
+   ↓                         ↓
+IMPRIMIR                   PAGAR
+(PDF — pendiente,          (Mercado Pago)
+ hoy responde 501)         detalle en mercado-pago-implementacion.txt
+
+
+/// PAGAR ///
+
+GET /dashboard/invoices/{invoice}/pay
+        ↓
+¿la factura es de un documento del usuario?  NO → 403
+        ↓ SÍ
+¿ya está pagada?  SÍ → mensaje de error
+        ↓ NO
+crear Preference en Mercado Pago
+        ↓
+redirigir a Mercado Pago
+        ↓
+el usuario paga → webhook → factura pagada → ARCA
+
+
+/// HISTORIAL ///
+
+GET /dashboard/invoices/history
+        ↓
+facturas PAGADAS de los documentos del usuario
+        ↓
+Orden: emisión más reciente primero, de a 10
+        ↓
+Columnas: datos de la factura, importe pagado
+          (aclara si fue precio normal o vencido),
+          estado A tiempo / Vencida, botón Descargar PDF
+El texto "A tiempo" no se parte en dos líneas (badge con nowrap).
+
+Estado y aclaración del importe (se decide por la FECHA de pago):
+   paid_at posterior a due_date → "Vencida"   (precio vencido)
+   paid_at hasta due_date       → "A tiempo"  (precio normal)
+
+
+/// PENDIENTE ///
+
+- PDF de la factura (dashboard.invoices.pdf devuelve 501)
+- QR y comprobante ARCA, envío por email

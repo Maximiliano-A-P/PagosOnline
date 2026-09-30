@@ -1,0 +1,158 @@
+==================================================================
+PANEL ADMIN — CLIENTES, SERVICIOS Y SALDOS A FECHA
+==================================================================
+Controladores (app/Http/Controllers/Admin/):
+   ClientController, ServiceController, ClientServiceController
+
+
+/// CLIENTES ///
+
+   listar (con búsqueda) | crear | ver | editar | eliminar
+
+Campos:
+   name                 nombre
+   document             DNI (numérico)
+   cuit                 11 dígitos (opcional)
+   arca_iva_condition   código de condición frente al IVA (opcional)
+                        1 Resp. Inscripto | 4 Exento |
+                        5 Consumidor Final | 6 Monotributo
+                        (sin cargar = se factura como Consumidor Final)
+
+Búsqueda: por nombre (sin importar mayúsculas) o documento.
+Listado: más recientes primero, de a 15.
+
+Eliminar cliente
+        ↓
+Quita sus relaciones con servicios (client_services)
+        ↓
+Elimina el cliente
+        ↓
+Las facturas permanecen intactas: tienen sus propios datos históricos
+(se vinculan al cliente por client_document, no por clave foránea)
+
+
+/// DETALLE DEL CLIENTE (show) ///
+
+Tres tarjetas, en este orden:
+
+   1. Información del cliente
+   2. Saldos a fecha
+   3. Facturas del cliente
+      (primero las pendientes por vencimiento más próximo,
+       luego las pagadas, más recientes primero)
+
+
+/// SALDOS A FECHA — ESTADO DE CUENTA ///
+
+Filtro (GET, en la misma página):
+   Desde  → vacío = desde el inicio
+   Hasta  → vacío = hasta hoy   (placeholder "Hasta hoy")
+   validación: hasta >= desde
+
+Qué genera movimientos (las fechas son emisión y pago):
+
+   FACTURA emitida            DEBE   en issued_at
+                              (precio normal + impuestos)
+   PAGO recibido              HABER  en paid_at
+                              (amount_paid)
+   RECARGO POR MORA           DEBE   en paid_at
+                              solo si amount_paid > precio normal + IVA
+                              (diferencia entre lo pagado y lo normal)
+
+   saldo = suma del DEBE - suma del HABER
+   saldo positivo = el cliente debe
+
+Orden: por fecha; en la misma fecha primero DEBE y después HABER.
+
+Armado del cálculo (ClientController::estadoDeCuenta):
+
+todas las facturas del cliente (por documento)
+        ↓
+generar movimientos (debe / haber / mora)
+        ↓
+ordenar cronológicamente
+        ↓
+saldo anterior = suma de los movimientos ANTERIORES a "desde"
+(si no hay "desde", es 0)
+        ↓
+movimientos dentro del rango [desde ... hasta o hoy]
+con saldo acumulado partiendo del saldo anterior
+        ↓
+saldo final = saldo tras el último movimiento del rango
+        ↓
+saldo de hoy = todos los movimientos hasta hoy
+
+Cómo se muestra:
+
+   Saldo al <día anterior a "desde">          $ xxx      (si hay desde)
+   fecha | detalle | debe | haber | saldo
+   01/09/2026  Factura #10 — Servicio   $ 1.210,00        $ 1.210,00
+   05/09/2026  Pago factura #10                 $ 1.210,00 $ 0,00
+   Totales                             $ debe   $ haber
+   Saldo al <hasta> (o "día de hoy")          $ xxx
+   Saldo al día de hoy                        $ xxx      (solo si
+                                                          "hasta" < hoy)
+
+Una factura pendiente aparece solo en el DEBE (aún no hay pago).
+Una factura pagada aparece en DEBE (emisión) y en HABER (pago).
+
+
+/// SERVICIOS ///
+
+   listar | crear | editar | eliminar   (no hay vista de detalle)
+
+Campos:
+   service         nombre
+   price           precio normal (neto)
+   tax_percentage  % de impuestos (opcional)
+   due_day         día de vencimiento (1 a 31)
+   overdue_price   precio con recargo por vencimiento (neto)
+   period          cada cuántos meses se factura
+
+period:  1 mensual | 3 trimestral | 6 semestral | 12 anual
+
+Eliminar un servicio no afecta facturas: invoices.service_id pasa
+a null y la factura conserva service_name.
+Cambiar un precio no altera facturas ya generadas (se copian al
+generarlas).
+
+
+/// CLIENTES × SERVICIOS ///
+
+Admin abre Clientes × Servicios
+        ↓
+Listado de clientes (con búsqueda) y sus servicios
+        ↓
+Selecciona un cliente
+        ↓
+   ┌───────────────┴───────────────┐
+   ↓                               ↓
+ASIGNAR                         QUITAR
+   ↓                               ↓
+elige servicio                  elige servicio
+   ↓                               ↓
+valida que exista               valida que exista
+   ↓                               ↓
+syncWithoutDetaching            detach
+(no duplica la relación)
+   └───────────────┬───────────────┘
+                   ↓
+       Las facturas existentes NO se eliminan
+
+Estos vínculos son los que usa "Generar facturas" para saber qué
+facturar a cada cliente.
+
+
+/// ACCESO AL PANEL ///
+
+/admin ─► middleware auth + admin (AdminMiddleware)
+   ↓
+¿autenticado?  NO → 403
+   ↓ SÍ
+¿is_admin?     NO → 403
+   ↓ SÍ
+Panel admin
+
+Accesos del panel principal: Clientes, Servicios, Clientes × Servicios,
+Facturas, Cargar factura histórica y Configuración ARCA
+(/admin/arca: condición IVA y punto de venta del emisor).

@@ -1,0 +1,287 @@
+==================================================================
+ARCA — IMPLEMENTACIÓN DETALLADA EN EL PROYECTO LARAVEL
+==================================================================
+(El archivo "ARCA" explica el reparto general Laravel / API ARCA.
+ Este explica cómo quedó implementado del lado de Laravel.)
+
+
+/// ARCHIVOS INVOLUCRADOS ///
+
+app/Services/Arca/
+   ├── WsaaClient.php          → autenticación contra WSAA (Token + Sign)
+   ├── ComprobanteResolver.php → tipo de comprobante y documento del receptor
+   └── ArcaApiService.php      → arma el pedido, llama a la API ARCA,
+                                 guarda la respuesta, decide reintentos
+
+app/Console/Commands/RetryPendingArcaInvoices.php
+   → comando "php artisan arca:retry-pending" (reintentos automáticos)
+
+app/Models/ArcaConfig.php + Admin/ArcaConfigController.php
+   → configuración editable desde /admin/arca
+
+config/arca.php
+   → ambiente, WSDL, URL/clave de la API, CUIT, certificado, reintentos
+
+
+/// DE DÓNDE SALE CADA DATO DE CONFIGURACIÓN ///
+
+.env (Render)                        Panel admin (/admin/arca)
+   │                                       │
+   ├── ARCA_AMBIENTE                       ├── condicion_iva  (emisor)
+   │   homologacion / produccion           └── punto_venta
+   ├── ARCA_CUIT
+   ├── ARCA_CERTIFICATE_CRT  (base64)     Tabla arca_config (la completa
+   ├── ARCA_PRIVATE_KEY      (base64)     el sistema, no se carga a mano)
+   ├── ARCA_API_URL                          ├── token
+   └── ARCA_API_KEY                          ├── sign
+                                             └── token_expires_at
+
+El certificado y la clave NO se guardan en disco: se decodifican
+desde el .env y se escriben a archivos temporales solo mientras se
+firma cada ticket; después se borran.
+(certificate_path / private_key_path ya no existen en arca_config)
+
+
+/// CUÁNDO SE EMITE ///
+
+Pago online (Mercado Pago)          Pago manual (admin)
+        │                                   │
+   webhook confirma pago                    │
+        │                                   │
+   invoice = paid                      invoice = paid
+        │                                   │
+   emitir() AUTOMÁTICO                 NO emite sola
+   (dentro de try/catch)                    │
+        │                          Admin usa "Reintentar ARCA"
+        │                          en el detalle de la factura
+        └─────────────┬────────────────────┘
+                      ↓
+                 emitir()
+
+Regla: se emite SIEMPRE después del pago, con el monto realmente
+cobrado (amount_paid), nunca antes.
+Un error de ARCA en el webhook no rompe el webhook: el pago queda
+registrado igual y el error queda guardado en arca_status.
+
+
+/// FLUJO DE emitir(invoice, automatico) ///
+
+emitir()
+   ↓
+¿ya tiene CAE o arca_status = aprobado?
+   ↓ SÍ → no hace nada (nunca se emite dos veces)
+   ↓ NO
+¿es automático y arca_retry_at es futuro?
+   ↓ SÍ → no hace nada (todavía no toca reintentar)
+   ↓ NO
+guarda arca_last_attempt_at = ahora
+   ↓
+¿existe ARCA_CUIT en el .env?
+   ↓ NO → error permanente
+   ↓ SÍ
+WsaaClient::obtenerCredenciales()  (Token + Sign)
+   ↓
+¿falló?
+   ├── error transitorio → registrarFalloTransitorio() → fin
+   └── otro error        → marcarError() → fin
+   ↓ OK
+ComprobanteResolver → tipo de comprobante
+   ↓
+¿el comprobante pide CUIT (Factura A) y el cliente no tiene?
+   ↓ SÍ → error permanente (no se reintenta)
+   ↓ NO
+ComprobanteResolver → docTipo / docNro
+   ↓
+calcula fechas e importes
+   ↓
+POST {ARCA_API_URL}/wsfe/solicitar-cae
+(header X-Internal-Api-Key, timeout 30s)
+   ↓
+¿sin conexión / HTTP 408, 429 o 5xx?
+   ↓ SÍ → registrarFalloTransitorio()
+   ↓ NO
+procesarRespuesta()
+   ├── exito = true  → arca_status = aprobado + CAE
+   └── exito = false → marcarError() con el mensaje de ARCA
+
+
+/// WSAA (WsaaClient) ///
+
+obtenerCredenciales()
+   ↓
+¿hay token + sign guardados y token_expires_at es futuro?
+   ↓            ↓
+  SÍ            NO
+   ↓            ↓
+usa los       autenticar()
+guardados        ↓
+              generar LoginTicketRequest (XML)
+              - uniqueId = timestamp
+              - generationTime = ahora - 10 min
+              - expirationTime = ahora + 10 min
+              - service = wsfe
+                 ↓
+              firmar con certificado + clave (CMS/PKCS#7,
+              NO detached, con archivos temporales)
+                 ↓
+              SoapClient → loginCms() en WSAA
+                 ↓
+              leer Token, Sign y expiración
+                 ↓
+              guardar en arca_config
+                 ↓
+              devolver Token + Sign
+
+El token se reutiliza hasta que vence: no se pide uno nuevo por
+cada factura.
+
+
+/// TIPO DE COMPROBANTE (ComprobanteResolver) ///
+
+Condición del EMISOR      Condición del CLIENTE      Comprobante
+────────────────────      ─────────────────────      ───────────
+1 Resp. Inscripto         1 Resp. Inscripto          A  (código 1)
+1 Resp. Inscripto         cualquier otra / vacía     B  (código 6)
+otra (ej. Monotributo)    cualquiera                 C  (código 11)
+
+Cliente sin condición cargada = Consumidor Final (5).
+
+Documento del receptor:
+   Factura A        → CUIT (docTipo 80)
+   Factura B / C    → DNI  (docTipo 96)
+   sin DNI          → Consumidor Final (docTipo 99, nro 0)
+
+IVA:
+   A y B → se informa IVA discriminado (importeIva + alicuotasIva)
+   C     → no discrimina IVA (importeIva = 0)
+
+
+/// IMPORTES QUE SE ENVÍAN ///
+
+total = amount_paid (lo que realmente se cobró)
+
+Factura C:
+   neto = total
+   iva  = 0
+
+Factura A / B:
+   neto = total / (1 + tax_percentage / 100)
+   iva  = total - neto
+   alicuotasIva = [{ id, baseImp = neto, importe = iva }]
+
+Alícuotas (porcentaje → id de ARCA):
+   0 → 3   |  10,5 → 4  |  21 → 5  |  27 → 6  |  5 → 8  |  2,5 → 9
+   (si el porcentaje no está en la lista, usa 21 → id 5)
+
+Otros datos del pedido:
+   concepto            = 2 (servicios)
+   fchServDesde/Hasta  = service_period_start / service_period_end
+   fchVtoPago          = due_date (si fuese anterior a issued_at,
+                         se usa issued_at porque ARCA no lo permite)
+   fecha comprobante   = issued_at
+
+
+/// RESULTADO GUARDADO EN LA FACTURA ///
+
+APROBADO
+   arca_status         = "aprobado"
+   arca_cae            = CAE devuelto
+   arca_cae_expires_at = vencimiento del CAE
+   arca_invoice_type   = tipo de comprobante usado
+   arca_point_of_sale  = punto de venta de arca_config
+   arca_invoice_number = número de comprobante
+   arca_retry_attempts = 0
+   arca_retry_at       = null
+
+ERROR
+   arca_status         = "error: <mensaje>"
+   arca_retry_at       = null (error permanente) o fecha (transitorio)
+
+SIN PROCESAR
+   arca_status         = null (todavía no se intentó)
+
+
+/// ERRORES: TRANSITORIOS vs PERMANENTES ///
+
+Error de conexión / HTTP 408 / 429 / 5xx / mensaje de WSAA con
+"timeout", "connection", "502", "503", "504"...
+        ↓
+   TRANSITORIO → se programa reintento
+
+Falta CUIT en .env / cliente sin CUIT para Factura A /
+rechazo funcional de ARCA (datos inválidos)
+        ↓
+   PERMANENTE → no se reintenta solo; se corrige el dato
+                y el admin usa "Reintentar ARCA"
+
+
+/// REINTENTOS ///
+
+Configurables por .env (config/arca.php → retry):
+   ARCA_RETRY_DELAY_MINUTES      = 10   (primer espera)
+   ARCA_RETRY_MAX_BACKOFF_MINUTES= 120  (tope de espera)
+   ARCA_RETRY_MAX_ATTEMPTS       = 8    (intentos automáticos)
+   ARCA_RETRY_MAX_PER_RUN        = 1    (facturas por ejecución)
+
+Espera = min(10 × 2^(intento-1), 120) minutos:
+   intento 1 → 10 min
+   intento 2 → 20 min
+   intento 3 → 40 min
+   intento 4 → 80 min
+   intento 5 en adelante → 120 min
+
+Quién consume intentos:
+   AUTOMÁTICO (comando)  → suma 1 al contador
+                           al pasar el máximo: "Se agotaron los
+                           reintentos automáticos" y retry_at = null
+   MANUAL / WEBHOOK      → NO suma intentos, pero igual deja
+                           programado el próximo reintento automático
+
+Comando arca:retry-pending
+   ↓
+¿existe arca_config?  NO → termina
+   ↓ SÍ
+busca facturas con:
+   payment_status = paid
+   arca_cae = null
+   arca_retry_at <= ahora
+   arca_retry_attempts < máximo
+   ↓
+ordena por issued_at, id  → toma hasta max_per_run
+   ↓
+emitir(factura, automatico = true)
+
+Botón "Reintentar ARCA" (admin)
+   - solo si la factura está pagada y sin CAE
+   - ignora arca_retry_at (no espera el temporizador)
+   - ruta: POST /admin/invoices/{invoice}/retry-arca
+
+
+/// ⚠ IMPORTANTE: EL COMANDO NO ESTÁ PROGRAMADO ///
+
+arca:retry-pending existe, pero no hay scheduler ni cron que lo
+ejecute (routes/console.php no lo agenda y supervisord solo corre
+PHP-FPM y NGINX).
+Hasta que se programe (Schedule::command(...)->everyMinute() más
+un proceso que ejecute "php artisan schedule:work", o un cron
+externo), los reintentos automáticos NO corren solos: solo
+funciona el botón manual.
+
+
+/// SNAPSHOT DE DATOS EN LA FACTURA ///
+
+Al generar la factura se copian del cliente y del servicio:
+   client_cuit, client_iva_condition, client_document_type (96)
+   service_period_start / service_period_end
+   tax_percentage
+
+Así, si el cliente o el servicio cambian después, la factura y lo
+que se declara a ARCA no se alteran.
+
+
+/// TODAVÍA NO IMPLEMENTADO (del plan del archivo "ARCA") ///
+
+- Generación del QR (la columna arca_qr existe, no se completa)
+- Generación del comprobante / PDF
+  (la ruta dashboard.invoices.pdf responde 501)
+- Envío del comprobante por email

@@ -117,7 +117,9 @@ Auth::attempt   ¿ya pasó la hora?
    ↓
 ¿llegó a 20?
    ↓
-bloquea 1 hora
+bloquea 1 hora (login_locked_until)
+   ↓
+login_attempts vuelve a 0
    ↓
 genera token de desbloqueo
    ↓
@@ -140,7 +142,7 @@ Se guarda únicamente el hash
         ↓
 Se envía enlace al email
         ↓
-Usuario hace click
+Usuario hace click (enlace válido 1 hora)
         ↓
 Se recibe el token
         ↓
@@ -181,9 +183,10 @@ Se envía al email
   SÍ                 NO
    ↓                 ↓
 Activar cooldown    Eliminar código
-de envío            generado
-   ↓                 ↓
-Código válido       No activar cooldown
+de envío (1 hora,   generado
+por cuenta)          ↓
+   ↓                No activar cooldown
+Código válido
 durante 5 minutos
       ↓
 ¿Código correcto?
@@ -192,7 +195,7 @@ durante 5 minutos
    ↓             ↓
 +1 intento     completar operación
    ↓
-¿Llegó al límite?
+¿Llegó al límite (5 intentos)?
    ↓
 Eliminar código
       ↓
@@ -214,7 +217,7 @@ Se informa al usuario
         ↓
 Se solicita código por email
         ↓
-Cooldown de envío
+Cooldown de envío (1 hora, por cuenta y no por IP)
         ↓
 Código válido durante 5 minutos
         ↓
@@ -393,7 +396,8 @@ tiempo de respuesta aleatorio
 - Invalidación de sesión al cerrar sesión
 - Regeneración del token CSRF
 - Cookies de sesión HttpOnly
-- Cookies Secure en HTTPS
+- Cookies Secure en HTTPS (se activa con SESSION_SECURE_COOKIE=true)
+- Cookies SameSite=lax
 - Códigos de un solo uso
 - Códigos con expiración
 - Límite de intentos
@@ -404,3 +408,74 @@ tiempo de respuesta aleatorio
 - Contraseñas almacenadas mediante hash
 - No revelar si una cuenta existe en operaciones sensibles
 - Tiempo de respuesta controlado en operaciones sensibles
+
+
+/// GOOGLE: DETALLES ///
+
+Cuenta nueva por Google:
+   name, email, google_id, password = null, email_verified_at = ahora
+Cuenta existente sin Google:
+   se le agrega google_id y se marca el email como verificado
+Cuenta existente con Google:
+   entra directamente
+En todos los casos: Auth::login → regenerar sesión → dashboard
+Si Google falla: vuelve al login con mensaje de error.
+
+
+/// AUTORIZACIÓN (QUIÉN VE QUÉ) ///
+
+Rutas con 'auth'
+   ↓
+Usuario común
+   ├── Dashboard: solo las facturas de los documentos que vinculó
+   │   (tabla client_user)
+   ├── Pagar: solo facturas de sus documentos (si no, 403)
+   ├── Historial de facturas pagadas
+   └── Perfil
+
+Rutas con 'auth' + 'admin'  (prefijo /admin)
+   ↓
+AdminMiddleware
+   ↓
+¿is_admin = true?
+   ↓ NO → 403
+   ↓ SÍ → Panel admin
+
+El primer administrador lo crea AdminUserSeeder en cada deploy
+(ADMIN_EMAIL / ADMIN_PASSWORD).
+
+
+/// TABLAS DE AUTENTICACIÓN ///
+
+┌──────────────────────────┐
+│          users           │
+├──────────────────────────┤
+│ id, name, email          │
+│ password (puede ser null)│
+│ google_id (único)        │
+│ is_admin                 │
+│ email_verified_at        │
+│ email_verification_sent_at
+│ password_setup_sent_at   │
+│ login_attempts           │
+│ login_locked_until       │
+└────────────┬─────────────┘
+             │ 1 ── N
+   ┌─────────┼───────────────────────┐
+   ↓         ↓                       ↓
+┌────────────────────┐ ┌──────────────────────┐ ┌──────────────────┐
+│ email_verification │ │ password_setup_codes │ │ login_unlock_    │
+│ _codes             │ │                      │ │ tokens           │
+├────────────────────┤ ├──────────────────────┤ ├──────────────────┤
+│ user_id            │ │ user_id              │ │ user_id          │
+│ code (6 dígitos)   │ │ code (6 dígitos)     │ │ token (hash      │
+│ attempts           │ │ attempts             │ │  sha256, único)  │
+│ expires_at         │ │ expires_at           │ │ expires_at       │
+└────────────────────┘ └──────────────────────┘ └──────────────────┘
+
+Duraciones y límites:
+   código de email / de contraseña   5 minutos, máx. 5 intentos
+   cooldown de reenvío de código     1 hora
+   bloqueo de cuenta                 1 hora (a los 20 fallos)
+   enlace de desbloqueo              1 hora, un solo uso
+   tiempo de respuesta               aleatorio entre 2 y 2,5 s

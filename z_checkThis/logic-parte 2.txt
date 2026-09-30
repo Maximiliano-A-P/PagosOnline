@@ -1,103 +1,116 @@
 ==================================================================
 MAPA DE ESTRUCTURA DE BASE DE DATOS
 ==================================================================
+(La estructura de autenticación — users y tablas de códigos — está
+ en "logic-parte 1.txt".)
 
-┌──────────────────────┐
-│       clients        │
-├──────────────────────┤
-│ id                   │
-│ created_at           │
-│ updated_at           │
-│ name                 │
-│ document             │
-└──────────┬───────────┘
-           │
-           │ 1
-           ▼
-┌──────────────────────┐
-│   client_services    │
-├──────────────────────┤
-│ id                   │
-│ created_at           │
-│ updated_at           │
-│ client_id            │
-│ service_id           │
-└──────────┬───────────┘
-           │
-           │ N
-           ▼
-┌──────────────────────┐
-│       services       │
-├──────────────────────┤
-│ id                   │
-│ created_at           │
-│ updated_at           │
-│ service              │
-│ price                │
-│ due_day              │
-│ overdue_price        │
-│ period               │
-└──────────┬───────────┘
-           │
-           │ 0..N (opcional, service_id puede ser NULL)
-           ▼
-┌──────────────────────────────────┐
-│             invoices             │
-├──────────────────────────────────┤
-│ id                               │
-│ created_at                       │
-│ updated_at                       │
-│ issued_at                        │
-│ client_name                      │
-│ client_document                  │
-│ service_id                       │
-│ service_name                     │
-│ price                            │
-│ due_date                         │
-│ overdue_price                    │
-│ payment_status                   │
-│ amount_paid                      │
-│ paid_at                          │
-│ payment_method                   │
-│ paid_by                          │
-│                                  │
-│ ---- DATOS ARCA ----             │
-│ arca_status                      │
-│ arca_cae                         │
-│ arca_cae_expires_at              │
-│ arca_invoice_type                │
-│ arca_point_of_sale               │
-│ arca_invoice_number              │
-│ arca_qr                          │
-└──────────────┬───────────────────┘
-               │
-               │ 0..1 (paid_by, opcional)
-               ▼
-     ┌──────────────────────┐
-     │         users         │
-     ├──────────────────────┤
-     │ ...                  │
-     │ (tabla externa,      │
-     │  no forma parte de   │
-     │  estas migraciones)  │
-     └──────────────────────┘
+┌──────────────────────┐          ┌──────────────────────┐
+│       clients        │          │       services       │
+├──────────────────────┤          ├──────────────────────┤
+│ id                   │          │ id                   │
+│ created_at           │          │ created_at           │
+│ updated_at           │          │ updated_at           │
+│ name                 │          │ service              │
+│ document             │          │ price                │
+│ cuit                 │          │ tax_percentage       │
+│ arca_iva_condition   │          │ due_day              │
+└───────┬──────┬───────┘          │ overdue_price        │
+        │      │                  │ period               │
+        │      │                  └───────────┬──────────┘
+        │      │                              │
+        │      │   N ──────────────────── N   │
+        │      │      ┌──────────────────┐    │
+        │      └─────►│  client_services │◄───┘
+        │             ├──────────────────┤
+        │             │ client_id        │  (se borra en cascada
+        │             │ service_id       │   si se elimina cliente
+        │             └──────────────────┘   o servicio)
+        │
+        │  N ─────────── N
+        │     ┌──────────────────┐        ┌──────────────┐
+        └────►│   client_user    │◄───────│    users     │
+              ├──────────────────┤        └──────────────┘
+              │ client_id        │
+              │ user_id          │  (único por par; cascada)
+              └──────────────────┘
+              → qué documentos vinculó cada usuario a su cuenta
 
+
+Vínculo de facturas con clientes:  invoices.client_document ↔ clients.document
+(NO hay clave foránea: la factura conserva sus propios datos del
+cliente aunque el cliente cambie o se elimine).
+
+┌──────────────────────────────────────┐
+│               invoices               │
+├──────────────────────────────────────┤
+│ id, created_at, updated_at           │
+│ issued_at                            │
+│                                      │
+│ ---- CLIENTE (histórico) ----        │
+│ client_name                          │
+│ client_document                      │
+│ client_cuit                          │
+│ client_document_type                 │
+│ client_iva_condition                 │
+│                                      │
+│ ---- SERVICIO (histórico) ----       │
+│ service_id       → services (NULL    │
+│                    si se borra)      │
+│ service_name                         │
+│ service_period_start                 │
+│ service_period_end                   │
+│                                      │
+│ ---- IMPORTES ----                   │
+│ price                                │
+│ due_date                             │
+│ overdue_price                        │
+│ tax_percentage                       │
+│ expected_amount  (monto informado a  │
+│                   Mercado Pago)      │
+│                                      │
+│ ---- PAGO ----                       │
+│ payment_status   (pending / paid)    │
+│ amount_paid                          │
+│ paid_at                              │
+│ payment_method                       │
+│ paid_by          → users (NULL si    │
+│                    fue online)       │
+│                                      │
+│ ---- MERCADO PAGO ----               │
+│ mercadopago_preference_id            │
+│ mercadopago_payment_id               │
+│                                      │
+│ ---- DATOS ARCA ----                 │
+│ arca_status                          │
+│ arca_cae                             │
+│ arca_cae_expires_at                  │
+│ arca_invoice_type                    │
+│ arca_point_of_sale                   │
+│ arca_invoice_number                  │
+│ arca_qr                              │
+│ arca_retry_attempts                  │
+│ arca_last_attempt_at                 │
+│ arca_retry_at                        │
+│                                      │
+│ índice: (payment_status,             │
+│          arca_retry_at)              │
+└──────────────────────────────────────┘
 
 ┌──────────────────────────────────┐
 │           arca_config            │
 ├──────────────────────────────────┤
-│ id                               │
-│ created_at                       │
-│ updated_at                       │
-│ cuit                             │
-│ certificate_path                 │
-│ private_key_path                 │
+│ id, created_at, updated_at       │
+│ condicion_iva  (del emisor)      │
+│ punto_venta                      │
 │ token                            │
+│ sign                             │
 │ token_expires_at                 │
 └──────────────────────────────────┘
-   (tabla de configuración global,
-    sin relaciones con otras tablas)
+   (tabla de configuración global, sin relaciones.
+    CUIT, certificado y clave privada NO están acá:
+    salen de variables de entorno.)
 
+period (services): 1 mensual | 3 trimestral | 6 semestral | 12 anual
 
 ==================================================================
 FIN DEL MAPA DE ESTRUCTURA
@@ -106,6 +119,7 @@ FIN DEL MAPA DE ESTRUCTURA
 
 
 /// PANEL ADMIN - Flujos ///
+(Detalle en: admin-clientes-y-saldos.txt y admin-facturas.txt)
 
 Usuario autenticado
         ↓
@@ -127,19 +141,43 @@ AdminMiddleware
           ↓                 ↓                 ↓
       CLIENTES          SERVICIOS        CLIENTES × SERVICIOS
           │                 │                 │
-          │                 │                 │
           ↓                 ↓                 ↓
       listar            listar            listar relaciones
       crear             crear             asignar servicio
-      editar            editar            quitar servicio
-      eliminar          eliminar
-          │                 │
+      ver (saldos)      editar            quitar servicio
+      editar            eliminar
+      eliminar
           │                 │
           ↓                 ↓
     Las facturas       Los servicios
     existentes         eliminados no
     permanecen         afectan facturas
     intactas
+
+
+/// ESTRUCTURA GENERAL DEL PANEL ///
+
+                         PANEL ADMIN
+                              │
+     ┌──────────────┬─────────┼───────────┬─────────────┐
+     ↓              ↓         ↓           ↓             ↓
+ CLIENTES      SERVICIOS  CLIENTES ×  FACTURAS     CONFIG ARCA
+     │              │     SERVICIOS       │             │
+     └──────────────┴─────────┬───────────┘       condición IVA
+                              ↓                   punto de venta
+                          FACTURAS
+                              │
+        ┌───────────┬─────────┼──────────┬──────────┐
+        ↓           ↓         ↓          ↓          ↓
+     Crear      Generar   Registrar   Reintentar  Eliminar
+   histórica   periódicas    pago       ARCA     (con reglas)
+        │           │         │          │
+        └───────────┴────┬────┴──────────┘
+                         ↓
+                      INVOICES
+                         │
+                         ↓
+                       ARCA
 
 
 /// CLIENTES ///
@@ -154,31 +192,33 @@ Todos      Buscar por:
            - nombre
            - documento
         ↓
-      Listado
+      Listado (15 por página, más recientes primero)
         ↓
-   ┌────┼─────┐
-   ↓    ↓     ↓
-Crear Editar Eliminar
-   ↓    ↓     ↓
+   ┌────┼─────┬──────┐
+   ↓    ↓     ↓      ↓
+ Crear Ver  Editar Eliminar
+   ↓
 Validar datos
    ↓
 name
 document
+cuit (11 dígitos, opcional)
+arca_iva_condition (opcional)
    ↓
 Crear / actualizar cliente
 
+Eliminar cliente
+        ↓
+Eliminar relaciones cliente ↔ servicios
+        ↓
+Eliminar cliente
+        ↓
+Facturas existentes permanecen intactas
+porque contienen sus propios datos históricos
 
-Eliminar cliente
-        ↓
-Eliminar relaciones
-cliente ↔ servicios
-        ↓
-Eliminar cliente
-        ↓
-Facturas existentes
-permanecen intactas
-porque contienen sus
-propios datos históricos
+Ver cliente:
+   Información + Saldos a fecha + Facturas del cliente
+   (ver admin-clientes-y-saldos.txt)
 
 
 /// SERVICIOS ///
@@ -194,18 +234,12 @@ Crear Editar Eliminar
 Validar:
 - service
 - price
+- tax_percentage (opcional)
 - due_day
 - overdue_price
 - period
         ↓
 Crear / actualizar servicio
-
-
-period:
-1  → mensual
-3  → trimestral
-6  → semestral
-12 → anual
 
 
 /// CLIENTES × SERVICIOS ///
@@ -232,161 +266,22 @@ Agregar relación               Quitar relación
                  NO se eliminan
 
 
-/// FACTURAS — CONSULTA ///
+/// FACTURAS — RESUMEN ///
+(Detalle en: admin-facturas.txt)
 
-Admin accede a Facturas
-        ↓
-Listado de invoices
-        ↓
-¿Busca?
-   ↓          ↓
- NO          SÍ
- ↓            ↓
-Listado      Buscar por:
-             - nombre cliente
-             - documento
-             - servicio
-        ↓
-¿Filtra por estado?
-   ↓          ↓
- NO          SÍ
- ↓            ↓
-           Filtrar:
-           pending / paid
-        ↓
-Facturas más recientes primero
-        ↓
-Seleccionar factura
-        ↓
-Ver factura
+CONSULTA:   búsqueda (cliente / documento / servicio),
+            filtro por estado (pending / paid),
+            filtro por fecha de emisión (desde / hasta)
 
+CREAR:      factura histórica (service_id opcional, ARCA en null)
 
-/// CREACIÓN DE FACTURA HISTÓRICA ///
+GENERAR:    periódicas según period de cada servicio
+            (solo cuando el admin lo ejecuta)
 
-Admin accede a:
- /admin/invoices/create
-        ↓
-Ingresar:
-- fecha de emisión
-- nombre del cliente
-- documento
-- servicio asociado
-- nombre del servicio
-- precio
-- precio vencido
-- fecha de vencimiento
-- estado
-- importe pagado
-- fecha de pago
-- método de pago
-        ↓
-¿Servicio asociado?
-   ↓              ↓
- SÍ              NO
- ↓                ↓
-Guardar         service_id = null
-service_id           │
-   └──────────┬───────┘
-              ↓
-        Guardar datos
-        históricos
-              ↓
-        Crear invoice
-              ↓
-        ARCA = null
+PAGO:       manual (admin) u online (Mercado Pago)
 
-
-/// GENERACIÓN DE FACTURAS PERIÓDICAS ///
-
-Admin ejecuta manualmente
-la generación desde el panel
-        ↓
-Obtener todos los clientes
-con sus servicios
-        ↓
-Para cada cliente
-y cada servicio
-        ↓
-Buscar última factura
-del cliente + service_id
-        ↓
-¿Existe factura?
-   ↓              ↓
- NO              SÍ
- ↓                ↓
-Generar        Obtener fecha
-primera         de última factura
-factura              ↓
-                  Calcular meses
-                  transcurridos
-                       ↓
-                ¿meses >= period?
-                   ↓          ↓
-                  NO          SÍ
-                  ↓            ↓
-              No generar    Generar
-                            factura
-                               ↓
-                     Copiar datos actuales
-                     del cliente y servicio
-                               ↓
-                         payment_status
-                           = pending
-                               ↓
-                         Siguiente cliente
-                         / servicio
-
-
-/// GENERACIÓN MANUAL DE FACTURAS ///
-
-Admin accede al panel
-        ↓
-Puede actualizar primero
-los precios de los servicios
-        ↓
-Ejecuta generación manual
-        ↓
-Sistema genera únicamente
-las facturas que correspondan
-según el period del servicio
-        ↓
-Resultado:
-"Se generaron X factura(s)
- correctamente."
-
-
-/// PAGO MANUAL ///
-
-Factura pendiente
-        ↓
-Admin selecciona
-"Registrar pago"
-        ↓
-¿Factura ya pagada?
-   ↓              ↓
- SÍ              NO
- ↓                ↓
-Mostrar error   Mostrar formulario
-                 ↓
-              Ingresar:
-              - importe pagado
-              - fecha de pago
-              - método de pago
-                 ↓
-              Registrar pago
-                 ↓
-          payment_status = paid
-                 ↓
-             amount_paid
-                 ↓
-               paid_at
-                 ↓
-          payment_method
-                 ↓
-             paid_by
-                 ↓
-       ID del administrador
-       que registró el pago
+ELIMINAR:   solo facturas sin pago y sin ARCA
+            (no se pueden borrar pagadas ni autorizadas)
 
 
 /// FACTURA + PAGO ///
@@ -397,11 +292,12 @@ payment_status = pending
         ↓
    ┌───────────────┴───────────────┐
    ↓                               ↓
-PAGO ONLINE                    PAGO PRESENCIAL
+PAGO ONLINE                    PAGO MANUAL
+(Mercado Pago)                 (admin registra)
    ↓                               ↓
-Proceso de pago                Admin registra pago
-   ↓                               ↓
-Pago confirmado                payment_status = paid
+Webhook confirma               payment_status = paid
+   ↓                               │
+payment_status = paid              │
    │                               │
    └───────────────┬───────────────┘
                    ↓
@@ -410,7 +306,10 @@ Pago confirmado                payment_status = paid
               paid_at
               amount_paid
               payment_method
-              paid_by
+              paid_by  (online: null | manual: id del admin)
+                   ↓
+                 ARCA
+        (online: automático | manual: botón "Reintentar ARCA")
 
 
 /// ARCA — CONFIGURACIÓN ///
@@ -428,11 +327,14 @@ Editar          Crear configuración
    └────────┬──────────┘
             ↓
 Validar:
-- cuit
-- certificate_path
-- private_key_path
+- condicion_iva  (código numérico)
+- punto_venta    (número)
             ↓
 Guardar configuración ARCA
+
+CUIT, certificado y clave privada se cargan por variables de
+entorno (ver ARCA-Laravel-detalle.txt y deploy-render-docker.txt).
+Token y Sign los completa solo el sistema al autenticar.
 
 
 /// ARCA — DATOS DE LA FACTURA ///
@@ -447,50 +349,15 @@ Invoice
           ├── arca_invoice_type
           ├── arca_point_of_sale
           ├── arca_invoice_number
-          └── arca_qr
-
-
-/// ELIMINACIÓN DE FACTURAS ///
-
-Admin selecciona factura
-        ↓
-Eliminar invoice
-        ↓
-Factura eliminada
-
-
-/// ESTRUCTURA GENERAL DEL PANEL ///
-
-                         PANEL ADMIN
-                              │
-              ┌───────────────┼────────────────┐
-              ↓               ↓                ↓
-          CLIENTES        SERVICIOS       CLIENTES × SERVICIOS
-              │               │                │
-              └───────────────┼────────────────┘
-                              ↓
-                          FACTURAS
-                              │
-             ┌────────────────┼────────────────┐
-             ↓                ↓                ↓
-          Crear            Generar          Registrar
-        histórica         periódicas          pago
-             │                │                │
-             └────────────────┼────────────────┘
-                              ↓
-                          INVOICES
-                              │
-                              ↓
-                            ARCA
-                              │
-                    ┌─────────┴─────────┐
-                    ↓                   ↓
-              Configuración       Datos de factura
-
-
+          ├── arca_qr
+          ├── arca_retry_attempts
+          ├── arca_last_attempt_at
+          └── arca_retry_at
 
 
 /// PAGO ONLINE ///
+(Detalle en: mercado-pago-implementacion.txt y
+ usuario-dashboard-historial.txt)
 
 Usuario inicia sesión
         ↓
@@ -504,13 +371,9 @@ Ingresa documento
    ↓         ↓
   NO         SÍ
    ↓         ↓
-Informar   Agregar documento
+Informar   Vincular documento a su cuenta
 error          ↓
-               ↓
-       "Documentos agregados"
-               ↓
-       Buscar facturas del
-       documento agregado
+       Buscar facturas del documento
                ↓
        ¿Hay facturas pendientes?
                ↓
@@ -523,14 +386,14 @@ error          ↓
           ┌────────┴────────┐
           ↓                 ↓
        IMPRIMIR           PAGAR
-          ↓                 ↓
-       Generar PDF     Mercado Pago
+       (PDF: pendiente)     ↓
+                       Mercado Pago
                             ↓
-                       Crear pago
+                       Crear Preference
                             ↓
                     Usuario paga
                             ↓
-                    Mercado Pago
+                    Webhook → validaciones
                             ↓
                      ¿Pago aprobado?
                        ↓          ↓
@@ -539,47 +402,11 @@ error          ↓
                    Mantener      Registrar
                    pendiente       pago
                                     ↓
-                             payment_status
-                                = paid
-                                    ↓
-                              paid_at
-                                    ↓
-                              amount_paid
-                                    ↓
-                           payment_method
-                                    ↓
-                                  paid_by
+                             payment_status = paid
+                             paid_at, amount_paid,
+                             payment_method
                                     ↓
                                   ARCA
-
-
-
-
-ORDEN DE TRABAJO
-====================
-
-1. MIGRACIONES
-   ↓
-2. MODELOS + RELACIONES
-   ↓
-3. MIDDLEWARE ADMIN
-   ↓
-4. CONTROLADORES ADMIN
-   ↓
-5. RUTAS WEB.PHP
-   ↓
-6. VISTAS DEL PANEL ADMIN
-   ↓
-7. FACTURAS MANUALES
-   ↓
-8. REGISTRO DE PAGOS MANUALES
-   ↓
-9. PAGOS ONLINE
-   ↓
-10. ARCA
-   ↓
-11. QR + COMPROBANTE + ENVÍO
-
 
 
 Usuario
@@ -588,11 +415,11 @@ Pagar
    ↓
 DashboardInvoiceController
    ↓
-verifica documento
+verifica que el documento sea del usuario
    ↓
 MercadoPagoService
    ↓
-Preference
+Preference (guarda expected_amount)
    ↓
 Mercado Pago
    ↓
@@ -610,13 +437,37 @@ verifica:
 - external_reference
 - invoice
 - estado approved
-- importe
+- importe (contra expected_amount)
    ↓
 invoice = paid
+   ↓
+emite ante ARCA
 
 
+ORDEN DE TRABAJO (ver estado en estado-del-proyecto.txt)
+====================
 
-
+1. MIGRACIONES ......................... HECHO
+   ↓
+2. MODELOS + RELACIONES ................ HECHO
+   ↓
+3. MIDDLEWARE ADMIN .................... HECHO
+   ↓
+4. CONTROLADORES ADMIN ................. HECHO
+   ↓
+5. RUTAS WEB.PHP ....................... HECHO
+   ↓
+6. VISTAS DEL PANEL ADMIN .............. HECHO
+   ↓
+7. FACTURAS MANUALES ................... HECHO
+   ↓
+8. REGISTRO DE PAGOS MANUALES ........... HECHO
+   ↓
+9. PAGOS ONLINE ........................ HECHO
+   ↓
+10. ARCA ............................... HECHO
+   ↓
+11. QR + COMPROBANTE + ENVÍO ........... PENDIENTE
 
 
 
@@ -631,3 +482,4 @@ PHP-FPM
 Laravel
   ↓
 PostgreSQL
+(Detalle en: deploy-render-docker.txt)

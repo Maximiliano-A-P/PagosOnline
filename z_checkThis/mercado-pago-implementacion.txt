@@ -1,0 +1,179 @@
+==================================================================
+MERCADO PAGO — CÓMO ESTÁ IMPLEMENTADO
+==================================================================
+(El problema de snake_case / camelCase que hubo con el webhook y
+ su solución están en "mercado-pago-UnLogic".)
+
+
+/// ARCHIVOS INVOLUCRADOS ///
+
+app/Services/MercadoPagoService.php
+   → createPreference()          crea el link de pago
+   → getPayment()                consulta un pago a Mercado Pago
+   → validateWebhookSignature()  valida la firma del webhook
+
+app/Http/Controllers/DashboardInvoiceController.php   (pay)
+   → inicia el pago desde el dashboard del usuario
+
+app/Http/Controllers/MercadoPagoWebhookController.php (handle)
+   → recibe y procesa la notificación
+
+config/services.php → mercadopago
+   MERCADOPAGO_ACCESS_TOKEN, MERCADOPAGO_WEBHOOK_SECRET,
+   MERCADOPAGO_WEBHOOK_URL
+
+Ruta pública (sin login): POST /mercadopago/webhook
+
+
+/// VISIÓN GENERAL ///
+
+Usuario ──► [Pagar] ──► Laravel crea Preference ──► Mercado Pago
+                                                        │
+                                            Checkout Pro (el usuario paga)
+                                                        │
+Laravel ◄── webhook (payment) ◄─────────────────────────┘
+   │
+   ├── valida firma
+   ├── consulta el pago a MP (no confía en el body)
+   ├── valida factura, estado e importe
+   ├── marca la factura como pagada
+   └── emite la factura ante ARCA
+
+
+/// 1. INICIAR EL PAGO (botón "Pagar") ///
+
+GET /dashboard/invoices/{invoice}/pay
+        ↓
+¿la factura pertenece a algún documento vinculado al usuario?
+   ↓ NO → 403
+   ↓ SÍ
+¿ya está pagada?
+   ↓ SÍ → vuelve al dashboard con error
+   ↓ NO
+MercadoPagoService::createPreference(invoice)
+        ↓
+¿falló o vino incompleta (sin id / init_point)?
+   ↓ SÍ → log + vuelve al dashboard con error
+   ↓ NO
+guarda mercadopago_preference_id en la factura
+        ↓
+redirige al usuario a init_point (Checkout Pro)
+
+
+/// 2. QUÉ SE LE COBRA (createPreference) ///
+
+¿ahora es posterior a due_date?
+   ↓ SÍ → base = overdue_price
+   ↓ NO → base = price
+        ↓
+iva   = base × tax_percentage / 100   (redondeado a 2 decimales)
+total = base + iva
+        ↓
+invoice.expected_amount = total     ← se guarda el monto informado
+        ↓
+Preference:
+   items[0]            id = invoice.id, título = service_name,
+                       cantidad 1, ARS, unit_price = total
+   external_reference  = invoice.id   (vincula el pago con la factura)
+   notification_url    = MERCADOPAGO_WEBHOOK_URL
+   back_urls           = success / failure / pending → dashboard
+   auto_return         = approved
+
+expected_amount permite que el webhook valide contra el monto que
+realmente se le mostró al usuario, sin recalcular fechas después.
+
+
+/// 3. WEBHOOK (MercadoPagoWebhookController::handle) ///
+
+Llega notificación
+   ↓
+¿type = payment?            NO → "Evento ignorado" (200)
+   ↓ SÍ
+¿trae data.id (payment_id)? NO → 400
+   ↓ SÍ
+¿trae x-signature y x-request-id? NO → 401
+   ↓ SÍ
+¿la firma es válida?        NO → 401
+(WebhookSignatureValidator del SDK + MERCADOPAGO_WEBHOOK_SECRET)
+   ↓ SÍ
+Consulta el pago a Mercado Pago (getPayment)
+   ↓
+¿falló la consulta o no devolvió pago? → 500 (MP reintenta)
+   ↓
+¿el id devuelto coincide con el payment_id recibido? NO → 400
+   ↓ SÍ
+external_reference (snake_case del SDK)
+   ↓
+¿existe y es numérica?      NO → 400
+   ↓ SÍ
+Busca la factura            NO existe → 404
+   ↓
+¿ya estaba pagada?          SÍ → 200 "ya estaba pagada"
+(idempotente: no se procesa dos veces)
+   ↓ NO
+¿status = approved?         NO → 200 "todavía no aprobado"
+   ↓ SÍ
+transaction_amount vs expected_amount (o price si no hay)
+   ↓
+¿diferencia mayor a $0,01?  SÍ → log warning + 400
+   ↓ NO
+Marca la factura:
+   payment_status         = paid
+   amount_paid            = transaction_amount
+   paid_at                = date_approved (o hoy si no vino)
+   payment_method         = mercadopago
+   paid_by                = null (no hubo admin)
+   mercadopago_payment_id = payment_id
+   ↓
+Emite ante ARCA (try/catch: si falla solo se registra el error)
+   ↓
+200 "Pago procesado correctamente"
+
+
+/// SEGURIDAD: POR QUÉ NO SE CONFÍA EN EL WEBHOOK ///
+
+1. Firma HMAC válida       → confirma que la notificación es de MP
+2. Se consulta el pago     → los datos salen de la API de MP, no del
+                             body recibido
+3. Coincidencia de IDs     → evita que se mezclen pagos
+4. external_reference      → solo se acepta un ID numérico de factura
+5. Estado approved         → solo un pago aprobado marca como pagada
+6. Importe                 → debe coincidir con lo informado a MP
+7. Idempotencia            → una factura pagada no se vuelve a procesar
+
+
+/// CÓDIGOS DE RESPUESTA ///
+
+200  procesado / ya pagada / evento ignorado / aún no aprobado
+400  falta payment_id, referencia inválida, id que no coincide,
+     importe distinto
+401  faltan headers de firma o firma inválida
+404  factura no encontrada
+500  no se pudo consultar el pago (Mercado Pago volverá a intentar)
+
+MP considera recibida la notificación con HTTP 200.
+
+
+/// CAMPOS EN invoices RELACIONADOS ///
+
+mercadopago_preference_id   Preference creada para la factura
+mercadopago_payment_id      pago aprobado que la canceló
+expected_amount             monto informado a MP al generar el link
+payment_method              "mercadopago" cuando pagó online
+
+
+/// VARIABLES DE ENTORNO ///
+
+MERCADOPAGO_ACCESS_TOKEN     credencial de la cuenta
+MERCADOPAGO_WEBHOOK_SECRET   clave secreta del webhook
+MERCADOPAGO_WEBHOOK_URL      https://<dominio>/mercadopago/webhook
+
+
+/// NOTAS ///
+
+- Si el usuario genera el link antes del vencimiento y paga después,
+  el importe ya no coincide con el vigente, pero SÍ con
+  expected_amount (fue guardado al generar el link): se acepta lo
+  que se le mostró.
+- Cada vez que se pulsa "Pagar" se crea una Preference nueva y se
+  pisa expected_amount y mercadopago_preference_id.

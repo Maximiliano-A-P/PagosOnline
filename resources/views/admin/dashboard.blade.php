@@ -121,7 +121,7 @@
                         <div class="p-6">
 
                             <h4 class="font-semibold text-gray-900 text-[3.5vh]">
-                                Facturas
+                                Facturas por lote
                             </h4>
 
                             <p class="mt-3 text-gray-700 text-[3vh]">
@@ -161,11 +161,11 @@
                         <div class="p-6">
 
                             <h4 class="font-semibold text-gray-900 text-[3.5vh]">
-                                Nueva factura
+                                Generar factura historica
                             </h4>
 
                             <p class="mt-3 text-gray-700 text-[3vh]">
-                                Registrar una factura manualmente.
+                                Registrar manualmente una factura emitida previa a istalar este programa.
                             </p>
 
                         </div>

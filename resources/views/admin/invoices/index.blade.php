@@ -10,12 +10,12 @@
 
             <div class="header-actions flex items-center gap-4">
 
-                {{-- Cargar factura histórica --}}
+                {{-- Volver al panel --}}
                 <a
-                    href="{{ route('admin.invoices.create') }}"
+                    href="{{ route('admin.dashboard') }}"
                     class="btn"
                 >
-                    Nueva factura manual
+                    Volver al panel
                 </a>
 
                 {{-- Generar facturas periódicas por lote --}}

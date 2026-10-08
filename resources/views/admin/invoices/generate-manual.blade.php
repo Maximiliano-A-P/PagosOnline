@@ -315,8 +315,8 @@
 
                 <div class="flex items-center justify-end gap-4">
 
-                    <a href="{{ route('admin.dashboard') }}" class="btn btn-secondary">
-                        Cancelar
+                    <a href="{{ route('admin.dashboard') }}" class="btn">
+                        Volver al panel
                     </a>
 
                     <button type="submit" id="submit-button" class="btn" disabled>

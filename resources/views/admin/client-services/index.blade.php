@@ -2,14 +2,25 @@
 
     <x-slot name="header">
 
-        <div>
-            <h2 class="font-semibold text-white leading-tight text-[32px]">
-                Servicios de clientes
-            </h2>
+        <div class="flex items-center justify-between gap-4">
 
-            <p class="mt-2 text-gray-200 text-[21px]">
-                Buscá un cliente para consultar y modificar sus servicios.
-            </p>
+            <div>
+                <h2 class="font-semibold text-white leading-tight text-[32px]">
+                    Servicios de clientes
+                </h2>
+
+                <p class="mt-2 text-gray-200 text-[21px]">
+                    Buscá un cliente para consultar y modificar sus servicios.
+                </p>
+            </div>
+
+            <a
+                href="{{ route('admin.dashboard') }}"
+                class="btn"
+            >
+                Volver al panel
+            </a>
+
         </div>
 
     </x-slot>

@@ -469,7 +469,7 @@
                                         <div class="client-label">Cliente</div>
                                         <div class="client-value">{{ $client->name }}</div>
                                         <div class="client-value-normal">
-                                            DNI {{ $client->document }} · #{{ $client->id }}
+                                            DNI {{ $client->document }}
                                         </div>
                                     </div>
 

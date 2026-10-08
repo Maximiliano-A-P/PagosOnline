@@ -93,12 +93,23 @@
                     Servicios registrados
                 </h3>
 
-                <a
-                    href="{{ route('admin.services.create') }}"
-                    class="btn"
-                >
-                    Crear servicio
-                </a>
+                <div class="flex items-center gap-4">
+
+                    <a
+                        href="{{ route('admin.dashboard') }}"
+                        class="btn"
+                    >
+                        Volver al panel
+                    </a>
+
+                    <a
+                        href="{{ route('admin.services.create') }}"
+                        class="btn"
+                    >
+                        Crear servicio
+                    </a>
+
+                </div>
 
             </div>
 

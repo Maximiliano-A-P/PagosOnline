@@ -61,7 +61,6 @@
 
 <div class="py-12">
 
-```
 <div class="mx-auto" style="width: 90vw;">
 
     {{-- Errores --}}
@@ -631,10 +630,10 @@
                 <div class="pt-4 flex items-center justify-end gap-4">
 
                     <a
-                        href="{{ route('admin.invoices.index') }}"
+                        href="{{ route('admin.dashboard') }}"
                         class="btn"
                     >
-                        Cancelar
+                        Volver al panel
                     </a>
 
                     <button
@@ -653,7 +652,6 @@
     </div>
 
 </div>
-```
 
 </div>
 

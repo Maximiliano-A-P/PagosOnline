@@ -121,7 +121,7 @@
                         <div class="p-6">
 
                             <h4 class="font-semibold text-gray-900 text-[3.5vh]">
-                                Facturas por lote
+                                Generar facturas por lote
                             </h4>
 
                             <p class="mt-3 text-gray-700 text-[3vh]">

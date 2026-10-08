@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use App\Models\ArcaConfig;
 use App\Services\Arca\ArcaApiService;
 use App\Services\Arca\WsaaClient;
+use App\Services\InvoicePdfService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -788,6 +789,27 @@ class InvoiceController extends Controller
                 'success',
                 'Pago registrado correctamente.'
             );
+    }
+
+
+    /**
+     * Descarga el PDF de una factura (administrador).
+     */
+    public function pdf(
+        Invoice $invoice,
+        InvoicePdfService $pdfService
+    ) {
+        return response(
+            $pdfService->render($invoice),
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' =>
+                    'attachment; filename="'
+                    . $pdfService->filename($invoice)
+                    . '"',
+            ]
+        );
     }
 
 

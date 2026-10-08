@@ -470,6 +470,23 @@ class ArcaApiService
                     null,
             ]);
 
+            /*
+             * Con el CAE ya autorizado se envía por correo el PDF de la factura pagada. Un fallo acá nunca debe afectar a la emisión 
+             * (el servicio registra sus propios errores).
+             */
+            try {
+                app(\App\Services\InvoiceReceiptSender::class)
+                    ->send($invoice->fresh());
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error(
+                    'No se pudo enviar el PDF de la factura.',
+                    [
+                        'invoice_id' => $invoice->id,
+                        'message' => $e->getMessage(),
+                    ]
+                );
+            }
+
             return;
         }
 

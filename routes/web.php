@@ -71,12 +71,7 @@ Route::middleware(['auth'])
 
         Route::get(
             '/dashboard/invoices/{invoice}/pdf',
-            function ($invoice) {
-                /*
-                 * Generación del PDF se implementará posteriormente.
-                 */
-                abort(501, 'Generación de PDF todavía no implementada.');
-            }
+            [DashboardInvoiceController::class, 'pdf']
         )->name('dashboard.invoices.pdf');
 
 
@@ -215,6 +210,13 @@ Route::middleware(['auth', 'admin'])
             '/invoices/generate-manual',
             [InvoiceController::class, 'storeManual']
         )->name('invoices.generate-manual.store');
+
+
+        // Descargar el PDF de una factura (administrador).
+        Route::get(
+            '/invoices/{invoice}/pdf',
+            [InvoiceController::class, 'pdf']
+        )->name('invoices.pdf');
 
 
         Route::resource(

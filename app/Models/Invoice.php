@@ -52,6 +52,7 @@ class Invoice extends Model
         'arca_retry_attempts',
         'arca_last_attempt_at',
         'arca_retry_at',
+        'receipt_sent_at',
     ];
 
     protected function casts(): array
@@ -84,6 +85,7 @@ class Invoice extends Model
             'arca_retry_attempts' => 'integer',
             'arca_last_attempt_at' => 'datetime',
             'arca_retry_at' => 'datetime',
+            'receipt_sent_at' => 'datetime',
         ];
     }
 

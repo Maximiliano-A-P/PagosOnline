@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
+use App\Services\InvoicePdfService;
 use App\Services\MercadoPagoService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -18,25 +19,21 @@ class DashboardInvoiceController extends Controller
         MercadoPagoService $mercadoPagoService
     ): RedirectResponse {
         /*
-         * Obtenemos los documentos de los clientes asociados
-         * al usuario actual mediante la relación de Eloquent.
+         * Obtenemos los documentos de los clientes asociados al usuario actual mediante la relación de Eloquent.
          */
         $clientDocuments = Auth::user()
             ->clients()
             ->pluck('document');
 
         /*
-         * Convertimos todos los documentos a string
-         * para realizar una comparación estricta.
+         * Convertimos todos los documentos a string para realizar una comparación estricta.
          */
         $documents = $clientDocuments
             ->map('strval')
             ->toArray();
 
         /*
-         * Una factura solamente puede ser pagada
-         * si pertenece a uno de los clientes asociados
-         * al usuario actual.
+         * Una factura solamente puede ser pagada si pertenece a uno de los clientes asociados al usuario actual.
          */
         if (
             !in_array(
@@ -49,8 +46,7 @@ class DashboardInvoiceController extends Controller
         }
 
         /*
-         * No permitimos iniciar un pago para una factura
-         * que ya figura como pagada.
+         * No permitimos iniciar un pago para una factura que ya figura como pagada.
          */
         if ($invoice->payment_status === 'paid') {
             return redirect()
@@ -63,7 +59,6 @@ class DashboardInvoiceController extends Controller
 
         /*
          * Creamos la preferencia de pago en Mercado Pago.
-         *
          * El servicio se encarga de comunicarse con la API.
          */
         try {
@@ -96,8 +91,7 @@ class DashboardInvoiceController extends Controller
         }
 
         /*
-         * Verificamos que Mercado Pago haya devuelto
-         * los datos necesarios para continuar.
+         * Verificamos que Mercado Pago haya devuelto los datos necesarios para continuar.
          */
         if (
             empty($preference->id)
@@ -122,9 +116,7 @@ class DashboardInvoiceController extends Controller
 
         /*
          * Guardamos el ID de la preferencia.
-         *
-         * Esto nos permite saber qué Preference fue creada
-         * para esta factura.
+         * Esto nos permite saber qué Preference fue creada para esta factura.
          */
         $invoice->update([
             'mercadopago_preference_id' => $preference->id,
@@ -138,6 +130,43 @@ class DashboardInvoiceController extends Controller
         );
     }
 
+    /*
+     * Descarga el PDF de una factura del usuario.
+     * El PDF se genera en el momento a partir del estado actual de la factura: pendiente, pagada o pagada con CAE y QR.
+     */
+    public function pdf(
+        Invoice $invoice,
+        InvoicePdfService $pdfService
+    ) {
+        $documents = Auth::user()
+            ->clients()
+            ->pluck('document')
+            ->map('strval')
+            ->toArray();
+
+        if (
+            !in_array(
+                (string) $invoice->client_document,
+                $documents,
+                true
+            )
+        ) {
+            abort(403);
+        }
+
+        return response(
+            $pdfService->render($invoice),
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' =>
+                    'attachment; filename="'
+                    . $pdfService->filename($invoice)
+                    . '"',
+            ]
+        );
+    }
+
     /**
      * Muestra el historial de facturas de los clientes del usuario.
      */
@@ -146,16 +175,14 @@ class DashboardInvoiceController extends Controller
         $user = Auth::user();
 
         /*
-         * Obtenemos los documentos de los clientes asociados
-         * al usuario actual.
+         * Obtenemos los documentos de los clientes asociados al usuario actual.
          */
         $clientDocuments = $user
             ->clients()
             ->pluck('document');
 
         /*
-         * Buscamos todas las facturas correspondientes
-         * a esos documentos.
+         * Buscamos todas las facturas correspondientes a esos documentos.
          */
         $invoices = $clientDocuments->isEmpty()
             ? collect()

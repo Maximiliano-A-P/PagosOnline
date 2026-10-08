@@ -432,6 +432,13 @@
                     {{-- Acciones --}}
                     <div class="mt-12 flex items-center gap-4">
 
+                        <a
+                            href="{{ route('admin.invoices.pdf', $invoice) }}"
+                            class="btn"
+                        >
+                            Descargar PDF
+                        </a>
+
                         @if ($invoice->payment_status !== 'paid')
 
                             <a

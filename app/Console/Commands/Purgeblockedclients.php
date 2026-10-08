@@ -18,8 +18,7 @@ class PurgeBlockedClients extends Command
         $limite = now()->subYears(5);
 
         /*
-         * Los clientes bloqueados están ocultos por el global scope,
-         * por eso se consulta sin él.
+         * Los clientes bloqueados están ocultos por el global scope, por eso se consulta sin él.
          */
         $ids = Client::withoutGlobalScopes()
             ->where('blocked', true)

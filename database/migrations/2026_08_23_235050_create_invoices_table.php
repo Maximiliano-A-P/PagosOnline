@@ -285,6 +285,12 @@ return new class extends Migration
             $table->timestamp('arca_retry_at')
                 ->nullable();
 
+            /*
+             * Momento en que se envió por correo el PDF de la factura pagada y autorizada (CAE). Evita enviarlo dos veces.
+             */
+            $table->timestamp('receipt_sent_at')
+                ->nullable();
+
             $table->index([
                 'payment_status',
                 'arca_retry_at',

@@ -48,23 +48,202 @@
             box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #4b5563; /* ring-gray-600 + offset */
         }
 
-        .table-header th {
-            color: #000000;
-            font-weight: 600;
-            padding: 16px 24px;
-            text-align: left;
-            font-size: 21px;
-            border-bottom: 2px solid #d1d5db;
+        .btn-secondary {
+            background-color: #ffffff;
+            border: 1px solid #9ca3af;
+            color: #111827;
         }
 
-        .row-actions {
+        /*
+         * ==========================================================
+         * TARJETAS DE CLIENTES (2 renglones por tarjeta)
+         * ==========================================================
+         */
+
+        .client-list {
+            width: 100%;
+            margin: 0 auto 40px auto;
+        }
+
+        .client-card {
+            background-color: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            padding: 24px;
+            margin-bottom: 10px;
+        }
+
+        .client-card-content {
             display: flex;
-            align-items: center;
-            gap: 16px;
+            justify-content: space-between;
+            align-items: stretch;
+            gap: 30px;
         }
 
-        .row-actions form {
+        .client-data {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .client-row-1,
+        .client-row-2 {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 20px;
+        }
+
+        .client-row-2 {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .span-2 {
+            grid-column: span 2;
+        }
+
+        .client-field {
+            min-width: 0;
+        }
+
+        .client-label {
+            font-size: 18px;
+            font-weight: 600;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+
+        .client-value {
+            font-size: 21px;
+            font-weight: 600;
+            color: #111827;
+            overflow-wrap: anywhere;
+        }
+
+        .client-value-normal {
+            font-size: 21px;
+            font-weight: 500;
+            color: #111827;
+            overflow-wrap: anywhere;
+        }
+
+        .saldo-debe {
+            color: #b91c1c;
+        }
+
+        .saldo-cero {
+            color: #15803d;
+        }
+
+        .client-actions {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 10px;
+            min-width: 160px;
+            border-left: 1px solid #e5e7eb;
+            padding-left: 25px;
+        }
+
+        .client-actions .btn,
+        .client-actions form {
+            width: 100%;
+        }
+
+        .client-actions form {
             margin: 0;
+        }
+
+        .client-empty {
+            background-color: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            color: #111827;
+            font-size: 21px;
+        }
+
+        .notice-card {
+            position: relative;
+            margin-bottom: 32px;
+            padding: 24px 64px 24px 24px;
+            background-color: #ffffff;
+            border: 1px solid #d1d5db;
+            border-left: 8px solid #b45309;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            color: #111827;
+            font-size: 21px;
+        }
+
+        .notice-card strong {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 24px;
+        }
+
+        .notice-close {
+            position: absolute;
+            top: 12px;
+            right: 14px;
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: transparent;
+            font-size: 28px;
+            line-height: 1;
+            color: #6b7280;
+            cursor: pointer;
+        }
+
+        .notice-close:hover {
+            color: #111827;
+        }
+
+        @media (max-width: 1100px) {
+            .client-row-1,
+            .client-row-2 {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .client-card-content {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .client-row-1,
+            .client-row-2 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .client-actions {
+                border-left: none;
+                border-top: 1px solid #e5e7eb;
+                padding-left: 0;
+                padding-top: 20px;
+                flex-direction: row;
+                flex-wrap: wrap;
+                min-width: auto;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .client-row-1,
+            .client-row-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .span-2 {
+                grid-column: span 1;
+            }
+
+            .client-actions {
+                flex-direction: column;
+            }
         }
     </style>
 
@@ -106,6 +285,36 @@
                         @endforeach
 
                     </ul>
+                </div>
+
+            @endif
+
+
+            {{-- ================================================== --}}
+            {{-- Aviso: cliente bloqueado --}}
+            {{-- ================================================== --}}
+
+            @if (session('blocked_client'))
+
+                <div class="notice-card" id="blocked-notice" role="status">
+
+                    <button
+                        type="button"
+                        class="notice-close"
+                        aria-label="Cerrar aviso"
+                        onclick="document.getElementById('blocked-notice').remove();"
+                    >
+                        &times;
+                    </button>
+
+                    <strong>Cliente bloqueado</strong>
+
+                    El cliente «{{ session('blocked_client')['name'] }}» fue
+                    bloqueado. Sus datos solo se pueden ver desde la base de
+                    datos y se borrarán definitivamente el
+                    {{ session('blocked_client')['delete_on'] }}
+                    (en 5 años). Sus facturas no se modifican.
+
                 </div>
 
             @endif
@@ -219,221 +428,158 @@
 
 
             {{-- ================================================== --}}
-            {{-- Tabla --}}
+            {{-- Listado de clientes --}}
             {{-- ================================================== --}}
 
-            <div class="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden">
+            @php
+                $condicionesIva = [
+                    1  => 'IVA Responsable Inscripto',
+                    4  => 'IVA Sujeto Exento',
+                    5  => 'Consumidor Final',
+                    6  => 'Responsable Monotributo',
+                    7  => 'Sujeto No Categorizado',
+                    8  => 'Proveedor del Exterior',
+                    9  => 'Cliente del Exterior',
+                    10 => 'IVA Liberado – Ley N° 19.640',
+                    13 => 'Monotributista Social',
+                    15 => 'IVA No Alcanzado',
+                    16 => 'Monotributo Trabajador Independiente Promovido',
+                ];
+            @endphp
 
-                <div class="p-6">
+            <div class="client-list">
+
+                @forelse ($clients as $client)
 
                     @php
-                        $condicionesIva = [
-                            1  => 'IVA Responsable Inscripto',
-                            4  => 'IVA Sujeto Exento',
-                            5  => 'Consumidor Final',
-                            6  => 'Responsable Monotributo',
-                            7  => 'Sujeto No Categorizado',
-                            8  => 'Proveedor del Exterior',
-                            9  => 'Cliente del Exterior',
-                            10 => 'IVA Liberado – Ley N° 19.640',
-                            13 => 'Monotributista Social',
-                            15 => 'IVA No Alcanzado',
-                            16 => 'Monotributo Trabajador Independiente Promovido',
-                        ];
+                        $codigoIva = $client->arca_iva_condition ?: 5;
+                        $saldo = (float) $client->saldo_por_cobrar;
                     @endphp
 
-                    @if ($clients->count())
+                    <div class="client-card">
 
-                        <div class="overflow-x-auto">
+                        <div class="client-card-content">
 
-                            <table class="min-w-full divide-y divide-gray-300">
+                            <div class="client-data">
 
-                                <thead class="table-header">
+                                {{-- Renglón 1 --}}
+                                <div class="client-row-1">
 
-                                    <tr>
+                                    <div class="client-field">
+                                        <div class="client-label">Cliente</div>
+                                        <div class="client-value">{{ $client->name }}</div>
+                                        <div class="client-value-normal">
+                                            DNI {{ $client->document }} · #{{ $client->id }}
+                                        </div>
+                                    </div>
 
-                                        <th>
-                                            ID
-                                        </th>
+                                    <div class="client-field">
+                                        <div class="client-label">CUIT</div>
+                                        <div class="client-value-normal">
+                                            {{ $client->cuit ?: 'N/A' }}
+                                        </div>
+                                    </div>
 
-                                        <th>
-                                            Nombre
-                                        </th>
+                                    <div class="client-field">
+                                        <div class="client-label">Condición frente al IVA</div>
+                                        <div class="client-value-normal">
+                                            {{ $codigoIva }}
+                                            @if (isset($condicionesIva[$codigoIva]))
+                                                — {{ $condicionesIva[$codigoIva] }}
+                                            @endif
+                                        </div>
+                                    </div>
 
-                                        <th>
-                                            Documento
-                                        </th>
+                                    <div class="client-field">
+                                        <div class="client-label">Saldo por cobrar</div>
+                                        <div class="client-value {{ $saldo > 0 ? 'saldo-debe' : 'saldo-cero' }}">
+                                            ${{ number_format($saldo, 2, ',', '.') }}
+                                        </div>
+                                    </div>
 
-                                        <th>
-                                            CUIT
-                                        </th>
+                                    <div class="client-field">
+                                        <div class="client-label">Creado</div>
+                                        <div class="client-value-normal">
+                                            {{ $client->created_at->format('d/m/Y H:i') }}
+                                        </div>
+                                    </div>
 
-                                        <th>
-                                            Condición frente al IVA
-                                        </th>
+                                </div>
 
-                                        <th>
-                                            Creado
-                                        </th>
+                                {{-- Renglón 2: contacto --}}
+                                <div class="client-row-2">
 
-                                        <th>
-                                            Acciones
-                                        </th>
+                                    <div class="client-field">
+                                        <div class="client-label">Teléfono</div>
+                                        <div class="client-value-normal">
+                                            {{ $client->phone ?: 'N/A' }}
+                                        </div>
+                                    </div>
 
-                                    </tr>
+                                    <div class="client-field span-2">
+                                        <div class="client-label">Email</div>
+                                        <div class="client-value-normal">
+                                            {{ $client->email ?: 'N/A' }}
+                                        </div>
+                                    </div>
 
-                                </thead>
+                                    <div class="client-field span-2">
+                                        <div class="client-label">Dirección</div>
+                                        <div class="client-value-normal">
+                                            {{ $client->address ?: 'N/A' }}
+                                        </div>
+                                    </div>
 
+                                </div>
 
-                                <tbody class="bg-white divide-y divide-gray-200">
+                            </div>
 
-                                    @foreach ($clients as $client)
+                            {{-- Acciones --}}
+                            <div class="client-actions">
 
-                                        <tr class="hover:bg-gray-50">
+                                <a href="{{ route('admin.clients.show', $client) }}" class="btn">
+                                    Ver
+                                </a>
 
-                                            <td
-                                                class="px-6 py-5
-                                                       text-gray-900
-                                                       text-[21px]"
-                                            >
-                                                {{ $client->id }}
-                                            </td>
+                                <a href="{{ route('admin.clients.edit', $client) }}" class="btn">
+                                    Editar
+                                </a>
 
+                                <form
+                                    method="POST"
+                                    action="{{ route('admin.clients.destroy', $client) }}"
+                                    onsubmit="return confirm(
+                                        '¿Bloquear este cliente? Sus datos se conservarán 5 años (solo visibles desde la base de datos) y luego se borrarán.'
+                                    );"
+                                >
+                                    @csrf
+                                    @method('DELETE')
 
-                                            <td
-                                                class="px-6 py-5
-                                                       text-gray-900
-                                                       font-medium
-                                                       text-[21px]"
-                                            >
-                                                {{ $client->name }}
-                                            </td>
+                                    <button type="submit" class="btn">
+                                        Bloquear
+                                    </button>
+                                </form>
 
-
-                                            <td
-                                                class="px-6 py-5
-                                                       text-gray-900
-                                                       text-[21px]"
-                                            >
-                                                {{ $client->document }}
-                                            </td>
-
-
-                                            <td
-                                                class="px-6 py-5
-                                                       text-gray-900
-                                                       text-[21px]"
-                                            >
-                                                {{ $client->cuit ?: 'N/A' }}
-                                            </td>
-
-
-                                            <td
-                                                class="px-6 py-5
-                                                       text-gray-900
-                                                       text-[21px]"
-                                            >
-                                                @php
-                                                    $codigoIva = $client->arca_iva_condition ?: 5;
-                                                @endphp
-
-                                                {{ $codigoIva }}
-                                                @if (isset($condicionesIva[$codigoIva]))
-                                                    — {{ $condicionesIva[$codigoIva] }}
-                                                @endif
-                                            </td>
-
-
-                                            <td
-                                                class="px-6 py-5
-                                                       text-gray-900
-                                                       text-[21px]"
-                                            >
-                                                {{ $client->created_at->format('d/m/Y H:i') }}
-                                            </td>
-
-
-                                            <td class="px-6 py-5 text-[21px]">
-
-                                                <div class="row-actions">
-
-                                                    <a
-                                                        href="{{ route('admin.clients.show', $client) }}"
-                                                        class="btn"
-                                                    >
-                                                        Ver
-                                                    </a>
-
-                                                    <a
-                                                        href="{{ route(
-                                                            'admin.clients.edit',
-                                                            $client
-                                                        ) }}"
-                                                        class="btn"
-                                                    >
-                                                        Editar
-                                                    </a>
-
-
-                                                    <form
-                                                        method="POST"
-                                                        action="{{ route(
-                                                            'admin.clients.destroy',
-                                                            $client
-                                                        ) }}"
-                                                        onsubmit="return confirm(
-                                                            '¿Eliminar este cliente?'
-                                                        );"
-                                                    >
-
-                                                        @csrf
-                                                        @method('DELETE')
-
-                                                        <button
-                                                            type="submit"
-                                                            class="btn"
-                                                        >
-                                                            Eliminar
-                                                        </button>
-
-                                                    </form>
-
-                                                </div>
-
-                                            </td>
-
-                                        </tr>
-
-                                    @endforeach
-
-                                </tbody>
-
-                            </table>
+                            </div>
 
                         </div>
 
+                    </div>
 
-                        {{-- Paginación --}}
-                        <div class="mt-8">
+                @empty
 
-                            {{ $clients->links() }}
+                    <div class="client-empty">
+                        No hay clientes registrados.
+                    </div>
 
-                        </div>
+                @endforelse
 
-                    @else
+            </div>
 
-                        <div class="py-12 text-center">
 
-                            <p class="text-gray-900 font-semibold text-[21px]">
-                                No hay clientes registrados.
-                            </p>
-
-                        </div>
-
-                    @endif
-
-                </div>
-
+            {{-- Paginación --}}
+            <div class="mt-8">
+                {{ $clients->links() }}
             </div>
 
         </div>

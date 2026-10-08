@@ -7,40 +7,102 @@ use App\Models\Client;
 use App\Models\Invoice;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ClientController extends Controller
 {
     /**
-     * Muestra todos los clientes.
+     * Muestra todos los clientes (los bloqueados no aparecen).
+     *
+     * Orden: primero los que más deben; entre los que deben lo
+     * mismo, por nombre.
      */
     public function index(Request $request)
     {
+        /*
+         * Cada vez que se entra a este apartado se eliminan los
+         * clientes bloqueados hace 5 años o más.
+         */
+        try {
+            Artisan::call('clients:purge-blocked');
+        } catch (\Throwable $e) {
+            Log::error('Error al purgar clientes bloqueados.', [
+                'message' => $e->getMessage(),
+            ]);
+        }
+
         $query = Client::query();
 
         /*
          * Búsqueda por nombre o documento.
          */
         if ($request->filled('search')) {
-            $search = $request->input('search');
+            $search = addcslashes($request->input('search'), '%_\\');
 
             $query->where(function ($query) use ($search) {
                 $query->where('name', 'ilike', "%{$search}%")
-                    ->orWhere(
-                        'document',
-                        'like',
-                        "%{$search}%"
+                    ->orWhereRaw(
+                        'CAST(document AS TEXT) LIKE ?',
+                        ["%{$search}%"]
                     );
             });
         }
 
         /*
-         * Ordenamos los clientes más recientes primero.
+         * Saldo por cobrar de cada cliente: suma de lo que
+         * corresponde cobrar hoy de sus facturas pendientes
+         * (misma regla que Invoice::montoACobrar()).
          */
-        $clients = $query
-            ->latest()
-            ->paginate(15)
-            ->withQueryString();
+        $saldos = Invoice::query()
+            ->where('payment_status', '!=', 'paid')
+            ->get()
+            ->groupBy('client_document')
+            ->map(fn ($facturas) => round(
+                $facturas->sum(fn ($f) => $f->montoACobrar()),
+                2
+            ));
+
+        $ordenados = $query
+            ->get()
+            ->each(function ($client) use ($saldos) {
+                $client->saldo_por_cobrar = (float) (
+                    $saldos[$client->document] ?? 0
+                );
+            })
+            ->sort(function ($a, $b) {
+                // 1) El que más debe primero.
+                $porSaldo = round($b->saldo_por_cobrar * 100)
+                    <=> round($a->saldo_por_cobrar * 100);
+
+                if ($porSaldo !== 0) {
+                    return $porSaldo;
+                }
+
+                // 2) Mismo saldo: por nombre.
+                return strcmp(
+                    Str::lower(Str::ascii($a->name)),
+                    Str::lower(Str::ascii($b->name))
+                );
+            })
+            ->values();
+
+        $perPage = 15;
+        $page = LengthAwarePaginator::resolveCurrentPage();
+
+        $clients = new LengthAwarePaginator(
+            $ordenados->forPage($page, $perPage)->values(),
+            $ordenados->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
 
         return view('admin.clients.index', compact('clients'));
     }
@@ -81,6 +143,24 @@ class ClientController extends Controller
                 'nullable',
                 'integer',
                 'min:1',
+            ],
+
+            'phone' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'email' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'address' => [
+                'nullable',
+                'string',
+                'max:255',
             ],
         ]);
 
@@ -302,6 +382,24 @@ class ClientController extends Controller
                 'integer',
                 'min:1',
             ],
+
+            'phone' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'email' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'address' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
         ]);
 
         $client->update($validated);
@@ -312,27 +410,27 @@ class ClientController extends Controller
     }
 
     /**
-     * Elimina el cliente.
+     * Bloquea el cliente (NO lo elimina).
      *
-     * Las facturas NO se eliminan porque contienen
-     * sus propios datos históricos del cliente.
+     * Por motivos legales los datos se conservan 5 años: el cliente
+     * queda oculto en la aplicación y solo se puede ver desde la base
+     * de datos. Al cumplirse los 5 años lo borra el comando
+     * clients:purge-blocked (cliente + servicios asignados).
+     *
+     * Las facturas nunca se tocan.
      */
     public function destroy(Client $client)
     {
-        /*
-         * Eliminamos primero las relaciones con servicios.
-         */
-        $client->services()->detach();
-
-        /*
-         * Eliminamos el cliente.
-         *
-         * Las invoices permanecen intactas.
-         */
-        $client->delete();
+        $client->update([
+            'blocked' => true,
+            'blocked_at' => now(),
+        ]);
 
         return redirect()
             ->route('admin.clients.index')
-            ->with('success', 'Cliente eliminado correctamente.');
+            ->with('blocked_client', [
+                'name' => $client->name,
+                'delete_on' => now()->addYears(5)->format('d/m/Y'),
+            ]);
     }
 }

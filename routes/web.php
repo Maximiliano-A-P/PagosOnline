@@ -193,6 +193,30 @@ Route::middleware(['auth', 'admin'])
         // Facturas
         // ==================================================
 
+        // Generar factura manual (cliente + servicio actuales).
+        // IMPORTANTE: va antes del resource, si no 'invoices/{invoice}'
+        // intercepta estas URLs.
+        Route::get(
+            '/invoices/generate-manual',
+            [InvoiceController::class, 'generateManual']
+        )->name('invoices.generate-manual');
+
+        Route::get(
+            '/invoices/generate-manual/clients',
+            [InvoiceController::class, 'searchClients']
+        )->name('invoices.generate-manual.clients');
+
+        Route::get(
+            '/invoices/generate-manual/services',
+            [InvoiceController::class, 'searchServices']
+        )->name('invoices.generate-manual.services');
+
+        Route::post(
+            '/invoices/generate-manual',
+            [InvoiceController::class, 'storeManual']
+        )->name('invoices.generate-manual.store');
+
+
         Route::resource(
             'invoices',
             InvoiceController::class
@@ -203,6 +227,13 @@ Route::middleware(['auth', 'admin'])
             'show',
             'destroy',
         ]);
+
+
+        // Vista previa de la generación por lote (cuántas de cada servicio)
+        Route::get(
+            '/invoices/generate/preview',
+            [InvoiceController::class, 'generatePreview']
+        )->name('invoices.generate.preview');
 
 
         // Generar todas las facturas periódicas que correspondan

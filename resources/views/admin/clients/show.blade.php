@@ -246,6 +246,39 @@
 
                         <div>
                             <dt class="font-semibold text-gray-700 text-[21px]">
+                                Teléfono
+                            </dt>
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
+                                {{ $client->phone ?: '—' }}
+                            </dd>
+                        </div>
+
+
+                        <div>
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                Email
+                            </dt>
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
+                                {{ $client->email ?: '—' }}
+                            </dd>
+                        </div>
+
+
+                        <div>
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                Dirección
+                            </dt>
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
+                                {{ $client->address ?: '—' }}
+                            </dd>
+                        </div>
+
+
+                        <div>
+                            <dt class="font-semibold text-gray-700 text-[21px]">
                                 Fecha de creación
                             </dt>
 

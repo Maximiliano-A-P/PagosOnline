@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use App\Models\ArcaConfig;
 use App\Services\Arca\ArcaApiService;
 use App\Services\Arca\WsaaClient;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class InvoiceController extends Controller
@@ -346,37 +347,40 @@ class InvoiceController extends Controller
 
 
     /**
-     * Genera las facturas periódicas que correspondan.
-     *
-     * Este método se ejecuta manualmente desde el panel
-     * administrativo.
-     *
-     * El administrador puede actualizar primero los precios
-     * de los servicios y posteriormente ejecutar este proceso.
+     * Condiciones frente al IVA (para mostrar en los buscadores).
      */
-    public function generate()
-    {
-        /*
-         * Momento exacto en que se ejecuta la generación.
-         */
-        $generationDate = now();
+    private const CONDICIONES_IVA = [
+        1  => 'IVA Responsable Inscripto',
+        4  => 'IVA Sujeto Exento',
+        5  => 'Consumidor Final',
+        6  => 'Responsable Monotributo',
+        7  => 'Sujeto No Categorizado',
+        8  => 'Proveedor del Exterior',
+        9  => 'Cliente del Exterior',
+        10 => 'IVA Liberado – Ley N° 19.640',
+        13 => 'Monotributista Social',
+        15 => 'IVA No Alcanzado',
+        16 => 'Monotributo Trabajador Independiente Promovido',
+    ];
 
-        /*
-         * Usamos el primer día del mes como referencia
-         * para calcular el período.
-         */
+
+    /**
+     * Calcula qué facturas periódicas corresponde generar hoy.
+     *
+     * Devuelve una colección de pares [client, service]. La usan
+     * tanto la vista previa como la generación real, así lo que se
+     * muestra en la tarjeta es exactamente lo que se genera.
+     *
+     * Los clientes bloqueados no aparecen (global scope de Client).
+     */
+    private function facturasPorGenerar(Carbon $generationDate)
+    {
         $currentMonth = $generationDate
             ->copy()
             ->startOfMonth();
 
-        /*
-         * Contador de facturas generadas.
-         */
-        $generatedCount = 0;
+        $pendientes = collect();
 
-        /*
-         * Obtenemos clientes y sus servicios contratados.
-         */
         $clients = Client::with('services')->get();
 
         foreach ($clients as $client) {
@@ -384,158 +388,192 @@ class InvoiceController extends Controller
             foreach ($client->services as $service) {
 
                 /*
-                 * Buscamos la última factura de este cliente
-                 * y de ESTE service_id.
+                 * Última factura de este cliente y de ESTE service_id.
                  *
                  * No usamos service_name para identificarlo,
                  * porque el nombre del servicio puede cambiar.
                  */
                 $lastInvoice = Invoice::query()
-                    ->where(
-                        'client_document',
-                        $client->document
-                    )
-                    ->where(
-                        'service_id',
-                        $service->id
-                    )
+                    ->where('client_document', $client->document)
+                    ->where('service_id', $service->id)
                     ->latest('issued_at')
                     ->first();
 
-                /*
-                 * Si nunca fue facturado este servicio al cliente,
-                 * generamos la primera factura.
-                 */
                 if (!$lastInvoice) {
+                    // Nunca se facturó: corresponde la primera factura.
                     $shouldGenerate = true;
                 } else {
-
-                    /*
-                     * Tomamos solamente el año y mes de la última
-                     * factura para comparar períodos.
-                     */
                     $lastInvoiceMonth = Carbon::parse(
                         $lastInvoice->issued_at
                     )->startOfMonth();
 
-                    /*
-                     * Cantidad de meses transcurridos.
-                     */
                     $monthsElapsed = $lastInvoiceMonth->diffInMonths(
                         $currentMonth
                     );
 
-                    /*
-                     * Generamos cuando pasó el período completo.
-                     */
+                    // Corresponde cuando pasó el período completo.
                     $shouldGenerate = (
                         $monthsElapsed >= $service->period
                     );
                 }
 
-                /*
-                 * Todavía no corresponde generar.
-                 */
-                if (!$shouldGenerate) {
-                    continue;
+                if ($shouldGenerate) {
+                    $pendientes->push([
+                        'client'  => $client,
+                        'service' => $service,
+                    ]);
                 }
+            }
+        }
 
-                /*
-                 * ==================================================
-                 * FECHA DE EMISIÓN
-                 * ==================================================
-                 *
-                 * La base de datos ahora guarda solamente la fecha.
-                 */
-                $issuedAt = $generationDate->toDateString();
+        return $pendientes;
+    }
 
-                /*
-                 * ==================================================
-                 * FECHA DE VENCIMIENTO
-                 * ==================================================
-                 */
-                $dueDay = min(
-                    $service->due_day,
-                    $currentMonth->daysInMonth
+
+    /**
+     * Crea una factura pendiente copiando los valores actuales
+     * del servicio y los datos del cliente.
+     *
+     * La usan la generación por lote y la factura manual.
+     */
+    private function crearFactura(
+        Client $client,
+        Service $service,
+        Carbon $generationDate
+    ): Invoice {
+        $currentMonth = $generationDate
+            ->copy()
+            ->startOfMonth();
+
+        /*
+         * Fecha de vencimiento: el día configurado del mes actual
+         * (ajustado al largo del mes). Si ya pasó, vence hoy.
+         */
+        $dueDay = min(
+            $service->due_day,
+            $currentMonth->daysInMonth
+        );
+
+        $dueDateObject = $currentMonth
+            ->copy()
+            ->day($dueDay);
+
+        if ($dueDateObject->lt($generationDate->copy()->startOfDay())) {
+            $dueDateObject = $generationDate->copy()->startOfDay();
+        }
+
+        return Invoice::create([
+            'issued_at' => $generationDate->toDateString(),
+
+            // Datos históricos del cliente.
+            'client_name' => $client->name,
+            'client_document' => $client->document,
+            'client_cuit' => $client->cuit,
+            'client_document_type' => 96,
+            'client_iva_condition' => $client->arca_iva_condition,
+
+            // Identificación interna del servicio.
+            'service_id' => $service->id,
+            'service_period_start' => $currentMonth->toDateString(),
+            'service_period_end' => $currentMonth
+                ->copy()
+                ->addMonths($service->period)
+                ->subDay()
+                ->toDateString(),
+
+            // Nombre histórico del servicio.
+            'service_name' => $service->service,
+
+            // Valores actuales del servicio.
+            'price' => $service->price,
+            'due_date' => $dueDateObject->toDateString(),
+            'overdue_price' => $service->overdue_price,
+            'tax_percentage' => $service->tax_percentage,
+
+            // Estado inicial.
+            'payment_status' => 'pending',
+            'amount_paid' => null,
+            'paid_at' => null,
+            'payment_method' => null,
+            'paid_by' => null,
+
+            // ARCA.
+            'arca_status' => null,
+            'arca_cae' => null,
+            'arca_cae_expires_at' => null,
+            'arca_invoice_type' => null,
+            'arca_point_of_sale' => null,
+            'arca_invoice_number' => null,
+            'arca_qr' => null,
+        ]);
+    }
+
+
+    /**
+     * Vista previa de la generación por lote (JSON).
+     *
+     * Devuelve cuántas facturas se generarían de cada servicio.
+     * No crea nada.
+     */
+    public function generatePreview()
+    {
+        $porServicio = $this
+            ->facturasPorGenerar(now())
+            ->groupBy(fn ($par) => $par['service']->id)
+            ->map(fn ($pares) => [
+                'service' => $pares->first()['service']->service,
+                'count'   => $pares->count(),
+            ])
+            ->sortBy('service', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+
+        return response()->json([
+            'total'    => $porServicio->sum('count'),
+            'services' => $porServicio,
+        ]);
+    }
+
+
+    /**
+     * Genera por lote las facturas periódicas que correspondan.
+     *
+     * Se ejecuta manualmente desde el panel administrativo.
+     * El administrador puede actualizar primero los precios de los
+     * servicios y luego ejecutar este proceso.
+     */
+    public function generate()
+    {
+        /*
+         * Evita que dos generaciones (doble clic, dos pestañas o una
+         * factura manual) corran al mismo tiempo y dupliquen facturas.
+         */
+        $lock = Cache::lock('invoices-generate', 120);
+
+        if (!$lock->get()) {
+            return redirect()
+                ->route('admin.invoices.index')
+                ->with(
+                    'error',
+                    'Ya hay una generación de facturas en curso. Esperá unos segundos e intentá de nuevo.'
                 );
+        }
 
-                $dueDateObject = $currentMonth
-                    ->copy()
-                    ->day($dueDay);
+        try {
+            $generationDate = now();
 
-                if (
-                    $dueDateObject->lt(
-                        $generationDate->copy()->startOfDay()
-                    )
-                ) {
-                    $dueDateObject =
-                        $generationDate->copy()->startOfDay();
-                }
+            $generatedCount = 0;
 
-                $dueDate = $dueDateObject->toDateString();
-
-                /*
-                 * ==================================================
-                 * CREAR FACTURA
-                 * ==================================================
-                 *
-                 * Se copian los valores actuales del servicio.
-                 */
-                Invoice::create([
-                    'issued_at' => $issuedAt,
-
-                    /*
-                     * Datos históricos del cliente.
-                     */
-                    'client_name' => $client->name,
-                    'client_document' => $client->document,
-                    'client_cuit' => $client->cuit,
-                    'client_document_type' => 96,
-                    'client_iva_condition' => $client->arca_iva_condition,
-
-                    /*
-                     * Identificación interna del servicio.
-                     */
-                    'service_id' => $service->id,
-                    'service_period_start' => $currentMonth->toDateString(),
-                    'service_period_end' => $currentMonth->copy()->addMonths($service->period)->subDay()->toDateString(),
-
-                    /*
-                     * Nombre histórico del servicio.
-                     */
-                    'service_name' => $service->service,
-
-                    /*
-                     * Valores actuales del servicio.
-                     */
-                    'price' => $service->price,
-                    'due_date' => $dueDate,
-                    'overdue_price' => $service->overdue_price,
-                    'tax_percentage' => $service->tax_percentage,
-
-                    /*
-                     * Estado inicial.
-                     */
-                    'payment_status' => 'pending',
-                    'amount_paid' => null,
-                    'paid_at' => null,
-                    'payment_method' => null,
-                    'paid_by' => null,
-
-                    /*
-                     * ARCA.
-                     */
-                    'arca_status' => null,
-                    'arca_cae' => null,
-                    'arca_cae_expires_at' => null,
-                    'arca_invoice_type' => null,
-                    'arca_point_of_sale' => null,
-                    'arca_invoice_number' => null,
-                    'arca_qr' => null,
-                ]);
+            foreach ($this->facturasPorGenerar($generationDate) as $par) {
+                $this->crearFactura(
+                    $par['client'],
+                    $par['service'],
+                    $generationDate
+                );
 
                 $generatedCount++;
             }
+        } finally {
+            $lock->release();
         }
 
         return redirect()
@@ -543,6 +581,131 @@ class InvoiceController extends Controller
             ->with(
                 'success',
                 "Se generaron {$generatedCount} factura(s) correctamente."
+            );
+    }
+
+
+    /**
+     * Pantalla para generar una factura manual a un cliente y un
+     * servicio actuales (existentes en el sistema).
+     */
+    public function generateManual()
+    {
+        return view('admin.invoices.generate-manual');
+    }
+
+
+    /**
+     * Buscador de clientes por nombre o documento (JSON).
+     */
+    public function searchClients(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+
+        if ($q === '') {
+            return response()->json([]);
+        }
+
+        $like = '%' . addcslashes($q, '%_\\') . '%';
+
+        $clients = Client::query()
+            ->where(function ($query) use ($like) {
+                $query->where('name', 'ilike', $like)
+                    ->orWhereRaw('CAST(document AS TEXT) LIKE ?', [$like]);
+            })
+            ->orderBy('name')
+            ->limit(8)
+            ->get()
+            ->map(fn ($client) => [
+                'id'           => $client->id,
+                'name'         => $client->name,
+                'document'     => $client->document,
+                'cuit'         => $client->cuit,
+                'iva_condition' => $client->arca_iva_condition
+                    ? $client->arca_iva_condition
+                        . ' — '
+                        . (self::CONDICIONES_IVA[$client->arca_iva_condition] ?? '')
+                    : 'No cargada (se factura como Consumidor Final)',
+                'phone'        => $client->phone,
+                'email'        => $client->email,
+                'address'      => $client->address,
+            ]);
+
+        return response()->json($clients);
+    }
+
+
+    /**
+     * Buscador de servicios por nombre (JSON).
+     */
+    public function searchServices(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+
+        if ($q === '') {
+            return response()->json([]);
+        }
+
+        $like = '%' . addcslashes($q, '%_\\') . '%';
+
+        $services = Service::query()
+            ->where('service', 'ilike', $like)
+            ->orderBy('service')
+            ->limit(8)
+            ->get()
+            ->map(fn ($service) => [
+                'id'             => $service->id,
+                'name'           => $service->service,
+                'price'          => (float) $service->price,
+                'overdue_price'  => (float) $service->overdue_price,
+                'tax_percentage' => (float) ($service->tax_percentage ?? 0),
+                'due_day'        => $service->due_day,
+                'period'         => $service->period,
+            ]);
+
+        return response()->json($services);
+    }
+
+
+    /**
+     * Genera la factura manual para el cliente y servicio elegidos.
+     */
+    public function storeManual(Request $request)
+    {
+        $validated = $request->validate([
+            'client_id' => ['required', 'integer'],
+            'service_id' => ['required', 'integer', 'exists:services,id'],
+        ]);
+
+        /*
+         * findOrFail respeta el global scope: un cliente bloqueado
+         * no se puede facturar (404).
+         */
+        $client = Client::findOrFail($validated['client_id']);
+        $service = Service::findOrFail($validated['service_id']);
+
+        $lock = Cache::lock('invoices-generate', 120);
+
+        if (!$lock->get()) {
+            return redirect()
+                ->route('admin.invoices.generate-manual')
+                ->with(
+                    'error',
+                    'Ya hay una generación de facturas en curso. Esperá unos segundos e intentá de nuevo.'
+                );
+        }
+
+        try {
+            $invoice = $this->crearFactura($client, $service, now());
+        } finally {
+            $lock->release();
+        }
+
+        return redirect()
+            ->route('admin.invoices.show', $invoice)
+            ->with(
+                'success',
+                "Factura generada para {$client->name} — {$service->service}."
             );
     }
 

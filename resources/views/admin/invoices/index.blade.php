@@ -18,24 +18,15 @@
                     Nueva factura manual
                 </a>
 
-                {{-- Generar facturas periódicas --}}
-                <form
-                    method="POST"
-                    action="{{ route('admin.invoices.generate') }}"
-                    onsubmit="return confirm(
-                        '¿Generar las facturas correspondientes? Se utilizarán los precios actuales de los servicios.'
-                    );"
+                {{-- Generar facturas periódicas por lote --}}
+                <button
+                    type="button"
+                    id="batch-open"
+                    class="btn"
+                    disabled
                 >
-                    @csrf
-
-                    <button
-                        type="submit"
-                        class="btn"
-                    >
-                        Generar facturas
-                    </button>
-
-                </form>
+                    Generar por lote
+                </button>
 
             </div>
 
@@ -96,6 +87,111 @@
 
         .btn-success:hover {
             background-color: #166534;
+        }
+
+
+        .btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        /*
+         * ==========================================================
+         * TARJETA DE CONFIRMACIÓN DE LOTE
+         * ==========================================================
+         */
+
+        .batch-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background-color: rgba(17, 24, 39, 0.6);
+        }
+
+        .batch-overlay.is-open {
+            display: flex;
+        }
+
+        .batch-card {
+            width: 100%;
+            max-width: 640px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+        }
+
+        .batch-card-header {
+            background-color: #111827;
+            padding: 20px 24px;
+        }
+
+        .batch-card-header h3 {
+            margin: 0;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 24px;
+        }
+
+        .batch-card-body {
+            padding: 24px;
+            overflow-y: auto;
+            color: #111827;
+            font-size: 21px;
+        }
+
+        .batch-card-body p {
+            margin: 0 0 14px 0;
+        }
+
+        .batch-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+
+        .batch-list li {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            padding: 10px 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .batch-list li:last-child {
+            border-bottom: none;
+        }
+
+        .batch-list .batch-qty {
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .batch-total {
+            margin-top: 14px;
+            font-weight: 600;
+        }
+
+        .batch-error {
+            color: #b91c1c;
+        }
+
+        .batch-card-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 16px 24px;
+            border-top: 1px solid #e5e7eb;
         }
 
         /*
@@ -878,5 +974,184 @@
         </div>
 
     </div>
+
+    {{-- ================================================== --}}
+    {{-- Tarjeta de confirmación: generar por lote --}}
+    {{-- ================================================== --}}
+
+    <div
+        id="batch-overlay"
+        class="batch-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="batch-title"
+    >
+
+        <div class="batch-card">
+
+            <div class="batch-card-header">
+                <h3 id="batch-title">Generar por lote</h3>
+            </div>
+
+            <div class="batch-card-body" id="batch-body"></div>
+
+            <div class="batch-card-footer">
+
+                <form
+                    id="batch-form"
+                    method="POST"
+                    action="{{ route('admin.invoices.generate') }}"
+                    style="margin: 0;"
+                >
+                    @csrf
+
+                    <button type="submit" id="batch-accept" class="btn" disabled>
+                        Aceptar
+                    </button>
+                </form>
+
+                <button type="button" id="batch-reject" class="btn btn-secondary">
+                    Rechazar
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+
+            const openButton = document.getElementById('batch-open');
+            const overlay    = document.getElementById('batch-overlay');
+            const body       = document.getElementById('batch-body');
+            const form       = document.getElementById('batch-form');
+            const accept     = document.getElementById('batch-accept');
+            const reject     = document.getElementById('batch-reject');
+
+            const previewUrl = @json(route('admin.invoices.generate.preview'));
+
+            // Estado propio de la tarjeta de lote.
+            const state = { loading: false, submitting: false };
+
+            function close() {
+                if (state.submitting) return;
+                overlay.classList.remove('is-open');
+            }
+
+            function showMessage(text, isError) {
+                body.innerHTML = '';
+                const p = document.createElement('p');
+                p.textContent = text;
+                if (isError) p.className = 'batch-error';
+                body.appendChild(p);
+            }
+
+            function renderPreview(data) {
+                body.innerHTML = '';
+
+                if (!data.total) {
+                    showMessage('No hay facturas para generar en este momento.', false);
+                    accept.disabled = true;
+                    return;
+                }
+
+                const intro = document.createElement('p');
+                intro.textContent = 'Se generarán facturas de:';
+                body.appendChild(intro);
+
+                const list = document.createElement('ul');
+                list.className = 'batch-list';
+
+                data.services.forEach(function (item) {
+                    const li = document.createElement('li');
+
+                    const name = document.createElement('span');
+                    name.textContent = item.service;
+
+                    const qty = document.createElement('span');
+                    qty.className = 'batch-qty';
+                    qty.textContent = item.count;
+
+                    li.appendChild(name);
+                    li.appendChild(qty);
+                    list.appendChild(li);
+                });
+
+                body.appendChild(list);
+
+                const total = document.createElement('div');
+                total.className = 'batch-total';
+                total.textContent = 'Total: ' + data.total + ' factura(s)';
+                body.appendChild(total);
+
+                const note = document.createElement('p');
+                note.style.marginTop = '14px';
+                note.textContent = 'Se utilizarán los precios actuales de los servicios.';
+                body.appendChild(note);
+
+                accept.disabled = false;
+            }
+
+            async function openCard() {
+                if (state.loading || state.submitting) return;
+
+                state.loading = true;
+                openButton.disabled = true;
+                accept.disabled = true;
+
+                showMessage('Calculando facturas a generar…', false);
+                overlay.classList.add('is-open');
+
+                try {
+                    const response = await fetch(previewUrl, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+
+                    renderPreview(await response.json());
+
+                } catch (error) {
+                    showMessage('No se pudo calcular el lote. Intentá de nuevo.', true);
+                } finally {
+                    state.loading = false;
+                    openButton.disabled = false;
+                }
+            }
+
+            openButton.addEventListener('click', openCard);
+            reject.addEventListener('click', close);
+
+            overlay.addEventListener('click', function (event) {
+                if (event.target === overlay) close();
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') close();
+            });
+
+            // Evita doble envío al aceptar.
+            form.addEventListener('submit', function (event) {
+                if (state.submitting) {
+                    event.preventDefault();
+                    return;
+                }
+
+                state.submitting = true;
+                accept.disabled = true;
+                reject.disabled = true;
+                accept.textContent = 'Generando…';
+            });
+
+            // Todo listo: recién ahora se habilita el botón.
+            openButton.disabled = false;
+        });
+    </script>
 
 </x-app-layout>

@@ -250,6 +250,81 @@
                         </div>
 
 
+                        {{-- Teléfono --}}
+                        <div>
+
+                            <label
+                                for="phone"
+                                class="block font-semibold text-gray-900 text-[21px]"
+                            >
+                                Teléfono (opcional)
+                            </label>
+
+                            <input
+                                type="text"
+                                id="phone"
+                                name="phone"
+                                value="{{ old('phone') }}"
+                                maxlength="255"
+                                class="mt-2 block w-full rounded-md
+                                       border-gray-400 bg-white text-gray-900
+                                       text-[21px] shadow-sm
+                                       focus:border-indigo-600 focus:ring-indigo-600"
+                            >
+
+                        </div>
+
+
+                        {{-- Email --}}
+                        <div>
+
+                            <label
+                                for="email"
+                                class="block font-semibold text-gray-900 text-[21px]"
+                            >
+                                Email de contacto (opcional)
+                            </label>
+
+                            <input
+                                type="text"
+                                id="email"
+                                name="email"
+                                value="{{ old('email') }}"
+                                maxlength="255"
+                                class="mt-2 block w-full rounded-md
+                                       border-gray-400 bg-white text-gray-900
+                                       text-[21px] shadow-sm
+                                       focus:border-indigo-600 focus:ring-indigo-600"
+                            >
+
+                        </div>
+
+
+                        {{-- Dirección --}}
+                        <div>
+
+                            <label
+                                for="address"
+                                class="block font-semibold text-gray-900 text-[21px]"
+                            >
+                                Dirección (opcional)
+                            </label>
+
+                            <input
+                                type="text"
+                                id="address"
+                                name="address"
+                                value="{{ old('address') }}"
+                                maxlength="255"
+                                class="mt-2 block w-full rounded-md
+                                       border-gray-400 bg-white text-gray-900
+                                       text-[21px] shadow-sm
+                                       focus:border-indigo-600 focus:ring-indigo-600"
+                            >
+
+                        </div>
+
+
                         {{-- Botones --}}
                         <div class="pt-4 flex items-center justify-end gap-4">
 

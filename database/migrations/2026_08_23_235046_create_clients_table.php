@@ -43,6 +43,49 @@ return new class extends Migration
 
             /*
              * =====================================================
+             * DATOS DE CONTACTO
+             * =====================================================
+             *
+             * Todos son opcionales (texto simple).
+             */
+
+            // Teléfono de contacto.
+            $table->string('phone')
+                ->nullable();
+
+            // Email de contacto.
+            $table->string('email')
+                ->nullable();
+
+            // Dirección del cliente.
+            $table->string('address')
+                ->nullable();
+
+
+            /*
+             * =====================================================
+             * BLOQUEO (BORRADO LEGAL)
+             * =====================================================
+             *
+             * Los clientes no se eliminan al instante: se bloquean
+             * y se conservan 5 años por obligación legal. Pasado
+             * ese plazo se borran (comando clients:purge-blocked).
+             *
+             * Los clientes bloqueados solo son accesibles
+             * directamente desde la base de datos.
+             */
+
+            // true = cliente bloqueado.
+            $table->boolean('blocked')
+                ->default(false);
+
+            // Momento en que se bloqueó (cuenta los 5 años).
+            $table->timestamp('blocked_at')
+                ->nullable();
+
+
+            /*
+             * =====================================================
              * DATOS FISCALES ARCA
              * =====================================================
              *

@@ -132,6 +132,26 @@
                     </a>
 
 
+                    {{-- Generar factura manual (cliente + servicio actuales) --}}
+                    <a
+                        href="{{ route('admin.invoices.generate-manual') }}"
+                        class="block bg-white border border-gray-300 rounded-lg
+                               shadow-sm hover:bg-gray-50 transition"
+                    >
+                        <div class="p-6">
+
+                            <h4 class="font-semibold text-gray-900 text-[3.5vh]">
+                                Generar factura manual
+                            </h4>
+
+                            <p class="mt-3 text-gray-700 text-[3vh]">
+                                Generar una factura a un cliente y un servicio actuales.
+                            </p>
+
+                        </div>
+                    </a>
+
+
                     {{-- Nueva factura --}}
                     <a
                         href="{{ route('admin.invoices.create') }}"

@@ -11,12 +11,8 @@ use Illuminate\Support\Str;
 class DemoDataSeeder extends Seeder
 {
     /**
-     * Genera datos de prueba en español: 10 servicios, 200 clientes
-     * (3 de ellos bloqueados) y 2 servicios aleatorios asignados a
-     * cada cliente activo.
-     *
-     * Solo corre si todavía no hay clientes cargados, para
-     * evitar duplicar todo en cada deploy/redeploy.
+     * Genera datos de prueba en español: 10 servicios, 200 clientes y 2 servicios aleatorios asignados a cada cliente.
+     * Solo corre si todavía no hay clientes cargados, para evitar duplicar todo en cada deploy/redeploy.
      */
     public function run(): void
     {

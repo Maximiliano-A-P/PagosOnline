@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\ArcaConfig;
+use App\Models\Client;
 use App\Models\Invoice;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Endroid\QrCode\Builder\Builder;
@@ -77,7 +77,12 @@ class InvoicePdfService
         $neto = round($total / (1 + $tasa / 100), 2);
         $iva = round($total - $neto, 2);
 
-        $config = ArcaConfig::first();
+        /*
+         * Datos de contacto del cliente (teléfono, email, dirección):
+         * la factura solo guarda nombre, documento, CUIT e IVA, el
+         * resto se toma de la ficha actual del cliente.
+         */
+        $client = Client::where('document', $invoice->client_document)->first();
 
         $metodo = $invoice->payment_method;
         if ($metodo === 'mercadopago') {
@@ -98,11 +103,8 @@ class InvoicePdfService
                 $invoice->client_iva_condition ?: 5
             ] ?? 'Consumidor Final',
             'metodoPago' => $metodo,
-            'emisorNombre' => config('app.name'),
-            'emisorCuit' => config('arca.cuit'),
-            'emisorCondicion' => $config
-                ? (self::CONDICIONES_IVA[$config->condicion_iva] ?? null)
-                : null,
+            'client' => $client,
+            'codigoIva' => (int) ($invoice->client_iva_condition ?: 5),
             'qr' => ($pagada && $conCae) ? $this->qrDataUri($invoice) : null,
         ];
     }

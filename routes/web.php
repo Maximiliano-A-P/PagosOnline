@@ -66,7 +66,8 @@ Route::middleware(['auth'])
         Route::get(
             '/dashboard/invoices/{invoice}/pay',
             [DashboardInvoiceController::class, 'pay']
-        )->name('dashboard.invoices.pay');
+        )->middleware('account.verified')
+         ->name('dashboard.invoices.pay');
 
 
         Route::get(

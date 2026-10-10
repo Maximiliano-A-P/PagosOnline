@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
@@ -186,27 +187,53 @@ class RegisteredUserController extends Controller
         ]);
 
         /*
-         * Registramos cuándo se envió el código.
+         * Enviamos automáticamente el código al correo recién
+         * registrado.
          *
-         * Este valor se utilizará para controlar
-         * el cooldown de 1 hora para solicitar otro.
+         * Si el envío falla (o tarda demasiado) el registro NO debe
+         * romperse: la cuenta ya existe y el usuario puede pedir el
+         * código de nuevo desde la pantalla de verificación.
+         *
+         * El cooldown de 1 hora solo se activa si el correo salió.
          */
-        $user->update([
-            'email_verification_sent_at' => now(),
-        ]);
+        $mailSent = true;
 
-        /*
-         * Enviamos automáticamente el código
-         * al correo recién registrado.
-         */
-        Mail::to($user->email)->send(
-            new EmailVerificationCodeMail($code)
-        );
+        try {
+            Mail::to($user->email)->send(
+                new EmailVerificationCodeMail($code)
+            );
+
+            $user->update([
+                'email_verification_sent_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            $mailSent = false;
+
+            EmailVerificationCode::where('user_id', $user->id)->delete();
+
+            Log::error(
+                'No se pudo enviar el código de verificación al registrarse.',
+                [
+                    'user_id' => $user->id,
+                    'message' => $e->getMessage(),
+                    'exception' => get_class($e),
+                ]
+            );
+        }
 
         /*
          * Iniciamos sesión automáticamente.
          */
         Auth::login($user);
+
+        if (!$mailSent) {
+            return redirect()
+                ->route('email.verification.show')
+                ->with(
+                    'error',
+                    'Tu cuenta fue creada, pero no pudimos enviar el código. Pedí uno nuevo desde esta pantalla.'
+                );
+        }
 
         /*
          * Entramos directamente al dashboard.

@@ -89,42 +89,70 @@
     {{-- ====================== Encabezado ====================== --}}
     <table>
         <tr>
-            <td style="width: 42%;">
+            <td>
                 <div class="box">
-                    <p class="title">{{ $emisorNombre }}</p>
-                    @if ($emisorCuit)
-                        <div class="small">CUIT: {{ $emisorCuit }}</div>
-                    @endif
-                    @if ($emisorCondicion)
-                        <div class="small">{{ $emisorCondicion }}</div>
-                    @endif
+                    <p class="title" style="margin-bottom: 8px;">
+                        {{ $conCae ? 'FACTURA' : 'DETALLE DE FACTURA' }}
+                        @if ($numero)
+                            <span style="font-size: 13px;">&nbsp;N° {{ $numero }}</span>
+                        @endif
+                    </p>
+
+                    <table>
+                        <tr>
+                            <td style="width: 25%;">
+                                <div class="label">Fecha de emisión</div>
+                                <div class="value">{{ $invoice->issued_at->format('d/m/Y') }}</div>
+                            </td>
+                            <td style="width: 25%;">
+                                <div class="label">Vencimiento</div>
+                                <div class="value">{{ $invoice->due_date->format('d/m/Y') }}</div>
+                            </td>
+                            <td style="width: 50%;">
+                                <div class="label">Servicio</div>
+                                <div class="value">{{ $invoice->service_name }}</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding-top: 8px;">
+                                <div class="label">Período desde</div>
+                                <div class="value">{{ $invoice->service_period_start?->format('d/m/Y') ?: '—' }}</div>
+                            </td>
+                            <td style="padding-top: 8px;">
+                                <div class="label">Período hasta</div>
+                                <div class="value">{{ $invoice->service_period_end?->format('d/m/Y') ?: '—' }}</div>
+                            </td>
+                            <td style="padding-top: 8px;">
+                                <div class="label">Estado</div>
+                                <div class="value">{{ $pagada ? 'Pagada' : 'Pendiente de pago' }}</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding-top: 8px;">
+                                <div class="label">Subtotal neto</div>
+                                <div class="value">${{ number_format($neto, 2, ',', '.') }}</div>
+                            </td>
+                            <td style="padding-top: 8px;">
+                                <div class="label">Impuestos</div>
+                                <div class="value">{{ rtrim(rtrim(number_format($tasa, 2, '.', ''), '0'), '.') }}%</div>
+                            </td>
+                            <td style="padding-top: 8px;">
+                                <div class="label">Total</div>
+                                <div class="value">${{ number_format($total, 2, ',', '.') }}</div>
+                            </td>
+                        </tr>
+                    </table>
                 </div>
             </td>
 
-            <td style="width: 16%; padding: 0 8px;">
-                @if ($letra)
+            @if ($letra)
+                <td style="width: 70px; padding-left: 8px;">
                     <div class="letter">{{ $letra }}</div>
                     <div class="small muted" style="text-align:center; margin-top:3px;">
                         Cód. {{ str_pad((string) $invoice->arca_invoice_type, 2, '0', STR_PAD_LEFT) }}
                     </div>
-                @endif
-            </td>
-
-            <td style="width: 42%;">
-                <div class="box">
-                    <p class="title">
-                        {{ $conCae ? 'FACTURA' : 'DETALLE DE FACTURA' }}
-                    </p>
-
-                    @if ($numero)
-                        <div class="value">N° {{ $numero }}</div>
-                    @endif
-
-                    <div class="small">
-                        Fecha de emisión: {{ $invoice->issued_at->format('d/m/Y') }}
-                    </div>
-                </div>
-            </td>
+                </td>
+            @endif
         </tr>
     </table>
 
@@ -141,23 +169,39 @@
 
     {{-- ====================== Cliente ====================== --}}
     <div class="box" style="margin-bottom: 14px;">
+        <p class="section-title">Datos del cliente</p>
+
         <table>
             <tr>
-                <td style="width: 40%;">
-                    <div class="label">Cliente</div>
+                <td style="width: 30%;">
+                    <div class="label">Nombre</div>
                     <div class="value">{{ $invoice->client_name }}</div>
                 </td>
                 <td style="width: 20%;">
-                    <div class="label">Documento</div>
+                    <div class="label">Documento (DNI)</div>
                     <div class="value">{{ $invoice->client_document }}</div>
                 </td>
                 <td style="width: 20%;">
                     <div class="label">CUIT</div>
                     <div class="value">{{ $invoice->client_cuit ?: '—' }}</div>
                 </td>
-                <td style="width: 20%;">
+                <td style="width: 30%;">
                     <div class="label">Condición frente al IVA</div>
-                    <div class="value">{{ $condicionIva }}</div>
+                    <div class="value">{{ $codigoIva }} — {{ $condicionIva }}</div>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding-top: 8px;">
+                    <div class="label">Teléfono</div>
+                    <div class="value">{{ $client?->phone ?: '—' }}</div>
+                </td>
+                <td colspan="2" style="padding-top: 8px;">
+                    <div class="label">Email</div>
+                    <div class="value">{{ $client?->email ?: '—' }}</div>
+                </td>
+                <td style="padding-top: 8px;">
+                    <div class="label">Dirección</div>
+                    <div class="value">{{ $client?->address ?: '—' }}</div>
                 </td>
             </tr>
         </table>

@@ -206,6 +206,35 @@
             margin: 0 auto 40px auto;
         }
 
+        .invoice-summary {
+            width: 100%;
+            margin: 0 auto 40px auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            padding: 24px;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 900px) {
+            .invoice-summary {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .invoice-summary-label {
+            font-size: 21px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .invoice-summary-value {
+            margin-top: 8px;
+            font-size: 32px;
+            font-weight: 700;
+            color: #111827;
+        }
+
         .invoice-card {
             background-color: #ffffff;
             border: 1px solid #d1d5db;
@@ -608,6 +637,48 @@
 
                     </form>
 
+                </div>
+
+            </div>
+
+
+            {{-- ================================================== --}}
+            {{-- Resumen de deuda --}}
+            {{-- ================================================== --}}
+
+            <div
+                class="invoice-summary bg-white border border-gray-300
+                       rounded-lg shadow-sm"
+            >
+
+                <div>
+                    <div class="invoice-summary-label">
+                        Total de facturas pendientes de pago
+                    </div>
+
+                    <div class="invoice-summary-value">
+                        {{ number_format($resumen['facturas'], 0, ',', '.') }}
+                    </div>
+                </div>
+
+                <div>
+                    <div class="invoice-summary-label">
+                        Total de clientes deudores
+                    </div>
+
+                    <div class="invoice-summary-value">
+                        {{ number_format($resumen['clientes'], 0, ',', '.') }}
+                    </div>
+                </div>
+
+                <div>
+                    <div class="invoice-summary-label">
+                        Total del importe por cobrar
+                    </div>
+
+                    <div class="invoice-summary-value">
+                        ${{ number_format($resumen['importe'], 2, ',', '.') }}
+                    </div>
                 </div>
 
             </div>

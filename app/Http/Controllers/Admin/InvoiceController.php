@@ -103,9 +103,31 @@ class InvoiceController extends Controller
         ->paginate(15)
         ->withQueryString();
 
+        /*
+         * Resumen de deuda (global: no depende de los filtros de
+         * búsqueda). Usa la misma regla de cobro que el saldo de
+         * cada cliente (Invoice::montoACobrar()): precio normal o
+         * vencido, según corresponda, más IVA.
+         */
+        $pendientes = Invoice::query()
+            ->where('payment_status', '!=', 'paid')
+            ->get();
+
+        $resumen = [
+            'facturas' => $pendientes->count(),
+            'clientes' => $pendientes
+                ->pluck('client_document')
+                ->unique()
+                ->count(),
+            'importe' => round(
+                $pendientes->sum(fn ($f) => $f->montoACobrar()),
+                2
+            ),
+        ];
+
         return view(
             'admin.invoices.index',
-            compact('invoices')
+            compact('invoices', 'resumen')
         );
     }
 

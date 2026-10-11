@@ -178,7 +178,7 @@
 
                 <ul class="mt-3 list-disc list-inside space-y-2 text-[21px]">
                     <li>
-                        Ya fueron emitidas con el sistema anterior: emitirlas
+                        Ya podrian haber sido emitidas por el sistema anterior (si habia): emitirlas
                         de nuevo generaría un comprobante fiscal duplicado
                         para la misma venta.
                     </li>

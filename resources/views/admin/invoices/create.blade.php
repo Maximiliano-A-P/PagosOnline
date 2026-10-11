@@ -182,9 +182,9 @@
                         fecha de hasta 10 días corridos respecto de hoy.
                     </li>
                     <li>
-                        Si la fecha de emisión de esta factura es más
-                        antigua, a ARCA se le informa la fecha más antigua
-                        que acepta.
+                        Por eso, a ARCA se le informa como fecha del
+                        comprobante el día en que se paga la factura o en
+                        que se reintenta la emisión.
                     </li>
                     <li>
                         En el sistema la fecha de emisión se mantiene tal

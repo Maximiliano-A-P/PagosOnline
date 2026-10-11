@@ -129,9 +129,17 @@ class InvoicePdfService
      */
     private function qrDataUri(Invoice $invoice): string
     {
+        /*
+         * Debe coincidir con la fecha del comprobante informada a
+         * ARCA: el día (en horario de Argentina) del intento de
+         * emisión que obtuvo el CAE, es decir, el del pago o el del
+         * reintento.
+         */
         $fecha = $invoice->arca_last_attempt_at
-            ?? $invoice->paid_at
-            ?? $invoice->issued_at;
+            ? $invoice->arca_last_attempt_at
+                ->copy()
+                ->setTimezone('America/Argentina/Buenos_Aires')
+            : ($invoice->paid_at ?? $invoice->issued_at);
 
         $payload = [
             'ver' => 1,

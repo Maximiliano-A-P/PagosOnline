@@ -13,12 +13,6 @@ class ArcaApiService
     private const CONSUMIDOR_FINAL_IVA = 5;
     private const CONCEPTO_SERVICIOS = 2;
 
-    /**
-     * Para servicios, ARCA acepta fechas de comprobante de hasta
-     * 10 días corridos anteriores o posteriores a hoy.
-     */
-    private const MAX_DIAS_ATRASO_FECHA = 10;
-
     private const ALICUOTAS_AFIP = [
         0 => 3,
         10.5 => 4,
@@ -72,9 +66,15 @@ class ArcaApiService
 
         /*
          * Registramos el último intento.
+         *
+         * Este mismo instante define la fecha del comprobante que
+         * se informa a ARCA (ver más abajo) y la fecha del QR del
+         * PDF, para que ambas coincidan siempre.
          */
+        $momentoIntento = now();
+
         $invoice->update([
-            'arca_last_attempt_at' => now(),
+            'arca_last_attempt_at' => $momentoIntento,
         ]);
 
         if (! config('arca.cuit')) {
@@ -190,33 +190,26 @@ class ArcaApiService
         /*
          * Fecha del comprobante que se INFORMA a ARCA.
          *
-         * ARCA rechaza fechas que superen el máximo de días de
-         * diferencia con hoy. Si la factura es más antigua, se le
-         * informa la fecha más antigua que acepta.
+         * Es siempre el día en que se emite: el del pago (la
+         * emisión se hace al confirmarse) o el del reintento.
+         * Así nunca queda fuera de lo que ARCA acepta (para
+         * servicios, hasta 10 días respecto de hoy) y tampoco
+         * queda por detrás de comprobantes ya autorizados.
          *
-         * Solo cambia lo que se envía a ARCA: la fecha de emisión
-         * real (issued_at) no se modifica en el sistema.
+         * La fecha de emisión de la factura en el sistema
+         * (issued_at) no se modifica.
          *
-         * "Hoy" se toma en horario de Argentina, que es el que
-         * usa ARCA (el servidor trabaja en UTC).
+         * Se toma en horario de Argentina, que es el que usa ARCA
+         * (el servidor trabaja en UTC).
          */
-        $fechaOriginal =
-            $invoice->issued_at
-                ->copy()
-                ->startOfDay();
-
-        $fechaMasAntiguaAceptada =
+        $fechaComprobante =
             Carbon::createFromFormat(
                 'Y-m-d',
-                Carbon::now('America/Argentina/Buenos_Aires')
-                    ->subDays(self::MAX_DIAS_ATRASO_FECHA)
+                $momentoIntento
+                    ->copy()
+                    ->setTimezone('America/Argentina/Buenos_Aires')
                     ->toDateString()
             )->startOfDay();
-
-        $fechaComprobante =
-            $fechaOriginal->lt($fechaMasAntiguaAceptada)
-                ? $fechaMasAntiguaAceptada
-                : $fechaOriginal;
 
         $fechaVencimiento =
             $invoice->due_date

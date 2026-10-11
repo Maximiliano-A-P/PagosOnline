@@ -165,7 +165,7 @@
                             </h4>
 
                             <p class="mt-3 text-gray-700 text-[3vh]">
-                                Registrar manualmente una factura emitida previa a istalar este programa.
+                                Registrar manualmente una factura emitida previa a instalar este programa.
                             </p>
 
                         </div>

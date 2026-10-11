@@ -53,9 +53,6 @@ class Invoice extends Model
         'arca_last_attempt_at',
         'arca_retry_at',
         'receipt_sent_at',
-
-        // Factura anterior al uso del sistema (no se emite ante ARCA)
-        'is_historical',
     ];
 
     protected function casts(): array
@@ -89,7 +86,6 @@ class Invoice extends Model
             'arca_last_attempt_at' => 'datetime',
             'arca_retry_at' => 'datetime',
             'receipt_sent_at' => 'datetime',
-            'is_historical' => 'boolean',
         ];
     }
 

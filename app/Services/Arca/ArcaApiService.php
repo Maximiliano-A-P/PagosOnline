@@ -13,6 +13,12 @@ class ArcaApiService
     private const CONSUMIDOR_FINAL_IVA = 5;
     private const CONCEPTO_SERVICIOS = 2;
 
+    /**
+     * Para servicios, ARCA acepta fechas de comprobante de hasta
+     * 10 días corridos anteriores o posteriores a hoy.
+     */
+    private const MAX_DIAS_ATRASO_FECHA = 10;
+
     private const ALICUOTAS_AFIP = [
         0 => 3,
         10.5 => 4,
@@ -40,17 +46,6 @@ class ArcaApiService
         Invoice $invoice,
         bool $automatico = false
     ): void {
-        /*
-         * Las facturas históricas (anteriores al uso del sistema)
-         * quedan fuera del flujo de ARCA: ya se emitieron con el
-         * sistema anterior y no deben intentarse ni registrarse
-         * como error. Esta barrera cubre todos los caminos de
-         * emisión (webhook, reintento manual y comando automático).
-         */
-        if ($invoice->is_historical) {
-            return;
-        }
-
         /*
          * Una factura ya autorizada nunca vuelve a emitirse.
          */
@@ -192,10 +187,36 @@ class ArcaApiService
          * ==========================================================
          */
 
-        $fechaComprobante =
+        /*
+         * Fecha del comprobante que se INFORMA a ARCA.
+         *
+         * ARCA rechaza fechas que superen el máximo de días de
+         * diferencia con hoy. Si la factura es más antigua, se le
+         * informa la fecha más antigua que acepta.
+         *
+         * Solo cambia lo que se envía a ARCA: la fecha de emisión
+         * real (issued_at) no se modifica en el sistema.
+         *
+         * "Hoy" se toma en horario de Argentina, que es el que
+         * usa ARCA (el servidor trabaja en UTC).
+         */
+        $fechaOriginal =
             $invoice->issued_at
                 ->copy()
                 ->startOfDay();
+
+        $fechaMasAntiguaAceptada =
+            Carbon::createFromFormat(
+                'Y-m-d',
+                Carbon::now('America/Argentina/Buenos_Aires')
+                    ->subDays(self::MAX_DIAS_ATRASO_FECHA)
+                    ->toDateString()
+            )->startOfDay();
+
+        $fechaComprobante =
+            $fechaOriginal->lt($fechaMasAntiguaAceptada)
+                ? $fechaMasAntiguaAceptada
+                : $fechaOriginal;
 
         $fechaVencimiento =
             $invoice->due_date
@@ -311,11 +332,19 @@ class ArcaApiService
             'importeTotal' =>
                 $total,
 
+            /*
+             * Las facturas históricas no tienen período de servicio
+             * cargado: se informa el mes de la fecha de emisión.
+             */
             'fchServDesde' =>
-                $invoice->service_period_start?->format('Ymd'),
+                ($invoice->service_period_start
+                    ?? $invoice->issued_at->copy()->startOfMonth())
+                    ->format('Ymd'),
 
             'fchServHasta' =>
-                $invoice->service_period_end?->format('Ymd'),
+                ($invoice->service_period_end
+                    ?? $invoice->issued_at->copy()->endOfMonth())
+                    ->format('Ymd'),
 
             'fchVtoPago' =>
                 $fechaVencimiento->format('Ymd'),

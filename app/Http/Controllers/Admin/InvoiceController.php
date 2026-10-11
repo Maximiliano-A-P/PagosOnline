@@ -91,7 +91,6 @@ class InvoiceController extends Controller
         ->orderByRaw("
             CASE
                 WHEN payment_status = 'paid'
-                    AND is_historical = false
                     AND (arca_cae IS NULL OR arca_cae = '')
                     AND (arca_status IS NULL OR arca_status <> 'aprobado')
                 THEN 0
@@ -362,12 +361,6 @@ class InvoiceController extends Controller
             'paid_at' => $isPaid ? ($validated['paid_at'] ?? null) : null,
             'payment_method' => $isPaid ? ($validated['payment_method'] ?? null) : null,
             'paid_by' => $paidBy,
-
-            /*
-             * Factura histórica: queda fuera del flujo de ARCA
-             * (no se emite, no se reintenta y no muestra el botón).
-             */
-            'is_historical' => true,
 
             /*
              * ARCA.
@@ -897,21 +890,6 @@ class InvoiceController extends Controller
     public function retryArca(
         Invoice $invoice
     ) {
-        /*
-         * Las facturas históricas no se emiten ante ARCA.
-         */
-        if ($invoice->is_historical) {
-            return redirect()
-                ->route(
-                    'admin.invoices.show',
-                    $invoice
-                )
-                ->with(
-                    'error',
-                    'Las facturas históricas no se emiten ante ARCA.'
-                );
-        }
-
         if (
             $invoice->payment_status !== 'paid'
         ) {

@@ -365,9 +365,7 @@
                                 </dt>
 
                                 <dd class="mt-2 text-gray-900 text-[21px]">
-                                    {{ $invoice->is_historical
-                                        ? 'No aplica (factura histórica)'
-                                        : ($invoice->arca_status ?? 'Sin procesar') }}
+                                    {{ $invoice->arca_status ?? 'Sin procesar' }}
                                 </dd>
                             </div>
 
@@ -454,7 +452,6 @@
 
                         @if (
                             $invoice->payment_status === 'paid'
-                            && !$invoice->is_historical
                             && empty($invoice->arca_cae)
                             && $invoice->arca_status !== 'aprobado'
                         )

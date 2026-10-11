@@ -291,16 +291,6 @@ return new class extends Migration
             $table->timestamp('receipt_sent_at')
                 ->nullable();
 
-            /*
-             * Factura histórica: anterior al uso del sistema.
-             *
-             * Queda fuera del flujo de emisión ante ARCA (ya fue
-             * emitida con el sistema anterior; emitirla de nuevo
-             * generaría un comprobante fiscal duplicado).
-             */
-            $table->boolean('is_historical')
-                ->default(false);
-
             $table->index([
                 'payment_status',
                 'arca_retry_at',

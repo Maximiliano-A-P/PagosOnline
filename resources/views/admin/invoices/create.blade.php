@@ -167,39 +167,28 @@
 
         <div class="p-6">
 
-            {{-- Por qué no se emiten ante ARCA --}}
+            {{-- Nota sobre la fecha informada a ARCA --}}
             <div
                 class="mb-8 rounded-lg border border-gray-400 bg-gray-100
                        px-6 py-5 text-gray-900"
             >
                 <p class="font-semibold text-[21px]">
-                    Las facturas históricas no se emiten ante ARCA
+                    Sobre la fecha informada a ARCA
                 </p>
 
                 <ul class="mt-3 list-disc list-inside space-y-2 text-[21px]">
                     <li>
-                        Ya podrian haber sido emitidas por el sistema anterior (si habia): emitirlas
-                        de nuevo generaría un comprobante fiscal duplicado
-                        para la misma venta.
+                        ARCA solo acepta comprobantes de servicios con una
+                        fecha de hasta 10 días corridos respecto de hoy.
                     </li>
                     <li>
-                        ARCA solo acepta fechas de comprobante cercanas a hoy
-                        (para servicios, unos 10 días), por lo que una factura
-                        anterior al uso del sistema sería rechazada.
+                        Si la fecha de emisión de esta factura es más
+                        antigua, a ARCA se le informa la fecha más antigua
+                        que acepta.
                     </li>
                     <li>
-                        Los comprobantes se numeran de forma correlativa por
-                        punto de venta, y ARCA puede rechazar uno con fecha
-                        anterior a la del último autorizado.
-                    </li>
-                    <li>
-                        Emitirlas con la fecha de hoy cambiaría el comprobante
-                        respecto del que el cliente ya recibió.
-                    </li>
-                    <li>
-                        Por eso se cargan solo como registro: no tienen CAE,
-                        no se envía correo y no muestran la opción
-                        «Reintentar ARCA».
+                        En el sistema la fecha de emisión se mantiene tal
+                        como la cargues.
                     </li>
                 </ul>
             </div>

@@ -969,7 +969,6 @@
 
                                 @if (
                                     $invoice->payment_status === 'paid'
-                                    && !$invoice->is_historical
                                     && empty($invoice->arca_cae)
                                     && $invoice->arca_status !== 'aprobado'
                                 )

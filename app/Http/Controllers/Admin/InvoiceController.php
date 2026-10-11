@@ -88,6 +88,15 @@ class InvoiceController extends Controller
          * El ID se utiliza como segundo criterio para mantener un orden determinista cuando dos facturas tienen el mismo updated_at.
          */
         $invoices = $query
+        ->orderByRaw("
+            CASE
+                WHEN payment_status = 'paid'
+                    AND (arca_cae IS NULL OR arca_cae = '')
+                    AND (arca_status IS NULL OR arca_status <> 'aprobado')
+                THEN 0
+                ELSE 1
+            END
+        ")
         ->orderByDesc('updated_at')
         ->orderByDesc('id')
         ->paginate(15)

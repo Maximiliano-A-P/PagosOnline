@@ -51,6 +51,10 @@ class RetryPendingArcaInvoices extends Command
         $invoices =
             Invoice::query()
                 ->where(
+                    'is_historical',
+                    false
+                )
+                ->where(
                     'payment_status',
                     'paid'
                 )

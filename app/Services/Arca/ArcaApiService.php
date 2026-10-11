@@ -41,6 +41,17 @@ class ArcaApiService
         bool $automatico = false
     ): void {
         /*
+         * Las facturas históricas (anteriores al uso del sistema)
+         * quedan fuera del flujo de ARCA: ya se emitieron con el
+         * sistema anterior y no deben intentarse ni registrarse
+         * como error. Esta barrera cubre todos los caminos de
+         * emisión (webhook, reintento manual y comando automático).
+         */
+        if ($invoice->is_historical) {
+            return;
+        }
+
+        /*
          * Una factura ya autorizada nunca vuelve a emitirse.
          */
         if (

@@ -91,6 +91,7 @@ class InvoiceController extends Controller
         ->orderByRaw("
             CASE
                 WHEN payment_status = 'paid'
+                    AND is_historical = false
                     AND (arca_cae IS NULL OR arca_cae = '')
                     AND (arca_status IS NULL OR arca_status <> 'aprobado')
                 THEN 0
@@ -129,24 +130,17 @@ class InvoiceController extends Controller
      *
      * Estas son facturas que ya existían antes de utilizar
      * el sistema.
+     *
+     * Cliente y servicio se escriben libremente; mientras se
+     * escribe, la vista consulta los buscadores en vivo
+     * (searchClients / searchServices) y autocompleta los datos
+     * si hay coincidencia. Si no existen, se cargan a mano.
      */
     public function create()
     {
-        /*
-         * Los servicios se muestran como opciones.
-         *
-         * El administrador puede:
-         *
-         * - seleccionar un servicio existente
-         * - dejarlo vacío si la factura histórica
-         *   no tiene un servicio asociado
-         */
-        $services = Service::orderBy('service')->get();
-
-        return view(
-            'admin.invoices.create',
-            compact('services')
-        );
+        return view('admin.invoices.create', [
+            'condicionesIva' => self::CONDICIONES_IVA,
+        ]);
     }
 
 
@@ -202,9 +196,9 @@ class InvoiceController extends Controller
             ],
 
             'client_iva_condition' => [
-                'nullable',
+                'required',
                 'integer',
-                'min:1',
+                'in:' . implode(',', array_keys(self::CONDICIONES_IVA)),
             ],
 
             /*
@@ -247,7 +241,7 @@ class InvoiceController extends Controller
             ],
 
             'tax_percentage' => [
-                'nullable',
+                'required',
                 'numeric',
                 'min:0',
                 'max:100',
@@ -262,6 +256,7 @@ class InvoiceController extends Controller
             ],
 
             'amount_paid' => [
+                'required_if:payment_status,paid',
                 'nullable',
                 'numeric',
                 'min:0',
@@ -280,7 +275,16 @@ class InvoiceController extends Controller
                 'string',
                 'max:255',
             ],
+        ], [
+            'amount_paid.required_if' =>
+                'Si la factura está pagada, tenés que indicar el importe pagado.',
         ]);
+
+        /*
+         * Los datos del pago solo se guardan si la factura está
+         * pagada; si queda pendiente se descartan.
+         */
+        $isPaid = $validated['payment_status'] === 'paid';
 
         /*
          * paid_by solo se establece si la factura histórica
@@ -310,7 +314,7 @@ class InvoiceController extends Controller
             'client_document' => $validated['client_document'],
             'client_cuit' => $validated['client_cuit'] ?? null,
             'client_document_type' => 96,
-            'client_iva_condition' => $validated['client_iva_condition'] ?? null,
+            'client_iva_condition' => $validated['client_iva_condition'],
 
             /*
              * Servicio.
@@ -332,10 +336,16 @@ class InvoiceController extends Controller
              * Pago.
              */
             'payment_status' => $validated['payment_status'],
-            'amount_paid' => $validated['amount_paid'] ?? null,
-            'paid_at' => $validated['paid_at'] ?? null,
-            'payment_method' => $validated['payment_method'] ?? null,
+            'amount_paid' => $isPaid ? $validated['amount_paid'] : null,
+            'paid_at' => $isPaid ? ($validated['paid_at'] ?? null) : null,
+            'payment_method' => $isPaid ? ($validated['payment_method'] ?? null) : null,
             'paid_by' => $paidBy,
+
+            /*
+             * Factura histórica: queda fuera del flujo de ARCA
+             * (no se emite, no se reintenta y no muestra el botón).
+             */
+            'is_historical' => true,
 
             /*
              * ARCA.
@@ -633,6 +643,7 @@ class InvoiceController extends Controller
                 'name'         => $client->name,
                 'document'     => $client->document,
                 'cuit'         => $client->cuit,
+                'iva_code'     => $client->arca_iva_condition,
                 'iva_condition' => $client->arca_iva_condition
                     ? $client->arca_iva_condition
                         . ' — '
@@ -864,6 +875,21 @@ class InvoiceController extends Controller
     public function retryArca(
         Invoice $invoice
     ) {
+        /*
+         * Las facturas históricas no se emiten ante ARCA.
+         */
+        if ($invoice->is_historical) {
+            return redirect()
+                ->route(
+                    'admin.invoices.show',
+                    $invoice
+                )
+                ->with(
+                    'error',
+                    'Las facturas históricas no se emiten ante ARCA.'
+                );
+        }
+
         if (
             $invoice->payment_status !== 'paid'
         ) {

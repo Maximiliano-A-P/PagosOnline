@@ -32,7 +32,7 @@
                     <x-nav-link
                         :href="route('dashboard')"
                         :active="request()->routeIs('dashboard')"
-                        class="text-[21px] leading-7"
+                        class="text-[24px] leading-7"
                     >
                         {{ __('Dashboard') }}
                     </x-nav-link>
@@ -45,7 +45,7 @@
                         <x-nav-link
                             :href="route('admin.dashboard')"
                             :active="request()->routeIs('admin.*')"
-                            class="text-[21px] leading-7"
+                            class="text-[24px] leading-7"
                         >
                             {{ __('Admin') }}
                         </x-nav-link>

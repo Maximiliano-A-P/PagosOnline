@@ -32,7 +32,7 @@
                     <x-nav-link
                         :href="route('dashboard')"
                         :active="request()->routeIs('dashboard')"
-                        class="text-[14px]"
+                        class="text-[21px] leading-7"
                     >
                         {{ __('Dashboard') }}
                     </x-nav-link>
@@ -45,7 +45,7 @@
                         <x-nav-link
                             :href="route('admin.dashboard')"
                             :active="request()->routeIs('admin.*')"
-                            class="text-[14px]"
+                            class="text-[21px] leading-7"
                         >
                             {{ __('Admin') }}
                         </x-nav-link>
@@ -68,8 +68,8 @@
                         <button
                             class="inline-flex items-center px-3 py-2
                                    border border-transparent
-                                   text-[14px]
-                                   leading-4 font-medium
+                                   text-[21px]
+                                   leading-7 font-medium
                                    rounded-md
                                    text-gray-500
                                    dark:text-gray-400
@@ -110,13 +110,6 @@
 
                     <x-slot name="content">
 
-                        <x-dropdown-link
-                            :href="route('profile.edit')"
-                            class="text-[14px]"
-                        >
-                            {{ __('Profile') }}
-                        </x-dropdown-link>
-
 
                         <!-- Authentication -->
 
@@ -126,7 +119,7 @@
 
                             <x-dropdown-link
                                 :href="route('logout')"
-                                class="text-[14px]"
+                                class="text-[21px] leading-7"
                                 onclick="event.preventDefault();
                                             this.closest('form').submit();"
                             >
@@ -223,7 +216,7 @@
             <x-responsive-nav-link
                 :href="route('dashboard')"
                 :active="request()->routeIs('dashboard')"
-                class="text-[14px]"
+                class="text-[21px] leading-7"
             >
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
@@ -236,7 +229,7 @@
                 <x-responsive-nav-link
                     :href="route('admin.dashboard')"
                     :active="request()->routeIs('admin.*')"
-                    class="text-[14px]"
+                    class="text-[21px] leading-7"
                 >
                     {{ __('Admin') }}
                 </x-responsive-nav-link>
@@ -253,7 +246,7 @@
             <div class="px-4">
 
                 <div
-                    class="font-medium text-[16px]
+                    class="font-medium text-[21px]
                            text-gray-800
                            dark:text-gray-200"
                 >
@@ -261,7 +254,7 @@
                 </div>
 
                 <div
-                    class="font-medium text-[14px]
+                    class="font-medium text-[21px] leading-7
                            text-gray-500"
                 >
                     {{ Auth::user()->email }}
@@ -272,13 +265,6 @@
 
             <div class="mt-3 space-y-1">
 
-                <x-responsive-nav-link
-                    :href="route('profile.edit')"
-                    class="text-[14px]"
-                >
-                    {{ __('Profile') }}
-                </x-responsive-nav-link>
-
 
                 <!-- Authentication -->
 
@@ -288,7 +274,7 @@
 
                     <x-responsive-nav-link
                         :href="route('logout')"
-                        class="text-[14px]"
+                        class="text-[21px] leading-7"
                         onclick="event.preventDefault();
                                     this.closest('form').submit();"
                     >

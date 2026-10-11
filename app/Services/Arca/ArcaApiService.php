@@ -476,7 +476,7 @@ class ArcaApiService
              */
             try {
                 app(\App\Services\InvoiceReceiptSender::class)
-                    ->send($invoice->fresh());
+                    ->sendInBackground($invoice);
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::error(
                     'No se pudo enviar el PDF de la factura.',

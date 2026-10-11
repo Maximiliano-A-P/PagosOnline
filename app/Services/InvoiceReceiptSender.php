@@ -16,6 +16,45 @@ use Illuminate\Support\Facades\Mail;
  */
 class InvoiceReceiptSender
 {
+    /**
+     * Programa la verificación/envío para después de responder
+     * al usuario, así el admin no queda esperando al correo.
+     */
+    public function sendInBackground(Invoice $invoice): void
+    {
+        $invoiceId = $invoice->id;
+
+        app()->terminating(function () use ($invoiceId) {
+            try {
+                $this->sendIfPending($invoiceId);
+            } catch (\Throwable $e) {
+                Log::error('Fallo el envio en segundo plano de la factura.', [
+                    'invoice_id' => $invoiceId,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        });
+    }
+
+    /**
+     * Se fija si el correo ya salió; si falta, lo envía.
+     */
+    public function sendIfPending(int $invoiceId): void
+    {
+        $invoice = Invoice::find($invoiceId);
+
+        if (
+            !$invoice
+            || $invoice->payment_status !== 'paid'
+            || empty($invoice->arca_cae)
+            || $invoice->receipt_sent_at !== null
+        ) {
+            return;
+        }
+
+        $this->send($invoice);
+    }
+
     public function send(Invoice $invoice): void
     {
         if ($invoice->payment_status !== 'paid' || empty($invoice->arca_cae)) {

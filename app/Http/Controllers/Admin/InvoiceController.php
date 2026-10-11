@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\Service;
+use App\Services\InvoiceReceiptSender;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Models\ArcaConfig;
@@ -14,6 +15,7 @@ use App\Services\Arca\WsaaClient;
 use App\Services\InvoicePdfService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+
 
 class InvoiceController extends Controller
 {
@@ -871,14 +873,14 @@ class InvoiceController extends Controller
             $invoice->arca_status === 'aprobado'
             || !empty($invoice->arca_cae)
         ) {
+            app(InvoiceReceiptSender::class)
+                ->sendInBackground($invoice);
+
             return redirect()
-                ->route(
-                    'admin.invoices.show',
-                    $invoice
-                )
+                ->route('admin.invoices.show', $invoice)
                 ->with(
-                    'error',
-                    'La factura ya fue autorizada por ARCA.'
+                    'success',
+                    'La factura ya estaba autorizada. Si el correo faltaba, se envía en segundo plano.'
                 );
         }
 

@@ -163,11 +163,37 @@
                             <div class="flex flex-col md:flex-row md:justify-between gap-2">
 
                                 <dt class="font-semibold text-gray-700 text-[21px]">
+                                    Precio original con impuestos ({{ rtrim(rtrim(number_format((float) ($invoice->tax_percentage ?? 0), 2, '.', ''), '0'), '.') }}%)
+                                </dt>
+
+                                <dd class="text-gray-900 font-semibold text-[21px]">
+                                    ${{ number_format($invoice->totalNormal(), 2, ',', '.') }}
+                                </dd>
+
+                            </div>
+
+
+                            <div class="flex flex-col md:flex-row md:justify-between gap-2">
+
+                                <dt class="font-semibold text-gray-700 text-[21px]">
                                     Precio vencido
                                 </dt>
 
                                 <dd class="text-gray-900 font-semibold text-[21px]">
                                     ${{ number_format($invoice->overdue_price, 2, ',', '.') }}
+                                </dd>
+
+                            </div>
+
+
+                            <div class="flex flex-col md:flex-row md:justify-between gap-2">
+
+                                <dt class="font-semibold text-gray-700 text-[21px]">
+                                    Precio vencido con impuestos ({{ rtrim(rtrim(number_format((float) ($invoice->tax_percentage ?? 0), 2, '.', ''), '0'), '.') }}%)
+                                </dt>
+
+                                <dd class="text-gray-900 font-semibold text-[21px]">
+                                    ${{ number_format($invoice->totalVencido(), 2, ',', '.') }}
                                 </dd>
 
                             </div>

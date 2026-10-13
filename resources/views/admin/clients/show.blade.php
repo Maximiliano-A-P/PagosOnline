@@ -469,7 +469,9 @@
                                         <td class="num px-6 py-4 text-gray-900 text-[21px]">
                                             {{ $money($totalHaber) }}
                                         </td>
-                                        <td class="px-6 py-4"></td>
+                                        <td class="num px-6 py-4 text-gray-900 text-[21px]">
+                                            {{ $money($saldoFinal) }}
+                                        </td>
                                     </tr>
                                 @endif
 
@@ -477,7 +479,7 @@
                                 {{-- Saldo al final del rango --}}
                                 <tr class="ledger-row-strong">
                                     <td class="px-6 py-4 text-gray-900 text-[21px]" colspan="4">
-                                        Saldo al {{ $hasta ? $hasta->format('d/m/Y') : 'día de hoy' }}
+                                        Saldo al @if ($hasta){{ $hasta->format('d/m/Y') }}@else día de hoy ({{ $hoy->format('d/m/Y') }})@endif
                                     </td>
                                     <td class="num px-6 py-4 text-gray-900 text-[21px]">
                                         {{ $money($saldoFinal) }}
@@ -489,7 +491,7 @@
                                 @if ($hasta && $hasta->lt($hoy))
                                     <tr class="ledger-row-strong">
                                         <td class="px-6 py-4 text-gray-900 text-[21px]" colspan="4">
-                                            Saldo al día de hoy
+                                            Saldo al día de hoy ({{ $hoy->format('d/m/Y') }})
                                         </td>
                                         <td class="num px-6 py-4 text-gray-900 text-[21px]">
                                             {{ $money($saldoHoy) }}

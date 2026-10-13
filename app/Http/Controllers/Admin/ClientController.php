@@ -53,16 +53,17 @@ class ClientController extends Controller
         }
 
         /*
-         * Saldo por cobrar de cada cliente: suma de lo que
-         * corresponde cobrar hoy de sus facturas pendientes
-         * (misma regla que Invoice::montoACobrar()).
+         * Saldo de cada cliente a hoy: suma del saldo de TODAS sus
+         * facturas (normal o vencido + impuestos, menos lo pagado).
+         * Usa los mismos movimientos que el asiento del show.
          */
+        $hoy = now()->startOfDay();
+
         $saldos = Invoice::query()
-            ->where('payment_status', '!=', 'paid')
             ->get()
             ->groupBy('client_document')
             ->map(fn ($facturas) => round(
-                $facturas->sum(fn ($f) => $f->montoACobrar()),
+                $facturas->sum(fn ($f) => $f->saldoAl($hoy)),
                 2
             ));
 
@@ -222,9 +223,10 @@ class ClientController extends Controller
      * Arma el estado de cuenta del cliente.
      *
      * Debe:  cada factura en su fecha de emisión (precio + impuestos)
-     *        y, si se pagó con precio vencido, el recargo por mora
-     *        en la fecha de pago.
+     *        y el aumento por vencimiento el día que pasa a regir el
+     *        precio vencido (si se pagó antes, no hay aumento).
      * Haber: cada pago (amount_paid) en su fecha de pago.
+     * Los movimientos salen de Invoice::movimientos().
      * Saldo: debe - haber acumulado (positivo = el cliente debe).
      */
     private function estadoDeCuenta(
@@ -232,58 +234,7 @@ class ClientController extends Controller
         ?Carbon $desde,
         ?Carbon $hasta
     ): array {
-        $movimientos = collect();
-
-        foreach ($facturas as $invoice) {
-            $tax = (float) ($invoice->tax_percentage ?? 0);
-
-            $totalNormal = round(
-                (float) $invoice->price * (1 + ($tax / 100)),
-                2
-            );
-
-            $fechaEmision = $invoice->issued_at->copy()->startOfDay();
-
-            $movimientos->push([
-                'fecha'   => $fechaEmision,
-                'orden'   => 0,
-                'id'      => $invoice->id,
-                'detalle' => "Factura #{$invoice->id} — {$invoice->service_name}",
-                'debe'    => $totalNormal,
-                'haber'   => 0.0,
-            ]);
-
-            if ($invoice->payment_status !== 'paid') {
-                continue;
-            }
-
-            $fechaPago = ($invoice->paid_at ?? $invoice->issued_at)
-                ->copy()
-                ->startOfDay();
-
-            $pagado  = round((float) $invoice->amount_paid, 2);
-            $recargo = round($pagado - $totalNormal, 2);
-
-            if ($recargo > 0) {
-                $movimientos->push([
-                    'fecha'   => $fechaPago,
-                    'orden'   => 0,
-                    'id'      => $invoice->id,
-                    'detalle' => "Recargo por mora — Factura #{$invoice->id}",
-                    'debe'    => $recargo,
-                    'haber'   => 0.0,
-                ]);
-            }
-
-            $movimientos->push([
-                'fecha'   => $fechaPago,
-                'orden'   => 1,
-                'id'      => $invoice->id,
-                'detalle' => "Pago factura #{$invoice->id}",
-                'debe'    => 0.0,
-                'haber'   => $pagado,
-            ]);
-        }
+        $movimientos = $facturas->flatMap(fn ($invoice) => $invoice->movimientos());
 
         // Orden cronológico; en la misma fecha primero el debe y luego el haber.
         $movimientos = $movimientos

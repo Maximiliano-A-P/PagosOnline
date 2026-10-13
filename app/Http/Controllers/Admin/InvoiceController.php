@@ -657,7 +657,9 @@ class InvoiceController extends Controller
                 'id'           => $client->id,
                 'name'         => $client->name,
                 'document'     => $client->document,
-                'cuit'         => $client->cuit,
+                'cuit'         => $client->cuit ?: Invoice::where('client_document', $client->document)
+                    ->whereNotNull('client_cuit')->where('client_cuit', '!=', '')
+                    ->orderByDesc('issued_at')->value('client_cuit'),
                 'iva_code'     => $client->arca_iva_condition,
                 'iva_condition' => $client->arca_iva_condition
                     ? $client->arca_iva_condition
@@ -784,18 +786,15 @@ class InvoiceController extends Controller
         }
 
         $validated = $request->validate([
-            'amount_paid' => [
-                'required',
-                'numeric',
-                'min:0',
-            ],
-
             /*
-             * Solo fecha.
+             * Solo fecha. El importe NO se ingresa: se calcula
+             * según esta fecha (normal o vencido + impuestos).
              */
             'paid_at' => [
                 'required',
                 'date',
+                'after_or_equal:' . $invoice->issued_at->toDateString(),
+                'before_or_equal:today',
             ],
 
             'payment_method' => [
@@ -803,16 +802,17 @@ class InvoiceController extends Controller
                 'string',
                 'max:255',
             ],
+        ], [
+            'paid_at.after_or_equal'  => 'La fecha de pago no puede ser anterior a la emisión.',
+            'paid_at.before_or_equal' => 'La fecha de pago no puede ser futura.',
         ]);
 
-        /*
-         * Registramos el pago y guardamos qué administrador
-         * realizó la operación.
-         */
+        $fechaPago = Carbon::parse($validated['paid_at'])->startOfDay();
+
         $invoice->update([
             'payment_status' => 'paid',
-            'amount_paid' => $validated['amount_paid'],
-            'paid_at' => $validated['paid_at'],
+            'amount_paid' => $invoice->montoAl($fechaPago),
+            'paid_at' => $fechaPago->toDateString(),
             'payment_method' => $validated['payment_method'],
             'paid_by' => auth()->id(),
         ]);

@@ -200,41 +200,22 @@
                         @csrf
 
 
-                        {{-- Importe --}}
+                        {{-- Importe (calculado según la fecha de pago) --}}
                         <div>
 
-                            <label
-                                for="amount_paid"
-                                class="block font-semibold text-gray-900 text-[21px]"
-                            >
-                                Importe pagado
-                            </label>
+                            <span class="block font-semibold text-gray-900 text-[21px]">
+                                Importe a registrar
+                            </span>
 
-                            <input
-                                id="amount_paid"
-                                name="amount_paid"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value="{{ old('amount_paid', $invoice->price) }}"
-                                required
-                                class="mt-2 block w-full rounded-md
-                                       border-gray-400
-                                       bg-white
-                                       text-gray-900
-                                       text-[21px]
-                                       shadow-sm
-                                       focus:border-indigo-600
-                                       focus:ring-indigo-600"
-                            >
+                            <p
+                                id="amountPreview"
+                                class="mt-2 text-gray-900 font-semibold text-[21px]"
+                            ></p>
 
-                            @error('amount_paid')
-
-                                <p class="mt-2 text-red-700 text-[21px]">
-                                    {{ $message }}
-                                </p>
-
-                            @enderror
+                            <p
+                                id="amountHint"
+                                class="mt-1 text-gray-600 text-[21px]"
+                            ></p>
 
                         </div>
 
@@ -308,24 +289,23 @@
                         </div>
 
 
-                        {{-- Fecha y hora --}}
+                        {{-- Fecha --}}
                         <div>
 
                             <label
                                 for="paid_at"
                                 class="block font-semibold text-gray-900 text-[21px]"
                             >
-                                Fecha y hora del pago
+                                Fecha del pago
                             </label>
 
                             <input
                                 id="paid_at"
                                 name="paid_at"
-                                type="datetime-local"
-                                value="{{ old(
-                                    'paid_at',
-                                    now()->format('Y-m-d\TH:i')
-                                ) }}"
+                                type="date"
+                                value="{{ old('paid_at', now()->toDateString()) }}"
+                                min="{{ $invoice->issued_at->toDateString() }}"
+                                max="{{ now()->toDateString() }}"
                                 required
                                 class="mt-2 block w-full rounded-md
                                        border-gray-400
@@ -378,4 +358,42 @@
 
     </div>
 
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const dueDate    = @json($invoice->due_date->toDateString());
+            const totalNormal  = @json($invoice->totalNormal());
+            const totalVencido = @json($invoice->totalVencido());
+
+            const paidAt  = document.getElementById('paid_at');
+            const preview = document.getElementById('amountPreview');
+            const hint    = document.getElementById('amountHint');
+
+            const money = (n) => '$' + n.toLocaleString('es-AR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            });
+
+            function update() {
+                if (!paidAt.value) {
+                    preview.textContent = '—';
+                    hint.textContent = 'Elegí la fecha del pago.';
+                    return;
+                }
+
+                // YYYY-MM-DD se compara bien como texto.
+                // Rige el precio vencido desde el día siguiente al vencimiento.
+                const vencida = paidAt.value > dueDate;
+
+                preview.textContent = money(vencida ? totalVencido : totalNormal);
+                hint.textContent = vencida
+                    ? 'Pagada después del vencimiento: precio vencido (con impuestos).'
+                    : 'Pagada en término: precio normal (con impuestos).';
+            }
+
+            paidAt.addEventListener('input', update);
+            paidAt.addEventListener('change', update);
+            update();
+        });
+    </script>
 </x-app-layout>

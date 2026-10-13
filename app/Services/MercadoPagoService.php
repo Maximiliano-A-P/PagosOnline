@@ -39,7 +39,7 @@ class MercadoPagoService
         * se le informó a Mercado Pago, sin tener que volver a
         * calcular fechas después del hecho.
         */
-        $base = now()->greaterThan($invoice->due_date)
+        $base = $invoice->estaVencidaAl(now())
             ? (float) $invoice->overdue_price
             : (float) $invoice->price;
 
@@ -236,4 +236,3 @@ class MercadoPagoService
         }
     }
 }
-

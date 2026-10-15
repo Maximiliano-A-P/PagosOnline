@@ -13,6 +13,19 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
+        /*
+         * Si la cuenta todavía no verificó el correo, se la manda
+         * a la pantalla donde se introduce el código de 6 dígitos.
+         */
+        if ($user->email_verified_at === null) {
+            return redirect()
+                ->route('email.verification.show')
+                ->with(
+                    'success',
+                    'Verificá tu correo con el código de 6 dígitos que te enviamos.'
+                );
+        }
+
         // Obtenemos los clientes asociados mediante la relación Eloquent
         $clients = $user->clients;
         $clientDocuments = $clients->pluck('document');

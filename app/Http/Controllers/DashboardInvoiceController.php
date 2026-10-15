@@ -60,23 +60,6 @@ class DashboardInvoiceController extends Controller
         }
 
         /*
-         * SOLO LOCAL: Mercado Pago no puede devolver el callback a
-         * localhost, así que se confirma el pago directamente, sin
-         * pasar por Mercado Pago (APP_ENV=local + MERCADOPAGO_SIMULATE=true).
-         */
-        if ($simulador->activo()) {
-
-            $simulador->confirmarPago($invoice);
-
-            return redirect()
-                ->route('dashboard')
-                ->with(
-                    'success',
-                    'Pago simulado aprobado (modo local).'
-                );
-        }
-
-        /*
          * Creamos la preferencia de pago en Mercado Pago.
          * El servicio se encarga de comunicarse con la API.
          */
@@ -100,6 +83,17 @@ class DashboardInvoiceController extends Controller
                     'exception' => get_class($e),
                 ]
             );
+
+            if ($simulador->activo()) {
+                $simulador->confirmarPago($invoice);
+
+                return redirect()
+                    ->route('dashboard')
+                    ->with(
+                        'success',
+                        'Pago simulado aprobado (modo local).'
+                    );
+            }
 
             return redirect()
                 ->route('dashboard')
@@ -125,6 +119,17 @@ class DashboardInvoiceController extends Controller
                 ]
             );
 
+            if ($simulador->activo()) {
+                $simulador->confirmarPago($invoice);
+
+                return redirect()
+                    ->route('dashboard')
+                    ->with(
+                        'success',
+                        'Pago simulado aprobado (modo local).'
+                    );
+            }
+
             return redirect()
                 ->route('dashboard')
                 ->with(
@@ -140,6 +145,16 @@ class DashboardInvoiceController extends Controller
         $invoice->update([
             'mercadopago_preference_id' => $preference->id,
         ]);
+
+        /*
+         * SOLO LOCAL: Mercado Pago no puede avisar (webhook) ni
+         * redirigir de vuelta a localhost, así que la factura se marca
+         * como pagada acá, antes de abrir Mercado Pago, sin importar lo
+         * que el usuario haga después en su pantalla.
+         */
+        if ($simulador->activo()) {
+            $simulador->confirmarPago($invoice);
+        }
 
         /*
          * Redirigimos al usuario a Mercado Pago Checkout Pro.

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Invoice;
 use App\Services\InvoicePdfService;
 use App\Services\MercadoPagoService;
+use App\Services\MercadoPagoSimulator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +17,8 @@ class DashboardInvoiceController extends Controller
      */
     public function pay(
         Invoice $invoice,
-        MercadoPagoService $mercadoPagoService
+        MercadoPagoService $mercadoPagoService,
+        MercadoPagoSimulator $simulador
     ): RedirectResponse {
         /*
          * Obtenemos los documentos de los clientes asociados al usuario actual mediante la relación de Eloquent.
@@ -54,6 +56,23 @@ class DashboardInvoiceController extends Controller
                 ->with(
                     'error',
                     'La factura ya figura como pagada.'
+                );
+        }
+
+        /*
+         * SOLO LOCAL: Mercado Pago no puede devolver el callback a
+         * localhost, así que se confirma el pago directamente, sin
+         * pasar por Mercado Pago (APP_ENV=local + MERCADOPAGO_SIMULATE=true).
+         */
+        if ($simulador->activo()) {
+
+            $simulador->confirmarPago($invoice);
+
+            return redirect()
+                ->route('dashboard')
+                ->with(
+                    'success',
+                    'Pago simulado aprobado (modo local).'
                 );
         }
 

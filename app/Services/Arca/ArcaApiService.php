@@ -5,8 +5,6 @@ namespace App\Services\Arca;
 use App\Models\ArcaConfig;
 use App\Models\Invoice;
 use Carbon\Carbon;
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Support\Facades\Http;
 
 class ArcaApiService
 {
@@ -377,72 +375,40 @@ class ArcaApiService
 
         /*
          * ==========================================================
-         * LLAMADA A API ARCA
+         * LLAMADA DIRECTA A WSFE (ARCA)
          * ==========================================================
          */
 
         try {
-            $respuesta =
-                Http::withHeaders([
-                    'X-Internal-Api-Key' =>
-                        config('arca.api_key'),
-                ])
-                    ->timeout(30)
-                    ->post(
-                        config('arca.api_url')
-                        . '/wsfe/solicitar-cae',
-                        $payload
-                    );
+            $datos = (new WsfeClient())->solicitarCae($payload);
 
-        } catch (ConnectionException $e) {
+        } catch (\Throwable $e) {
 
-            $this->registrarFalloTransitorio(
-                $invoice,
-                'Error de conexión con la API ARCA: '
-                . $e->getMessage(),
-                $automatico
-            );
+            $mensaje =
+                'Error al comunicarse con ARCA: '
+                . $e->getMessage();
 
-            return;
-        }
+            /*
+             * Caída de red / timeout: se programa reintento.
+             */
+            if ($this->esErrorTransitorio($e->getMessage())) {
+                $this->registrarFalloTransitorio(
+                    $invoice,
+                    $mensaje,
+                    $automatico
+                );
 
-        /*
-         * ==========================================================
-         * ERRORES HTTP TRANSITORIOS
-         * ==========================================================
-         *
-         * 408 = timeout
-         * 429 = demasiadas solicitudes
-         * 5xx = error de servidor
-         */
+                return;
+            }
 
-        if (
-            $respuesta->status() === 408
-            || $respuesta->status() === 429
-            || $respuesta->serverError()
-        ) {
-            $this->registrarFalloTransitorio(
-                $invoice,
-                sprintf(
-                    'HTTP %s. Respuesta API ARCA: %s',
-                    $respuesta->status(),
-                    trim($respuesta->body())
-                ),
-                $automatico
-            );
+            $this->marcarError($invoice, $mensaje);
 
             return;
         }
-
-        /*
-         * ==========================================================
-         * PROCESAR RESPUESTA
-         * ==========================================================
-         */
 
         $this->procesarRespuesta(
             $invoice,
-            $respuesta,
+            $datos,
             $tipoComprobante
         );
     }
@@ -456,22 +422,16 @@ class ArcaApiService
 
     private function procesarRespuesta(
         Invoice $invoice,
-        $respuesta,
+        array $datos,
         int $tipoComprobante
     ): void {
-        $datos =
-            $respuesta->json();
-
         /*
          * ==========================================================
          * APROBADO
          * ==========================================================
          */
 
-        if (
-            $respuesta->successful()
-            && ($datos['exito'] ?? false)
-        ) {
+        if ($datos['exito'] ?? false) {
             $invoice->update([
                 'arca_status' =>
                     'aprobado',
@@ -546,11 +506,8 @@ class ArcaApiService
 
         if (!$mensaje) {
             $mensaje =
-                sprintf(
-                    'HTTP %s. Respuesta API ARCA: %s',
-                    $respuesta->status(),
-                    $respuesta->body()
-                );
+                'Respuesta inesperada de ARCA: '
+                . json_encode($datos);
         }
 
         /*
@@ -704,6 +661,10 @@ class ArcaApiService
             strtolower($mensaje);
 
         return str_contains(
+            $mensaje,
+            'conexión'
+        )
+        || str_contains(
             $mensaje,
             '429'
         )

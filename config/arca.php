@@ -31,6 +31,20 @@ return [
     ],
 
     /*
+    |--------------------------------------------------------------------------
+    | WSFE (facturación electrónica)
+    |--------------------------------------------------------------------------
+    */
+
+    'wsfe_wsdl' => [
+        'homologacion' =>
+            'https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL',
+
+        'produccion' =>
+            'https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL',
+    ],
+
+    /*
      * Servicio solicitado al WSAA.
      */
     'servicio' => 'wsfe',

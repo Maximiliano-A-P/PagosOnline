@@ -49,5 +49,12 @@ return [
 
         'webhook_url' =>
             env('MERCADOPAGO_WEBHOOK_URL'),
+
+        /*
+         * Solo para desarrollo local: simula el pago aprobado
+         * sin pasar por Mercado Pago (ver MercadoPagoSimulator).
+         */
+        'simulate' =>
+            (bool) env('MERCADOPAGO_SIMULATE', false),
     ],
 ];

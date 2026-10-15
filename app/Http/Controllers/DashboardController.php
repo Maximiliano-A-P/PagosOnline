@@ -25,10 +25,12 @@ class DashboardController extends Controller
                 ->orderBy('issued_at', 'desc')
                 ->get();
 
-        return view('dashboard', [
-            'documents' => $clientDocuments,
-            'pendingInvoices' => $pendingInvoices,
-        ]);
+        return response()
+            ->view('dashboard', [
+                'documents' => $clientDocuments,
+                'pendingInvoices' => $pendingInvoices,
+            ])
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
 
     public function storeDocument(Request $request)

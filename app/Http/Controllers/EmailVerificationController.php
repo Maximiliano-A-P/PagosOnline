@@ -46,7 +46,7 @@ class EmailVerificationController extends Controller
          */
         if (
             $user->email_verification_sent_at !== null &&
-            $user->email_verification_sent_at->addHour()->isFuture()
+            $user->email_verification_sent_at->addMinute()->isFuture()
         ) {
             return $this->timedBack(
                 $startedAt,
@@ -70,13 +70,13 @@ class EmailVerificationController extends Controller
         );
 
         /*
-         * Guardamos el código durante 5 minutos.
+         * Guardamos el código durante 15 minutos.
          */
         EmailVerificationCode::create([
             'user_id' => $user->id,
             'code' => $code,
             'attempts' => 0,
-            'expires_at' => now()->addMinutes(5),
+            'expires_at' => now()->addMinutes(15),
         ]);
 
         /*

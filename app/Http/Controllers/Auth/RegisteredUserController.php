@@ -99,12 +99,12 @@ class RegisteredUserController extends Controller
             );
 
             /*
-             * El código será válido durante 5 minutos.
+             * El código será válido durante 15 minutos.
              */
             PasswordSetupCode::create([
                 'user_id' => $existingUser->id,
                 'code' => $code,
-                'expires_at' => now()->addMinutes(5),
+                'expires_at' => now()->addMinutes(15),
             ]);
 
             /*
@@ -177,13 +177,13 @@ class RegisteredUserController extends Controller
         );
 
         /*
-         * Guardamos el código durante 5 minutos.
+         * Guardamos el código durante 15 minutos.
          */
         EmailVerificationCode::create([
             'user_id' => $user->id,
             'code' => $code,
             'attempts' => 0,
-            'expires_at' => now()->addMinutes(5),
+            'expires_at' => now()->addMinutes(15),
         ]);
 
         /*

@@ -83,13 +83,13 @@ class PasswordSetupController extends Controller
         );
 
         /*
-         * Guardamos el código durante 5 minutos.
+         * Guardamos el código durante 15 minutos.
          */
         PasswordSetupCode::create([
             'user_id' => $user->id,
             'code' => $code,
             'attempts' => 0,
-            'expires_at' => now()->addMinutes(5),
+            'expires_at' => now()->addMinutes(15),
         ]);
 
         /*

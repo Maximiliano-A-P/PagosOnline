@@ -52,6 +52,8 @@ class MercadoPagoService
 
         $invoice->update(['expected_amount' => $total]);
 
+        $local = app(\App\Services\MercadoPagoSimulator::class)->activo();
+
         try {
             $preference = $client->create([
                 'items' => [
@@ -74,9 +76,11 @@ class MercadoPagoService
                  * URL pública utilizada por Mercado Pago
                  * para enviar las notificaciones.
                  */
-                'notification_url' => config(
-                    'services.mercadopago.webhook_url'
-                ),
+                ...($local ? [] : [
+                    'notification_url' => config(
+                        'services.mercadopago.webhook_url'
+                    ),
+                ]),
 
                 /*
                  * URLs utilizadas por Mercado Pago para
@@ -88,7 +92,7 @@ class MercadoPagoService
                     'pending' => route('dashboard'),
                 ],
 
-                'auto_return' => 'approved',
+                ...($local ? [] : ['auto_return' => 'approved']),
             ]);
 
             return $preference;

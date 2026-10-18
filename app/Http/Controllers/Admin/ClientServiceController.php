@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Service;
+use App\Support\TextSearch;
 use Illuminate\Http\Request;
 
 class ClientServiceController extends Controller
@@ -21,22 +22,12 @@ class ClientServiceController extends Controller
         /*
          * Permite buscar clientes por nombre o documento.
          */
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-
-            $query->where(function ($query) use ($search) {
-                $query->where(
-                    'name',
-                    'ilike',
-                    "%{$search}%"
-                )
-                ->orWhere(
-                    'document',
-                    'like',
-                    "%{$search}%"
-                );
-            });
-        }
+        TextSearch::apply(
+            $query,
+            $request->input('search'),
+            ['name'],
+            ['document']
+        );
 
         $clients = $query
             ->orderBy('name')

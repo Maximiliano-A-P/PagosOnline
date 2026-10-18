@@ -409,6 +409,55 @@
 
         }
 
+
+        /* ---- Desplegable de sugerencias del buscador ---- */
+        .ac-wrap {
+            position: relative;
+        }
+
+        .ac-list {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 100%;
+            z-index: 30;
+            margin: 4px 0 0;
+            padding: 0;
+            list-style: none;
+            background-color: #ffffff;
+            border: 1px solid #9ca3af;
+            border-radius: 6px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            max-height: 340px;
+            overflow-y: auto;
+        }
+
+        .ac-list[hidden] {
+            display: none;
+        }
+
+        .ac-item {
+            padding: 10px 14px;
+            font-size: 21px;
+            color: #111827;
+            cursor: pointer;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .ac-item:last-child {
+            border-bottom: 0;
+        }
+
+        .ac-item small {
+            display: block;
+            font-size: 18px;
+            color: #4b5563;
+        }
+
+        .ac-item.is-active,
+        .ac-item:hover {
+            background-color: #f3f4f6;
+        }
     </style>
 
 
@@ -489,21 +538,28 @@
                                 Buscar
                             </label>
 
-                            <input
-                                id="search"
-                                name="search"
-                                type="text"
-                                value="{{ request('search') }}"
-                                placeholder="Cliente, documento o servicio"
-                                class="mt-2 block w-full rounded-md
-                                       border-gray-400
-                                       bg-white
-                                       text-gray-900
-                                       text-[21px]
-                                       shadow-sm
-                                       focus:border-indigo-600
-                                       focus:ring-indigo-600"
-                            >
+                            <div class="ac-wrap">
+
+                                <input
+                                    id="search"
+                                    name="search"
+                                    type="text"
+                                    value="{{ request('search') }}"
+                                    placeholder="Cliente, documento o servicio"
+                                    autocomplete="off"
+                                    class="mt-2 block w-full rounded-md
+                                           border-gray-400
+                                           bg-white
+                                           text-gray-900
+                                           text-[21px]
+                                           shadow-sm
+                                           focus:border-indigo-600
+                                           focus:ring-indigo-600"
+                                >
+
+                                <ul id="searchList" class="ac-list" hidden></ul>
+
+                            </div>
 
                         </div>
 
@@ -1222,6 +1278,42 @@
 
             // Todo listo: recién ahora se habilita el botón.
             openButton.disabled = false;
+        });
+    </script>
+
+    <script src="{{ asset('js/search-dropdown.js') }}"></script>
+    <script>
+        searchDropdown({
+            inputId: 'search',
+            listId: 'searchList',
+            sources: [
+                {
+                    url: @json(route('admin.invoices.generate-manual.clients')),
+                    value: function (c) {
+                        return c.name;
+                    },
+                    render: function (c, li) {
+                        li.textContent = c.name + ' — DNI ' + c.document;
+
+                        const small = document.createElement('small');
+                        small.textContent = 'Cliente';
+                        li.appendChild(small);
+                    },
+                },
+                {
+                    url: @json(route('admin.invoices.generate-manual.services')),
+                    value: function (s) {
+                        return s.name;
+                    },
+                    render: function (s, li) {
+                        li.textContent = s.name;
+
+                        const small = document.createElement('small');
+                        small.textContent = 'Servicio';
+                        li.appendChild(small);
+                    },
+                },
+            ],
         });
     </script>
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Invoice;
+use App\Support\TextSearch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -40,17 +41,12 @@ class ClientController extends Controller
         /*
          * Búsqueda por nombre o documento.
          */
-        if ($request->filled('search')) {
-            $search = addcslashes($request->input('search'), '%_\\');
-
-            $query->where(function ($query) use ($search) {
-                $query->where('name', 'ilike', "%{$search}%")
-                    ->orWhereRaw(
-                        'CAST(document AS TEXT) LIKE ?',
-                        ["%{$search}%"]
-                    );
-            });
-        }
+        TextSearch::apply(
+            $query,
+            $request->input('search'),
+            ['name'],
+            ['document']
+        );
 
         /*
          * Saldo de cada cliente a hoy: suma del saldo de TODAS sus

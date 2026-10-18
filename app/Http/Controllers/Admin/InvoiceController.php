@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\Service;
 use App\Services\InvoiceReceiptSender;
+use App\Support\TextSearch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Models\ArcaConfig;
@@ -35,27 +36,12 @@ class InvoiceController extends Controller
         /*
          * Búsqueda general.
          */
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-
-            $query->where(function ($query) use ($search) {
-                $query->where(
-                    'client_name',
-                    'ilike',
-                    "%{$search}%"
-                )
-                ->orWhere(
-                    'client_document',
-                    'like',
-                    "%{$search}%"
-                )
-                ->orWhere(
-                    'service_name',
-                    'ilike',
-                    "%{$search}%"
-                );
-            });
-        }
+        TextSearch::apply(
+            $query,
+            $request->input('search'),
+            ['client_name', 'service_name'],
+            ['client_document']
+        );
 
         /*
          * Filtro por estado de pago.
@@ -643,13 +629,11 @@ class InvoiceController extends Controller
             return response()->json([]);
         }
 
-        $like = '%' . addcslashes($q, '%_\\') . '%';
+        $query = Client::query();
 
-        $clients = Client::query()
-            ->where(function ($query) use ($like) {
-                $query->where('name', 'ilike', $like)
-                    ->orWhereRaw('CAST(document AS TEXT) LIKE ?', [$like]);
-            })
+        TextSearch::apply($query, $q, ['name'], ['document']);
+
+        $clients = $query
             ->orderBy('name')
             ->limit(8)
             ->get()
@@ -686,10 +670,11 @@ class InvoiceController extends Controller
             return response()->json([]);
         }
 
-        $like = '%' . addcslashes($q, '%_\\') . '%';
+        $query = Service::query();
 
-        $services = Service::query()
-            ->where('service', 'ilike', $like)
+        TextSearch::apply($query, $q, ['service']);
+
+        $services = $query
             ->orderBy('service')
             ->limit(8)
             ->get()

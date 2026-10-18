@@ -4,16 +4,27 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Service;
+use App\Support\TextSearch;
 use Illuminate\Http\Request;
 
 class ServiceController extends Controller
 {
     /**
      * Muestra todos los servicios.
+     *
+     * Permite buscar por nombre del servicio.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $services = Service::orderBy('id', 'desc')->get();
+        $query = Service::query();
+
+        TextSearch::apply(
+            $query,
+            $request->input('search'),
+            ['service']
+        );
+
+        $services = $query->orderBy('id', 'desc')->get();
 
         return view('admin.services.index', compact('services'));
     }

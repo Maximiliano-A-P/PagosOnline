@@ -36,13 +36,11 @@ class PurgeBlockedClients extends Command
          * Se borra SOLO el cliente y sus servicios asignados
          * (client_services). Las facturas no se tocan: guardan sus
          * propios datos históricos y deben conservarse por ley.
+         * Tampoco se toca client_user: es la lista de documentos de
+         * cada usuario y debe seguir mostrando sus facturas.
          */
         DB::transaction(function () use ($ids) {
             DB::table('client_services')
-                ->whereIn('client_id', $ids)
-                ->delete();
-
-            DB::table('client_user')
                 ->whereIn('client_id', $ids)
                 ->delete();
 

@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Mail\InvoicePaidMail;
 use App\Models\Client;
 use App\Models\Invoice;
+use App\Models\User;
+use App\Models\UserDocument;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -105,15 +107,22 @@ class InvoiceReceiptSender
      */
     private function recipients(Invoice $invoice): array
     {
-        $client = Client::where('document', $invoice->client_document)->first();
+        // Usuarios que agregaron este documento a su lista.
+        $userEmails = User::query()
+            ->whereIn(
+                'id',
+                UserDocument::query()
+                    ->where('document', $invoice->client_document)
+                    ->select('user_id')
+            )
+            ->pluck('email');
 
-        if (!$client) {
-            return [];
-        }
+        // Email de contacto del cliente (si todavía existe y no está bloqueado).
+        $clientEmail = Client::where('document', $invoice->client_document)
+            ->value('email');
 
-        return $client->users()
-            ->pluck('email')
-            ->push($client->email)
+        return $userEmails
+            ->push($clientEmail)
             ->filter()
             ->map(fn ($email) => strtolower(trim($email)))
             ->filter(fn ($email) => filter_var($email, FILTER_VALIDATE_EMAIL))

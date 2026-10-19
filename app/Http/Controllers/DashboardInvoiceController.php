@@ -19,10 +19,11 @@ class DashboardInvoiceController extends Controller
         MercadoPagoService $mercadoPagoService
     ): RedirectResponse {
         /*
-         * Obtenemos los documentos de los clientes asociados al usuario actual mediante la relación de Eloquent.
+         * Obtenemos los documentos que el usuario actual agregó a su lista
+         * (no dependen de que el cliente exista o esté bloqueado).
          */
         $clientDocuments = Auth::user()
-            ->clients()
+            ->documents()
             ->pluck('document');
 
         /*
@@ -139,7 +140,7 @@ class DashboardInvoiceController extends Controller
         InvoicePdfService $pdfService
     ) {
         $documents = Auth::user()
-            ->clients()
+            ->documents()
             ->pluck('document')
             ->map('strval')
             ->toArray();
@@ -175,10 +176,10 @@ class DashboardInvoiceController extends Controller
         $user = Auth::user();
 
         /*
-         * Obtenemos los documentos de los clientes asociados al usuario actual.
+         * Obtenemos los documentos que el usuario actual agregó a su lista.
          */
         $clientDocuments = $user
-            ->clients()
+            ->documents()
             ->pluck('document');
 
         /*

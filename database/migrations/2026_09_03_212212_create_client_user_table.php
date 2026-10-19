@@ -1,43 +1,35 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
+namespace App\Models;
 
-return new class extends Migration
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+/**
+ * Documento que un usuario agregó para consultar sus facturas.
+ *
+ * Se guarda el número de documento (no el id del cliente): las facturas
+ * se relacionan por documento, así que el usuario las sigue viendo
+ * aunque el cliente se bloquee o se elimine.
+ */
+class UserDocument extends Model
 {
-    /**
-     * Ejecuta la migración.
-     * Crea la tabla pivote para relacionar usuarios con múltiples clientes/documentos.
-     */
-    public function up(): void
+    protected $table = 'client_user';
+
+    protected $fillable = [
+        'user_id',
+        'document',
+    ];
+
+    protected function casts(): array
     {
-        Schema::create('client_user', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
-
-            // Relación con la tabla users
-            $table->foreignId('user_id')
-                ->constrained('users')
-                ->cascadeOnDelete();
-
-            // Relación con la tabla clients (asumiendo que 'id' es la PK de clients)
-            // Si prefieres relacionarlo directamente por el documento, puedes cambiarlo, 
-            // pero usar client_id es lo estándar en Laravel.
-            $table->foreignId('client_id')
-                ->constrained('clients')
-                ->cascadeOnDelete();
-
-            // Opcional: Para evitar que se duplique la misma asignación
-            $table->unique(['user_id', 'client_id']);
-        });
+        return [
+            'document' => 'integer',
+        ];
     }
 
-    /**
-     * Revierte la migración.
-     */
-    public function down(): void
+    public function user(): BelongsTo
     {
-        Schema::dropIfExists('client_user');
+        return $this->belongsTo(User::class);
     }
-};
+}

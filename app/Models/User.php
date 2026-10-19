@@ -6,7 +6,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -70,10 +70,13 @@ class User extends Authenticatable
     }
 
     /**
-     * Clientes (y sus documentos) asignados a este usuario.
+     * Documentos que el usuario agregó para consultar sus facturas.
+     *
+     * Se guardan como número (no como vínculo al cliente), así las
+     * facturas siguen visibles aunque el cliente se bloquee o elimine.
      */
-    public function clients(): BelongsToMany
+    public function documents(): HasMany
     {
-        return $this->belongsToMany(Client::class, 'client_user');
+        return $this->hasMany(UserDocument::class);
     }
 }

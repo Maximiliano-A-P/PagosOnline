@@ -1,35 +1,30 @@
 <?php
 
-namespace App\Models;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-
-/**
- * Documento que un usuario agregó para consultar sus facturas.
- *
- * Se guarda el número de documento (no el id del cliente): las facturas
- * se relacionan por documento, así que el usuario las sigue viendo
- * aunque el cliente se bloquee o se elimine.
- */
-class UserDocument extends Model
+return new class extends Migration
 {
-    protected $table = 'client_user';
-
-    protected $fillable = [
-        'user_id',
-        'document',
-    ];
-
-    protected function casts(): array
+    public function up(): void
     {
-        return [
-            'document' => 'integer',
-        ];
+        Schema::create('client_user', function (Blueprint $table) {
+            $table->id();
+
+            $table->foreignId('user_id')
+                ->constrained()
+                ->cascadeOnDelete();
+
+            $table->unsignedBigInteger('document');
+
+            $table->timestamps();
+
+            $table->unique(['user_id', 'document']);
+        });
     }
 
-    public function user(): BelongsTo
+    public function down(): void
     {
-        return $this->belongsTo(User::class);
+        Schema::dropIfExists('client_user');
     }
-}
+};

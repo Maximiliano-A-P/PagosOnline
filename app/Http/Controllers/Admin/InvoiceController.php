@@ -164,37 +164,15 @@ class InvoiceController extends Controller
      * service_name:
      * - siempre se guarda como dato histórico.
      */
+    
     public function store(Request $request)
     {
         $validated = $request->validate([
-            /*
-             * Solo fecha.
-             */
-            'issued_at' => [
-                'required',
-                'date',
-            ],
+            'issued_at' => ['required', 'date'],
 
-            /*
-             * Datos históricos del cliente.
-             */
-            'client_name' => [
-                'required',
-                'string',
-                'max:255',
-            ],
-
-            'client_document' => [
-                'required',
-                'integer',
-                'min:1',
-            ],
-
-            'client_document_type' => [
-                'nullable',
-                'integer',
-                'min:1',
-            ],
+            'client_name' => ['required', 'string', 'max:255'],
+            'client_document' => ['required', 'integer', 'min:1'],
+            'client_document_type' => ['nullable', 'integer', 'min:1'],
 
             'client_cuit' => [
                 'nullable',
@@ -208,45 +186,48 @@ class InvoiceController extends Controller
                 'in:' . implode(',', array_keys(self::CONDICIONES_IVA)),
             ],
 
-            /*
-             * Opcional para facturas históricas.
-             */
+            'client_address' => [
+                'nullable',
+                'required_if:client_iva_condition,9',
+                'string',
+                'max:300',
+            ],
+
+            'client_arca_destination_country' => [
+                'nullable',
+                'required_if:client_iva_condition,9',
+                'integer',
+                'min:1',
+                'max:999',
+            ],
+
+            'client_arca_cuit_pais_cliente' => [
+                'nullable',
+                'string',
+                'regex:/^\d{1,11}$/',
+            ],
+
+            'client_arca_id_impositivo' => [
+                'nullable',
+                'string',
+                'max:50',
+            ],
+
             'service_id' => [
                 'nullable',
                 'integer',
                 'exists:services,id',
             ],
 
-            /*
-             * Nombre histórico del servicio.
-             */
-            'service_name' => [
-                'required',
-                'string',
-                'max:255',
-            ],
+            'service_name' => ['required', 'string', 'max:255'],
 
-            /*
-             * Datos económicos.
-             */
-            'price' => [
-                'required',
-                'numeric',
-                'min:0',
-            ],
-
+            'price' => ['required', 'numeric', 'min:0'],
             'due_date' => [
                 'required',
                 'date',
                 'after_or_equal:issued_at',
             ],
-
-            'overdue_price' => [
-                'required',
-                'numeric',
-                'min:0',
-            ],
-
+            'overdue_price' => ['required', 'numeric', 'min:0'],
             'tax_percentage' => [
                 'required',
                 'numeric',
@@ -254,103 +235,79 @@ class InvoiceController extends Controller
                 'max:100',
             ],
 
-            /*
-             * Estado del pago.
-             */
-            'payment_status' => [
-                'required',
-                'in:pending,paid',
-            ],
-
+            'payment_status' => ['required', 'in:pending,paid'],
             'amount_paid' => [
                 'required_if:payment_status,paid',
                 'nullable',
                 'numeric',
                 'min:0',
             ],
-
-            /*
-             * Solo fecha.
-             */
-            'paid_at' => [
-                'nullable',
-                'date',
-            ],
-
-            'payment_method' => [
-                'nullable',
-                'string',
-                'max:255',
-            ],
+            'paid_at' => ['nullable', 'date'],
+            'payment_method' => ['nullable', 'string', 'max:255'],
         ], [
             'amount_paid.required_if' =>
                 'Si la factura está pagada, tenés que indicar el importe pagado.',
         ]);
 
-        /*
-         * Los datos del pago solo se guardan si la factura está
-         * pagada; si queda pendiente se descartan.
-         */
+        if (
+            (int) $validated['client_iva_condition'] === 9
+            && empty($validated['client_arca_cuit_pais_cliente'])
+            && empty($validated['client_arca_id_impositivo'])
+        ) {
+            return back()
+                ->withErrors([
+                    'client_arca_id_impositivo' =>
+                        'Para emitir una factura E, cargá el identificador fiscal extranjero del comprador.',
+                ])
+                ->withInput();
+        }
+
         $isPaid = $validated['payment_status'] === 'paid';
 
-        /*
-         * paid_by solo se establece si la factura histórica
-         * se carga directamente como pagada y existe una
-         * fecha de pago.
-         */
         $paidBy = null;
 
-        if (
-            $validated['payment_status'] === 'paid'
-            && !empty($validated['paid_at'])
-        ) {
+        if ($isPaid && ! empty($validated['paid_at'])) {
             $paidBy = auth()->id();
         }
 
-        /*
-         * Los datos históricos se guardan directamente
-         * en la factura.
-         */
         Invoice::create([
             'issued_at' => $validated['issued_at'],
 
-            /*
-             * Datos históricos del cliente.
-             */
+            // Snapshot del cliente.
             'client_name' => $validated['client_name'],
             'client_document' => $validated['client_document'],
             'client_cuit' => $validated['client_cuit'] ?? null,
-            'client_document_type' => 96,
+            'client_document_type' =>
+                $validated['client_document_type'] ?? 96,
             'client_iva_condition' => $validated['client_iva_condition'],
 
-            /*
-             * Servicio.
-             *
-             * Puede ser NULL para una factura histórica.
-             */
+            'client_address' => $validated['client_address'] ?? null,
+            'client_arca_destination_country' =>
+                $validated['client_arca_destination_country'] ?? null,
+            'client_arca_cuit_pais_cliente' =>
+                $validated['client_arca_cuit_pais_cliente'] ?? null,
+            'client_arca_id_impositivo' =>
+                $validated['client_arca_id_impositivo'] ?? null,
+
+            // Servicio.
             'service_id' => $validated['service_id'] ?? null,
             'service_name' => $validated['service_name'],
 
-            /*
-             * Datos económicos.
-             */
+            // Datos económicos.
             'price' => $validated['price'],
             'due_date' => $validated['due_date'],
             'overdue_price' => $validated['overdue_price'],
-            'tax_percentage' => $validated['tax_percentage'] ?? null,
+            'tax_percentage' => $validated['tax_percentage'],
 
-            /*
-             * Pago.
-             */
+            // Pago.
             'payment_status' => $validated['payment_status'],
             'amount_paid' => $isPaid ? $validated['amount_paid'] : null,
             'paid_at' => $isPaid ? ($validated['paid_at'] ?? null) : null,
-            'payment_method' => $isPaid ? ($validated['payment_method'] ?? null) : null,
+            'payment_method' =>
+                $isPaid ? ($validated['payment_method'] ?? null) : null,
             'paid_by' => $paidBy,
 
-            /*
-             * ARCA.
-             */
+            // ARCA.
             'arca_status' => null,
             'arca_cae' => null,
             'arca_cae_expires_at' => null,
@@ -362,10 +319,7 @@ class InvoiceController extends Controller
 
         return redirect()
             ->route('admin.invoices.index')
-            ->with(
-                'success',
-                'Factura histórica cargada correctamente.'
-            );
+            ->with('success', 'Factura histórica cargada correctamente.');
     }
 
 
@@ -464,22 +418,14 @@ class InvoiceController extends Controller
         Service $service,
         Carbon $generationDate
     ): Invoice {
-        $currentMonth = $generationDate
-            ->copy()
-            ->startOfMonth();
+        $currentMonth = $generationDate->copy()->startOfMonth();
 
-        /*
-         * Fecha de vencimiento: el día configurado del mes actual
-         * (ajustado al largo del mes). Si ya pasó, vence hoy.
-         */
         $dueDay = min(
             $service->due_day,
             $currentMonth->daysInMonth
         );
 
-        $dueDateObject = $currentMonth
-            ->copy()
-            ->day($dueDay);
+        $dueDateObject = $currentMonth->copy()->day($dueDay);
 
         if ($dueDateObject->lt($generationDate->copy()->startOfDay())) {
             $dueDateObject = $generationDate->copy()->startOfDay();
@@ -488,14 +434,22 @@ class InvoiceController extends Controller
         return Invoice::create([
             'issued_at' => $generationDate->toDateString(),
 
-            // Datos históricos del cliente.
+            // Snapshot del cliente.
             'client_name' => $client->name,
             'client_document' => $client->document,
             'client_cuit' => $client->cuit,
             'client_document_type' => 96,
             'client_iva_condition' => $client->arca_iva_condition,
 
-            // Identificación interna del servicio.
+            'client_address' => $client->address,
+            'client_arca_destination_country' =>
+                $client->arca_destination_country,
+            'client_arca_cuit_pais_cliente' =>
+                $client->arca_cuit_pais_cliente,
+            'client_arca_id_impositivo' =>
+                $client->arca_id_impositivo,
+
+            // Servicio.
             'service_id' => $service->id,
             'service_period_start' => $currentMonth->toDateString(),
             'service_period_end' => $currentMonth
@@ -503,11 +457,9 @@ class InvoiceController extends Controller
                 ->addMonths($service->period)
                 ->subDay()
                 ->toDateString(),
-
-            // Nombre histórico del servicio.
             'service_name' => $service->service,
 
-            // Valores actuales del servicio.
+            // Valores del servicio.
             'price' => $service->price,
             'due_date' => $dueDateObject->toDateString(),
             'overdue_price' => $service->overdue_price,
@@ -620,7 +572,7 @@ class InvoiceController extends Controller
 
     /**
      * Buscador de clientes por nombre o documento (JSON).
-     */
+     */    
     public function searchClients(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
@@ -638,26 +590,38 @@ class InvoiceController extends Controller
             ->limit(8)
             ->get()
             ->map(fn ($client) => [
-                'id'           => $client->id,
-                'name'         => $client->name,
-                'document'     => $client->document,
-                'cuit'         => $client->cuit ?: Invoice::where('client_document', $client->document)
-                    ->whereNotNull('client_cuit')->where('client_cuit', '!=', '')
-                    ->orderByDesc('issued_at')->value('client_cuit'),
-                'iva_code'     => $client->arca_iva_condition,
+                'id' => $client->id,
+                'name' => $client->name,
+                'document' => $client->document,
+
+                'cuit' => $client->cuit ?: Invoice::where(
+                    'client_document',
+                    $client->document
+                )
+                    ->whereNotNull('client_cuit')
+                    ->where('client_cuit', '!=', '')
+                    ->orderByDesc('issued_at')
+                    ->value('client_cuit'),
+
+                'iva_code' => $client->arca_iva_condition,
                 'iva_condition' => $client->arca_iva_condition
                     ? $client->arca_iva_condition
                         . ' — '
                         . (self::CONDICIONES_IVA[$client->arca_iva_condition] ?? '')
                     : 'No cargada (se factura como Consumidor Final)',
-                'phone'        => $client->phone,
-                'email'        => $client->email,
-                'address'      => $client->address,
+
+                'phone' => $client->phone,
+                'email' => $client->email,
+                'address' => $client->address,
+
+                // Datos necesarios para facturación E.
+                'destination_country' => $client->arca_destination_country,
+                'cuit_pais_cliente' => $client->arca_cuit_pais_cliente,
+                'id_impositivo' => $client->arca_id_impositivo,
             ]);
 
         return response()->json($clients);
     }
-
 
     /**
      * Buscador de servicios por nombre (JSON).
@@ -754,27 +718,13 @@ class InvoiceController extends Controller
         Request $request,
         Invoice $invoice
     ) {
-        /*
-         * No permitimos registrar nuevamente una factura
-         * que ya está pagada.
-         */
         if ($invoice->payment_status === 'paid') {
             return redirect()
-                ->route(
-                    'admin.invoices.show',
-                    $invoice
-                )
-                ->with(
-                    'error',
-                    'La factura ya figura como pagada.'
-                );
+                ->route('admin.invoices.show', $invoice)
+                ->with('error', 'La factura ya figura como pagada.');
         }
 
         $validated = $request->validate([
-            /*
-             * Solo fecha. El importe NO se ingresa: se calcula
-             * según esta fecha (normal o vencido + impuestos).
-             */
             'paid_at' => [
                 'required',
                 'date',
@@ -788,12 +738,18 @@ class InvoiceController extends Controller
                 'max:255',
             ],
         ], [
-            'paid_at.after_or_equal'  => 'La fecha de pago no puede ser anterior a la emisión.',
-            'paid_at.before_or_equal' => 'La fecha de pago no puede ser futura.',
+            'paid_at.after_or_equal' =>
+                'La fecha de pago no puede ser anterior a la emisión.',
+            'paid_at.before_or_equal' =>
+                'La fecha de pago no puede ser futura.',
         ]);
 
         $fechaPago = Carbon::parse($validated['paid_at'])->startOfDay();
 
+        /*
+        * Primero registramos el pago.
+        * Aunque ARCA falle, el pago queda guardado.
+        */
         $invoice->update([
             'payment_status' => 'paid',
             'amount_paid' => $invoice->montoAl($fechaPago),
@@ -802,14 +758,66 @@ class InvoiceController extends Controller
             'paid_by' => auth()->id(),
         ]);
 
+        /*
+        * Después solicitamos la emisión.
+        * ArcaApiService selecciona WSFE o WSFEX según el tipo.
+        */
+        try {
+            $config = ArcaConfig::first();
+
+            if (! $config) {
+                throw new \RuntimeException(
+                    'No existe configuración de ARCA.'
+                );
+            }
+
+            $service = new ArcaApiService(
+                new WsaaClient($config),
+                $config
+            );
+
+            $service->emitir(
+                $invoice->fresh(),
+                false
+            );
+        } catch (\Throwable $e) {
+            Log::error(
+                'No se pudo emitir la factura después del pago manual.',
+                [
+                    'invoice_id' => $invoice->id,
+                    'message' => $e->getMessage(),
+                    'exception' => get_class($e),
+                ]
+            );
+
+            $invoice->update([
+                'arca_status' => 'error: ' . $e->getMessage(),
+            ]);
+        }
+
+        $invoice->refresh();
+
+        if (
+            $invoice->arca_status === 'aprobado'
+            || ! empty($invoice->arca_cae)
+        ) {
+            return redirect()
+                ->route('admin.invoices.show', $invoice)
+                ->with(
+                    'success',
+                    'Pago registrado y comprobante autorizado por ARCA.'
+                );
+        }
+
         return redirect()
-            ->route(
-                'admin.invoices.show',
-                $invoice
-            )
+            ->route('admin.invoices.show', $invoice)
             ->with(
                 'success',
                 'Pago registrado correctamente.'
+            )
+            ->with(
+                'arca_warning',
+                'La emisión ante ARCA quedó pendiente. Revisá el estado de la factura para conocer el motivo.'
             );
     }
 

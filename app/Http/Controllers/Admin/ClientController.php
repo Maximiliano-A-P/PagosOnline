@@ -118,17 +118,8 @@ class ClientController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-            ],
-
-            'document' => [
-                'required',
-                'integer',
-                'min:1',
-            ],
+            'name' => ['required', 'string', 'max:255'],
+            'document' => ['required', 'integer', 'min:1'],
 
             'cuit' => [
                 'nullable',
@@ -142,24 +133,49 @@ class ClientController extends Controller
                 'min:1',
             ],
 
-            'phone' => [
+            'arca_destination_country' => [
                 'nullable',
-                'string',
-                'max:255',
+                'required_if:arca_iva_condition,9',
+                'integer',
+                'min:1',
+                'max:999',
             ],
 
-            'email' => [
+            'arca_cuit_pais_cliente' => [
                 'nullable',
                 'string',
-                'max:255',
+                'regex:/^\d{1,11}$/',
             ],
+
+            'arca_id_impositivo' => [
+                'nullable',
+                'string',
+                'max:50',
+            ],
+
+            'phone' => ['nullable', 'string', 'max:255'],
+            'email' => ['nullable', 'string', 'max:255'],
 
             'address' => [
                 'nullable',
+                'required_if:arca_iva_condition,9',
                 'string',
                 'max:255',
             ],
         ]);
+
+        if (
+            (int) ($validated['arca_iva_condition'] ?? 0) === 9
+            && empty($validated['arca_cuit_pais_cliente'])
+            && empty($validated['arca_id_impositivo'])
+        ) {
+            return back()
+                ->withErrors([
+                    'arca_id_impositivo' =>
+                        'Para un cliente del exterior, cargá su identificador fiscal extranjero.',
+                ])
+                ->withInput();
+        }
 
         Client::create($validated);
 
@@ -167,6 +183,7 @@ class ClientController extends Controller
             ->route('admin.clients.index')
             ->with('success', 'Cliente creado correctamente.');
     }
+
 
     /**
      * Muestra el detalle de un cliente y sus facturas.
@@ -301,22 +318,14 @@ class ClientController extends Controller
     /**
      * Actualiza los datos del cliente.
      */
+    
     public function update(
         Request $request,
         Client $client
     ) {
         $validated = $request->validate([
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-            ],
-
-            'document' => [
-                'required',
-                'integer',
-                'min:1',
-            ],
+            'name' => ['required', 'string', 'max:255'],
+            'document' => ['required', 'integer', 'min:1'],
 
             'cuit' => [
                 'nullable',
@@ -330,54 +339,54 @@ class ClientController extends Controller
                 'min:1',
             ],
 
-            'phone' => [
+            'arca_destination_country' => [
                 'nullable',
-                'string',
-                'max:255',
+                'required_if:arca_iva_condition,9',
+                'integer',
+                'min:1',
+                'max:999',
             ],
 
-            'email' => [
+            'arca_cuit_pais_cliente' => [
                 'nullable',
                 'string',
-                'max:255',
+                'regex:/^\d{1,11}$/',
             ],
+
+            'arca_id_impositivo' => [
+                'nullable',
+                'string',
+                'max:50',
+            ],
+
+            'phone' => ['nullable', 'string', 'max:255'],
+            'email' => ['nullable', 'string', 'max:255'],
 
             'address' => [
                 'nullable',
+                'required_if:arca_iva_condition,9',
                 'string',
                 'max:255',
             ],
         ]);
+
+        if (
+            (int) ($validated['arca_iva_condition'] ?? 0) === 9
+            && empty($validated['arca_cuit_pais_cliente'])
+            && empty($validated['arca_id_impositivo'])
+        ) {
+            return back()
+                ->withErrors([
+                    'arca_id_impositivo' =>
+                        'Para un cliente del exterior, cargá su identificador fiscal extranjero.',
+                ])
+                ->withInput();
+        }
 
         $client->update($validated);
 
         return redirect()
             ->route('admin.clients.index')
             ->with('success', 'Cliente actualizado correctamente.');
-    }
-
-    /**
-     * Bloquea el cliente (NO lo elimina).
-     *
-     * Por motivos legales los datos se conservan 5 años: el cliente
-     * queda oculto en la aplicación y solo se puede ver desde la base
-     * de datos. Al cumplirse los 5 años lo borra el comando
-     * clients:purge-blocked (cliente + servicios asignados).
-     *
-     * Las facturas nunca se tocan.
-     */
-    public function destroy(Client $client)
-    {
-        $client->update([
-            'blocked' => true,
-            'blocked_at' => now(),
-        ]);
-
-        return redirect()
-            ->route('admin.clients.index')
-            ->with('blocked_client', [
-                'name' => $client->name,
-                'delete_on' => now()->addYears(5)->format('d/m/Y'),
-            ]);
     }
 }

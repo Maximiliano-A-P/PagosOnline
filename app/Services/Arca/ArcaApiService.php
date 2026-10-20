@@ -6,12 +6,21 @@ use App\Models\ArcaConfig;
 use App\Models\Invoice;
 use Carbon\Carbon;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class ArcaApiService
 {
     private const CONSUMIDOR_FINAL_IVA = 5;
+    private const CLIENTE_EXTERIOR = 9;
     private const CONCEPTO_SERVICIOS = 2;
+
+    /*
+     * Unidades de medida de WSFEX.
+     * El código 7 se usa como unidad en el ejemplo del manual.
+     */
+    private const UNIDAD_MEDIDA_UNIDAD = 7;
 
     private const ALICUOTAS_AFIP = [
         0 => 3,
@@ -30,32 +39,20 @@ class ArcaApiService
     /**
      * Emite una factura ante ARCA.
      *
-     * $automatico = true
-     *     cuando viene del proceso automático.
-     *
-     * $automatico = false
-     *     cuando viene del webhook o del botón manual.
+     * $automatico = true cuando viene del proceso automático.
+     * $automatico = false cuando viene del webhook o del botón manual.
      */
     public function emitir(
         Invoice $invoice,
         bool $automatico = false
     ): void {
-        /*
-         * Una factura ya autorizada nunca vuelve a emitirse.
-         */
         if (
             $invoice->arca_status === 'aprobado'
-            || !empty($invoice->arca_cae)
+            || ! empty($invoice->arca_cae)
         ) {
             return;
         }
 
-        /*
-         * Solo el proceso automático respeta
-         * el horario programado.
-         *
-         * El botón manual ignora arca_retry_at.
-         */
         if (
             $automatico
             && $invoice->arca_retry_at
@@ -64,13 +61,6 @@ class ArcaApiService
             return;
         }
 
-        /*
-         * Registramos el último intento.
-         *
-         * Este mismo instante define la fecha del comprobante que
-         * se informa a ARCA (ver más abajo) y la fecha del QR del
-         * PDF, para que ambas coincidan siempre.
-         */
         $momentoIntento = now();
 
         $invoice->update([
@@ -86,335 +76,379 @@ class ArcaApiService
             return;
         }
 
+        $tipoComprobante = ComprobanteResolver::determinarTipoComprobante(
+            (int) $this->config->condicion_iva,
+            $invoice->client_iva_condition
+        );
+
         /*
-         * ==========================================================
-         * WSAA
-         * ==========================================================
+         * Los comprobantes E se envían mediante WSFEXv1.
+         * El resto continúa utilizando WSFEv1.
          */
-
-        try {
-            $credenciales =
-                $this->wsaaClient->obtenerCredenciales();
-
-        } catch (\Throwable $e) {
-
-            $mensaje =
-                'Error al autenticar contra WSAA: '
-                . $e->getMessage();
-
-            /*
-             * Si parece un error transitorio,
-             * programamos reintento.
-             */
-            if (
-                $this->esErrorTransitorio(
-                    $e->getMessage()
-                )
-            ) {
-                $this->registrarFalloTransitorio(
-                    $invoice,
-                    $mensaje,
-                    $automatico
-                );
-
-                return;
-            }
-
-            /*
-             * Error permanente de autenticación/configuración.
-             */
-            $this->marcarError(
+        if (ComprobanteResolver::esExportacion($tipoComprobante)) {
+            $this->emitirExportacion(
                 $invoice,
-                $mensaje
+                $automatico,
+                $momentoIntento,
+                $tipoComprobante
             );
 
             return;
         }
 
-        /*
-         * ==========================================================
-         * TIPO DE COMPROBANTE
-         * ==========================================================
-         */
+        $this->emitirComprobanteNacional(
+            $invoice,
+            $automatico,
+            $momentoIntento,
+            $tipoComprobante
+        );
+    }
 
-        $condicionCliente =
-            $invoice->client_iva_condition
-            ?? self::CONSUMIDOR_FINAL_IVA;
-
-        $tipoComprobante =
-            ComprobanteResolver::determinarTipoComprobante(
-                $this->config->condicion_iva,
-                $invoice->client_iva_condition
+    /**
+     * Emisión de comprobantes A, B y C por WSFEv1.
+     */
+    private function emitirComprobanteNacional(
+        Invoice $invoice,
+        bool $automatico,
+        Carbon $momentoIntento,
+        int $tipoComprobante
+    ): void {
+        try {
+            $credenciales = $this->wsaaClient->obtenerCredenciales();
+        } catch (\Throwable $e) {
+            $this->procesarErrorAutenticacion(
+                $invoice,
+                $automatico,
+                $e
             );
 
-        /*
-         * Factura A requiere CUIT.
-         *
-         * Error permanente de datos.
-         */
+            return;
+        }
+
+        $condicionCliente = $invoice->client_iva_condition
+            ?? self::CONSUMIDOR_FINAL_IVA;
+
         if (
-            ComprobanteResolver::requiereCuit(
-                $tipoComprobante
-            )
+            ComprobanteResolver::requiereCuit($tipoComprobante)
             && empty($invoice->client_cuit)
         ) {
             $this->marcarError(
                 $invoice,
-                'El cliente debe tener CUIT cargada para facturar como Responsable Inscripto (Factura A).'
+                'El cliente debe tener CUIT cargado para emitir este comprobante A.'
             );
 
             return;
         }
 
-        /*
-         * ==========================================================
-         * DOCUMENTO DEL RECEPTOR
-         * ==========================================================
-         */
+        $documento = ComprobanteResolver::resolverDocumento(
+            $tipoComprobante,
+            (string) $invoice->client_document,
+            $invoice->client_cuit
+        );
 
-        [$docTipo, $docNro] =
-            array_values(
-                ComprobanteResolver::resolverDocumento(
-                    $tipoComprobante,
-                    (string) $invoice->client_document,
-                    $invoice->client_cuit
-                )
-            );
+        $fechaComprobante = $this->fechaComprobante($momentoIntento);
 
-        /*
-         * ==========================================================
-         * FECHAS
-         * ==========================================================
-         */
+        $fechaVencimiento = $invoice->due_date->copy()->startOfDay();
 
-        /*
-         * Fecha del comprobante que se INFORMA a ARCA.
-         *
-         * Es siempre el día en que se emite: el del pago (la
-         * emisión se hace al confirmarse) o el del reintento.
-         * Así nunca queda fuera de lo que ARCA acepta (para
-         * servicios, hasta 10 días respecto de hoy) y tampoco
-         * queda por detrás de comprobantes ya autorizados.
-         *
-         * La fecha de emisión de la factura en el sistema
-         * (issued_at) no se modifica.
-         *
-         * Se toma en horario de Argentina, que es el que usa ARCA
-         * (el servidor trabaja en UTC).
-         */
-        $fechaComprobante =
-            Carbon::createFromFormat(
-                'Y-m-d',
-                $momentoIntento
-                    ->copy()
-                    ->setTimezone('America/Argentina/Buenos_Aires')
-                    ->toDateString()
-            )->startOfDay();
-
-        $fechaVencimiento =
-            $invoice->due_date
-                ->copy()
-                ->startOfDay();
-
-        /*
-         * ARCA no permite vencimiento anterior
-         * a la fecha del comprobante.
-         */
-        if (
-            $fechaVencimiento->lt(
-                $fechaComprobante
-            )
-        ) {
-            $fechaVencimiento =
-                $fechaComprobante->copy();
+        if ($fechaVencimiento->lt($fechaComprobante)) {
+            $fechaVencimiento = $fechaComprobante->copy();
         }
 
-        /*
-         * ==========================================================
-         * IMPORTES
-         * ==========================================================
-         */
-
-        $total = round((float) $invoice->amount_paid,2);
-
+        $total = round((float) $invoice->amount_paid, 2);
         $porcentajeIva = (float) ($invoice->tax_percentage ?? 0);
 
-        /*
-        * Factura C:
-        * ARCA no recibe IVA separado.
-        * El total de la operación se informa como subtotal/neto y ImpIVA debe ser 0.
-        */
-        if (
-            in_array(
-                $tipoComprobante,
-                [11, 12, 13],
-                true
-            )
-        ) {
+        if (in_array($tipoComprobante, [11, 12, 13], true)) {
             $neto = $total;
             $iva = 0.00;
         } else {
-
-            /*
-            * A, B y M:
-            * El total contiene el IVA.
-            * Lo separamos para informar:
-            *
-            * ImpNeto = base
-            * ImpIVA  = IVA
-            * ImpTotal = base + IVA
-            */
             $neto = round(
                 $total / (1 + $porcentajeIva / 100),
                 2
             );
 
-            $iva = round(
-                $total - $neto,
-                2
-            );
+            $iva = round($total - $neto, 2);
         }
 
-        /*
-         * ==========================================================
-         * PAYLOAD
-         * ==========================================================
-         */
-
         $payload = [
-            'token' =>
-                $credenciales['token'],
-
-            'sign' =>
-                $credenciales['sign'],
-
-            'cuit' =>
-                preg_replace(
-                    '/\D/',
-                    '',
-                    (string) config('arca.cuit')
-                ),
-
-            'puntoVenta' =>
-                $this->config->punto_venta,
-
-            'tipoComprobante' =>
-                $tipoComprobante,
-
-            'concepto' =>
-                self::CONCEPTO_SERVICIOS,
-
-            'docTipo' =>
-                $docTipo,
-
-            'docNro' =>
-                $docNro,
-
-            'condicionIvaReceptorId' =>
-                $condicionCliente,
-
-            'fecha' =>
-                $fechaComprobante->format('Ymd'),
-
-            'importeNeto' =>
-                $neto,
-
-            'importeIva' =>
-                $iva,
-
-            'importeTotal' =>
-                $total,
-
-            /*
-             * Las facturas históricas no tienen período de servicio
-             * cargado: se informa el mes de la fecha de emisión.
-             */
-            'fchServDesde' =>
-                ($invoice->service_period_start
-                    ?? $invoice->issued_at->copy()->startOfMonth())
-                    ->format('Ymd'),
-
-            'fchServHasta' =>
-                ($invoice->service_period_end
-                    ?? $invoice->issued_at->copy()->endOfMonth())
-                    ->format('Ymd'),
-
-            'fchVtoPago' =>
-                $fechaVencimiento->format('Ymd'),
-
-            'invoiceId' =>
-                $invoice->id,
-
-            'reintentoAutomatico' =>
-                $automatico,
+            'token' => $credenciales['token'],
+            'sign' => $credenciales['sign'],
+            'cuit' => preg_replace(
+                '/\D/',
+                '',
+                (string) config('arca.cuit')
+            ),
+            'puntoVenta' => $this->config->punto_venta,
+            'tipoComprobante' => $tipoComprobante,
+            'concepto' => self::CONCEPTO_SERVICIOS,
+            'docTipo' => $documento['docTipo'],
+            'docNro' => $documento['docNro'],
+            'condicionIvaReceptorId' => $condicionCliente,
+            'fecha' => $fechaComprobante->format('Ymd'),
+            'importeNeto' => $neto,
+            'importeIva' => $iva,
+            'importeTotal' => $total,
+            'fchServDesde' => (
+                $invoice->service_period_start
+                ?? $invoice->issued_at->copy()->startOfMonth()
+            )->format('Ymd'),
+            'fchServHasta' => (
+                $invoice->service_period_end
+                ?? $invoice->issued_at->copy()->endOfMonth()
+            )->format('Ymd'),
+            'fchVtoPago' => $fechaVencimiento->format('Ymd'),
+            'invoiceId' => $invoice->id,
+            'reintentoAutomatico' => $automatico,
         ];
 
-        /*
-         * ==========================================================
-         * IVA DISCRIMINADO
-         * ==========================================================
-         */
-
         if (
-            ComprobanteResolver::discriminaIva(
-                $tipoComprobante
-            )
+            ComprobanteResolver::discriminaIva($tipoComprobante)
             && $iva > 0
         ) {
             $payload['alicuotasIva'] = [[
-                'id' =>
-                    $this->alicuotaIdParaPorcentaje(
-                        $porcentajeIva
-                    ),
-
-                'baseImp' =>
-                    $neto,
-
-                'importe' =>
-                    $iva,
+                'id' => $this->alicuotaIdParaPorcentaje(
+                    $porcentajeIva
+                ),
+                'baseImp' => $neto,
+                'importe' => $iva,
             ]];
         }
 
+        $respuesta = $this->enviarSolicitud(
+            $invoice,
+            $automatico,
+            '/wsfe/solicitar-cae',
+            $payload
+        );
+
+        if ($respuesta !== null) {
+            $this->procesarRespuesta(
+                $invoice,
+                $respuesta,
+                $tipoComprobante
+            );
+        }
+    }
+
+    /**
+     * Emisión de facturas de exportación mediante WSFEXv1.
+     *
+     * Se requiere que la factura tenga los datos del comprador
+     * del exterior guardados como snapshot.
+     */
+    private function emitirExportacion(
+        Invoice $invoice,
+        bool $automatico,
+        Carbon $momentoIntento,
+        int $tipoComprobante
+    ): void {
         /*
-         * ==========================================================
-         * LLAMADA A API ARCA
-         * ==========================================================
+         * Estos campos se incorporan en las migraciones y modelos
+         * que siguen en esta actualización.
          */
+        $domicilioCliente = trim(
+            (string) ($invoice->client_address ?? '')
+        );
+
+        $paisDestino = $invoice->client_arca_destination_country
+            ?? null;
+
+        $cuitPaisCliente = $invoice->client_arca_cuit_pais_cliente
+            ?? null;
+
+        $idImpositivo = trim(
+            (string) ($invoice->client_arca_id_impositivo ?? '')
+        );
+
+        if (! $paisDestino || $domicilioCliente === '') {
+            $this->marcarError(
+                $invoice,
+                'No se puede emitir la Factura E: faltan el país de destino o el domicilio del cliente del exterior.'
+            );
+
+            return;
+        }
+
+        if (empty($cuitPaisCliente) && $idImpositivo === '') {
+            $this->marcarError(
+                $invoice,
+                'No se puede emitir la Factura E: falta el identificador fiscal del comprador extranjero.'
+            );
+
+            return;
+        }
+
+        if (trim((string) $invoice->client_name) === '') {
+            $this->marcarError(
+                $invoice,
+                'No se puede emitir la Factura E: falta el nombre del comprador extranjero.'
+            );
+
+            return;
+        }
+
+        if (
+            $tipoComprobante !== 19
+            && ! in_array($tipoComprobante, [20, 21], true)
+        ) {
+            $this->marcarError(
+                $invoice,
+                'El tipo de comprobante de exportación no está soportado.'
+            );
+
+            return;
+        }
 
         try {
-            $respuesta =
-                Http::withHeaders([
-                    'X-Internal-Api-Key' =>
-                        config('arca.api_key'),
-                ])
-                    ->timeout(30)
-                    ->post(
-                        config('arca.api_url')
-                        . '/wsfe/solicitar-cae',
-                        $payload
-                    );
+            /*
+             * El token WSAA debe solicitarse para WSFEX,
+             * no se puede reutilizar el token de WSFE.
+             */
+            $wsfexClient = new WsaaClient(
+                $this->config,
+                'wsfex'
+            );
 
-        } catch (ConnectionException $e) {
-
-            $this->registrarFalloTransitorio(
+            $credenciales = $wsfexClient->obtenerCredenciales();
+        } catch (\Throwable $e) {
+            $this->procesarErrorAutenticacion(
                 $invoice,
-                'Error de conexión con la API ARCA: '
-                . $e->getMessage(),
-                $automatico
+                $automatico,
+                $e
+            );
+
+            return;
+        }
+
+        $fechaComprobante = $this->fechaComprobante($momentoIntento);
+
+        $total = round((float) $invoice->amount_paid, 2);
+
+        if ($total <= 0) {
+            $this->marcarError(
+                $invoice,
+                'No se puede emitir la Factura E porque el importe pagado debe ser mayor a cero.'
             );
 
             return;
         }
 
         /*
-         * ==========================================================
-         * ERRORES HTTP TRANSITORIOS
-         * ==========================================================
-         *
-         * 408 = timeout
-         * 429 = demasiadas solicitudes
-         * 5xx = error de servidor
+         * La aplicación cobra actualmente en pesos mediante
+         * Mercado Pago. Por eso el comprobante utiliza PES y
+         * cotización 1. Si más adelante se cobra en moneda extranjera,
+         * esos valores deberán salir de una configuración específica.
          */
+        $payload = [
+            'invoiceId' => $invoice->id,
+            'reintentoAutomatico' => $automatico,
+
+            'token' => $credenciales['token'],
+            'sign' => $credenciales['sign'],
+            'cuit' => preg_replace(
+                '/\D/',
+                '',
+                (string) config('arca.cuit')
+            ),
+
+            'puntoVenta' => $this->config->punto_venta,
+            'tipoComprobante' => $tipoComprobante,
+
+            // Servicio exportado.
+            'tipoExpo' => 2,
+
+            'fecha' => $fechaComprobante->format('Ymd'),
+            'permisoExistente' => '',
+
+            'paisDestino' => (int) $paisDestino,
+            'cliente' => trim((string) $invoice->client_name),
+            'domicilioCliente' => $domicilioCliente,
+
+            'monedaId' => 'PES',
+            'monedaCotizacion' => 1,
+
+            'importeTotal' => $total,
+            'idiomaComprobante' => 1,
+            'formaPago' => 'Mercado Pago',
+
+            /*
+             * WSFEX exige Fecha_pago para Factura E de servicios.
+             * El comprobante se emite tras confirmar el pago.
+             */
+            'fechaPago' => (
+                $invoice->paid_at
+                    ? $invoice->paid_at->copy()
+                    : $momentoIntento->copy()
+            )->format('Ymd'),
+
+            /*
+             * Un servicio facturado como una unidad.
+             * El importe del ítem debe coincidir con el total.
+             */
+            'items' => [[
+                'proDescripcion' => mb_substr(
+                    (string) $invoice->service_name,
+                    0,
+                    4000
+                ),
+                'proCantidad' => 1,
+                'proUnidadMedida' => self::UNIDAD_MEDIDA_UNIDAD,
+                'proPrecioUnitario' => $total,
+                'proTotalItem' => $total,
+            ]],
+        ];
+
+        if (! empty($cuitPaisCliente)) {
+            $payload['cuitPaisCliente'] = (string) $cuitPaisCliente;
+        }
+
+        if ($idImpositivo !== '') {
+            $payload['idImpositivo'] = $idImpositivo;
+        }
+
+        $respuesta = $this->enviarSolicitud(
+            $invoice,
+            $automatico,
+            '/wsfe/solicitar-cae',
+            $payload
+        );
+
+        if ($respuesta !== null) {
+            $this->procesarRespuesta(
+                $invoice,
+                $respuesta,
+                $tipoComprobante
+            );
+        }
+    }
+
+    /**
+     * Realiza el POST a la API intermedia y gestiona errores transitorios.
+     */
+    private function enviarSolicitud(
+        Invoice $invoice,
+        bool $automatico,
+        string $endpoint,
+        array $payload
+    ): ?Response {
+        try {
+            $respuesta = Http::withHeaders([
+                'X-Internal-Api-Key' => config('arca.api_key'),
+            ])
+                ->timeout(30)
+                ->post(
+                    rtrim((string) config('arca.api_url'), '/')
+                        . $endpoint,
+                    $payload
+                );
+        } catch (ConnectionException $e) {
+            $this->registrarFalloTransitorio(
+                $invoice,
+                'Error de conexión con la API ARCA: ' . $e->getMessage(),
+                $automatico
+            );
+
+            return null;
+        }
 
         if (
             $respuesta->status() === 408
@@ -431,87 +465,78 @@ class ArcaApiService
                 $automatico
             );
 
+            return null;
+        }
+
+        return $respuesta;
+    }
+
+    private function procesarErrorAutenticacion(
+        Invoice $invoice,
+        bool $automatico,
+        \Throwable $e
+    ): void {
+        $mensaje = 'Error al autenticar contra WSAA: ' . $e->getMessage();
+
+        if ($this->esErrorTransitorio($e->getMessage())) {
+            $this->registrarFalloTransitorio(
+                $invoice,
+                $mensaje,
+                $automatico
+            );
+
             return;
         }
 
-        /*
-         * ==========================================================
-         * PROCESAR RESPUESTA
-         * ==========================================================
-         */
-
-        $this->procesarRespuesta(
-            $invoice,
-            $respuesta,
-            $tipoComprobante
-        );
+        $this->marcarError($invoice, $mensaje);
     }
 
-    private function alicuotaIdParaPorcentaje(
-        float $porcentaje
-    ): int {
+    private function alicuotaIdParaPorcentaje(float $porcentaje): int
+    {
         return self::ALICUOTAS_AFIP[$porcentaje]
             ?? self::ALICUOTAS_AFIP[21];
     }
 
+    private function fechaComprobante(Carbon $momentoIntento): Carbon
+    {
+        return Carbon::createFromFormat(
+            'Y-m-d',
+            $momentoIntento
+                ->copy()
+                ->setTimezone('America/Argentina/Buenos_Aires')
+                ->toDateString()
+        )->startOfDay();
+    }
+
     private function procesarRespuesta(
         Invoice $invoice,
-        $respuesta,
+        Response $respuesta,
         int $tipoComprobante
     ): void {
-        $datos =
-            $respuesta->json();
-
-        /*
-         * ==========================================================
-         * APROBADO
-         * ==========================================================
-         */
+        $datos = $respuesta->json() ?? [];
 
         if (
             $respuesta->successful()
             && ($datos['exito'] ?? false)
         ) {
             $invoice->update([
-                'arca_status' =>
-                    'aprobado',
-
-                'arca_cae' =>
-                    $datos['cae'],
-
-                'arca_cae_expires_at' =>
-                    $this->convertirFechaCae(
-                        $datos['caeVencimiento'] ?? null
-                    ),
-
-                'arca_invoice_type' =>
-                    $tipoComprobante,
-
-                'arca_point_of_sale' =>
-                    $this->config->punto_venta,
-
-                'arca_invoice_number' =>
-                    $datos['numeroComprobante'],
-
-                /*
-                 * Ya no necesita reintentos.
-                 */
-                'arca_retry_attempts' =>
-                    0,
-
-                'arca_retry_at' =>
-                    null,
+                'arca_status' => 'aprobado',
+                'arca_cae' => $datos['cae'],
+                'arca_cae_expires_at' => $this->convertirFechaCae(
+                    $datos['caeVencimiento'] ?? null
+                ),
+                'arca_invoice_type' => $tipoComprobante,
+                'arca_point_of_sale' => $this->config->punto_venta,
+                'arca_invoice_number' => $datos['numeroComprobante'],
+                'arca_retry_attempts' => 0,
+                'arca_retry_at' => null,
             ]);
 
-            /*
-             * Con el CAE ya autorizado se envía por correo el PDF de la factura pagada. Un fallo acá nunca debe afectar a la emisión 
-             * (el servicio registra sus propios errores).
-             */
             try {
                 app(\App\Services\InvoiceReceiptSender::class)
-                    ->sendInBackground($invoice);
+                    ->sendInBackground($invoice->fresh());
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error(
+                Log::error(
                     'No se pudo enviar el PDF de la factura.',
                     [
                         'invoice_id' => $invoice->id,
@@ -523,222 +548,119 @@ class ArcaApiService
             return;
         }
 
-        /*
-         * ==========================================================
-         * ERROR FUNCIONAL
-         * ==========================================================
-         */
+        $mensaje = collect($datos['errores'] ?? [])
+            ->pluck('mensaje')
+            ->filter()
+            ->implode(' | ');
 
-        $mensaje =
-            collect(
-                $datos['errores'] ?? []
-            )
-                ->pluck('mensaje')
-                ->implode(' | ');
-
-        if (
-            !$mensaje
-            && isset($datos['error'])
-        ) {
-            $mensaje =
-                (string) $datos['error'];
+        if ($mensaje === '' && isset($datos['error'])) {
+            $mensaje = (string) $datos['error'];
         }
 
-        if (!$mensaje) {
-            $mensaje =
-                sprintf(
-                    'HTTP %s. Respuesta API ARCA: %s',
-                    $respuesta->status(),
-                    $respuesta->body()
-                );
+        if ($mensaje === '') {
+            $mensaje = sprintf(
+                'HTTP %s. Respuesta API ARCA: %s',
+                $respuesta->status(),
+                $respuesta->body()
+            );
         }
 
         /*
-         * Los errores funcionales de ARCA no se
-         * reintentan automáticamente.
+         * Los errores funcionales de ARCA no se reintentan
+         * automáticamente: requieren corregir los datos.
          */
-        $this->marcarError(
-            $invoice,
-            $mensaje
-        );
+        $this->marcarError($invoice, $mensaje);
     }
 
-    private function convertirFechaCae(
-        ?string $fecha
-    ): ?Carbon {
-        if (!$fecha) {
+    private function convertirFechaCae(?string $fecha): ?Carbon
+    {
+        if (! $fecha) {
             return null;
         }
 
-        return Carbon::createFromFormat(
-            'Ymd',
-            $fecha
-        )->startOfDay();
+        return Carbon::createFromFormat('Ymd', $fecha)->startOfDay();
     }
 
-    /**
-     * Registra un error transitorio.
-     *
-     * En automático:
-     *   aumenta el contador.
-     *
-     * En manual:
-     *   NO aumenta el contador.
-     *
-     * En ambos casos queda programado un próximo
-     * intento automático.
-     */
     private function registrarFalloTransitorio(
         Invoice $invoice,
         string $mensaje,
         bool $automatico
     ): void {
-        $intentosActuales =
-            (int) (
-                $invoice->arca_retry_attempts ?? 0
-            );
+        $intentosActuales = (int) ($invoice->arca_retry_attempts ?? 0);
 
-        $maxIntentos =
-            max(
-                1,
-                (int) config(
-                    'arca.retry.max_attempts',
-                    8
-                )
-            );
+        $maxIntentos = max(
+            1,
+            (int) config('arca.retry.max_attempts', 8)
+        );
 
-        /*
-         * Si fue un intento automático, este fallo
-         * consume un intento.
-         */
         if ($automatico) {
+            $proximoIntento = $intentosActuales + 1;
 
-            $proximoIntento =
-                $intentosActuales + 1;
-
-            if (
-                $proximoIntento > $maxIntentos
-            ) {
+            if ($proximoIntento > $maxIntentos) {
                 $invoice->update([
-                    'arca_status' =>
-                        'error: '
-                        . $mensaje
+                    'arca_status' => 'error: ' . $mensaje
                         . ' Se agotaron los reintentos automáticos.',
-
-                    'arca_retry_attempts' =>
-                        $proximoIntento,
-
-                    'arca_retry_at' =>
-                        null,
+                    'arca_retry_attempts' => $proximoIntento,
+                    'arca_retry_at' => null,
                 ]);
 
                 return;
             }
 
             $invoice->update([
-                'arca_retry_attempts' =>
-                    $proximoIntento,
+                'arca_retry_attempts' => $proximoIntento,
             ]);
-
         } else {
-
             /*
-             * El intento manual NO consume un intento
-             * automático.
+             * Un intento manual no consume el contador automático.
              */
-            $proximoIntento =
-                max(
-                    1,
-                    $intentosActuales + 1
-                );
+            $proximoIntento = max(1, $intentosActuales + 1);
         }
 
-        /*
-         * ==========================================================
-         * BACKOFF
-         * ==========================================================
-         */
+        $base = max(
+            1,
+            (int) config('arca.retry.delay_minutes', 10)
+        );
 
-        $base =
-            max(
-                1,
-                (int) config(
-                    'arca.retry.delay_minutes',
-                    10
-                )
-            );
+        $maxBackoff = max(
+            $base,
+            (int) config('arca.retry.max_backoff_minutes', 120)
+        );
 
-        $maxBackoff =
-            max(
-                $base,
-                (int) config(
-                    'arca.retry.max_backoff_minutes',
-                    120
-                )
-            );
-
-        $delay =
-            min(
-                $base
-                * (2 ** ($proximoIntento - 1)),
-                $maxBackoff
-            );
+        $delay = min(
+            $base * (2 ** ($proximoIntento - 1)),
+            $maxBackoff
+        );
 
         $invoice->update([
-            'arca_status' =>
-                'error: '
-                . $mensaje
+            'arca_status' => 'error: ' . $mensaje
                 . ' Reintento automático programado en '
-                . $delay
-                . ' minutos.',
-
-            'arca_retry_at' =>
-                now()->addMinutes($delay),
+                . $delay . ' minutos.',
+            'arca_retry_at' => now()->addMinutes($delay),
         ]);
     }
 
-    private function esErrorTransitorio(
-        string $mensaje
-    ): bool {
-        $mensaje =
-            strtolower($mensaje);
+    private function esErrorTransitorio(string $mensaje): bool
+    {
+        $mensaje = strtolower($mensaje);
 
-        return str_contains(
-            $mensaje,
-            '429'
-        )
-        || str_contains(
-            $mensaje,
-            'too many requests'
-        )
-        || str_contains(
-            $mensaje,
-            'timeout'
-        )
-        || str_contains(
-            $mensaje,
-            'timed out'
-        )
-        || str_contains(
-            $mensaje,
-            'connection'
-        )
-        || str_contains(
-            $mensaje,
-            'temporarily unavailable'
-        )
-        || str_contains(
-            $mensaje,
-            '502'
-        )
-        || str_contains(
-            $mensaje,
-            '503'
-        )
-        || str_contains(
-            $mensaje,
-            '504'
-        );
+        foreach ([
+            '429',
+            'too many requests',
+            'timeout',
+            'timed out',
+            'connection',
+            'temporarily unavailable',
+            '502',
+            '503',
+            '504',
+        ] as $indicador) {
+            if (str_contains($mensaje, $indicador)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function marcarError(
@@ -746,14 +668,8 @@ class ArcaApiService
         string $mensaje
     ): void {
         $invoice->update([
-            'arca_status' =>
-                'error: ' . $mensaje,
-
-            /*
-             * Error funcional/permanente.
-             */
-            'arca_retry_at' =>
-                null,
+            'arca_status' => 'error: ' . $mensaje,
+            'arca_retry_at' => null,
         ]);
     }
 }

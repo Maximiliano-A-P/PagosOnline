@@ -4,18 +4,19 @@ namespace App\Services\Arca;
 
 class ComprobanteResolver
 {
-    // Códigos AFIP de condición frente al IVA.
     private const RESPONSABLE_INSCRIPTO = 1;
     private const CONSUMIDOR_FINAL = 5;
     private const MONOTRIBUTISTA = 6;
+    private const CLIENTE_EXTERIOR = 9;
 
-    // Códigos AFIP de tipo de documento.
     private const DOC_TIPO_CUIT = 80;
     private const DOC_TIPO_DNI = 96;
     private const DOC_TIPO_CONSUMIDOR_FINAL = 99;
 
     /**
-     * Determina el tipo de comprobante.
+     * Determina el tipo de factura según la condición fiscal.
+     *
+     * Los comprobantes de exportación requieren WSFEXv1.
      */
     public static function determinarTipoComprobante(
         int $condicionEmisor,
@@ -23,26 +24,22 @@ class ComprobanteResolver
     ): int {
         $condicionCliente ??= self::CONSUMIDOR_FINAL;
 
-        if ($condicionEmisor === self::RESPONSABLE_INSCRIPTO) {
-            return $condicionCliente === self::RESPONSABLE_INSCRIPTO
-                ? 1   // Factura A
-                : 6;  // Factura B
+        if ($condicionCliente === self::CLIENTE_EXTERIOR) {
+            return 19; // Factura E.
         }
 
-        // Emisor Monotributista.
-        return 11; // Factura C
+        if ($condicionEmisor === self::RESPONSABLE_INSCRIPTO) {
+            return $condicionCliente === self::RESPONSABLE_INSCRIPTO
+                ? 1
+                : 6;
+        }
+
+        return 11; // Factura C.
     }
 
     /**
-     * Determina el documento que se envía a ARCA.
-     *
-     * Factura A:
-     *   CUIT -> DocTipo 80
-     *
-     * Factura B/C:
-     *   DNI -> DocTipo 96
-     *
-     * La CUIT no reemplaza al DNI para una Factura C.
+     * Resuelve el documento para comprobantes WSFE.
+     * Las facturas E utilizan los identificadores propios de exportación.
      */
     public static function resolverDocumento(
         int $tipoComprobante,
@@ -56,6 +53,13 @@ class ComprobanteResolver
         $cuit = $cuit !== null
             ? preg_replace('/\D/', '', $cuit)
             : null;
+
+        if (self::esExportacion($tipoComprobante)) {
+            return [
+                'docTipo' => null,
+                'docNro' => null,
+            ];
+        }
 
         if (self::requiereCuit($tipoComprobante)) {
             return [
@@ -77,9 +81,6 @@ class ComprobanteResolver
         ];
     }
 
-    /**
-     * Determina qué comprobantes requieren CUIT.
-     */
     public static function requiereCuit(int $tipoComprobante): bool
     {
         return in_array(
@@ -90,9 +91,23 @@ class ComprobanteResolver
     }
 
     /**
-     * Indica si el comprobante utiliza IVA en WSFE.
-     * A, B y M informan IVA mediante ImpIVA  y, cuando corresponde, el detalle Iva.
-     * C no informa IVA.
+     * Los tipos 51, 52 y 53 conservan su numeración,
+     * pero corresponden a comprobantes A sujetos a retención.
+     */
+    public static function esAConLeyendaRetencion(
+        int $tipoComprobante
+    ): bool {
+        return in_array($tipoComprobante, [51, 52, 53], true);
+    }
+
+    public static function esExportacion(int $tipoComprobante): bool
+    {
+        return in_array($tipoComprobante, [19, 20, 21], true);
+    }
+
+    /**
+     * IVA discriminado en comprobantes A y B.
+     * Los comprobantes E se procesan mediante WSFEX.
      */
     public static function discriminaIva(int $tipoComprobante): bool
     {

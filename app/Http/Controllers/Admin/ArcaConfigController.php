@@ -8,22 +8,13 @@ use Illuminate\Http\Request;
 
 class ArcaConfigController extends Controller
 {
-    /**
-     * Muestra la configuración de ARCA.
-     */
     public function edit()
     {
         $config = ArcaConfig::first();
 
-        return view(
-            'admin.arca.edit',
-            compact('config')
-        );
+        return view('admin.arca.edit', compact('config'));
     }
 
-    /**
-     * Guarda o actualiza la configuración de ARCA.
-     */
     public function update(Request $request)
     {
         $validated = $request->validate([
@@ -37,6 +28,14 @@ class ArcaConfigController extends Controller
                 'required',
                 'integer',
                 'min:1',
+                'max:99998',
+            ],
+
+            'punto_venta_exportacion' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:99998',
             ],
         ]);
 

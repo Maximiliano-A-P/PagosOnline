@@ -6,122 +6,53 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Crea la tabla clients.
-     */
     public function up(): void
     {
         Schema::create('clients', function (Blueprint $table) {
-
-            /*
-             * =====================================================
-             * IDENTIFICADOR
-             * =====================================================
-             */
-
-            // Identificador único del cliente.
             $table->id();
 
-
-            /*
-             * =====================================================
-             * DATOS DEL CLIENTE
-             * =====================================================
-             */
-
-            // Nombre completo del cliente.
+            // Datos generales.
             $table->string('name');
-
-            // Documento numérico del cliente.
             $table->unsignedBigInteger('document');
 
-            // CUIT del cliente.
-            // NULL = el cliente no tiene CUIT cargada.
-            $table->string('cuit', 11)
-                ->nullable();
-
-
-            /*
-             * =====================================================
-             * DATOS DE CONTACTO
-             * =====================================================
-             *
-             * Todos son opcionales (texto simple).
-             */
-
-            // Teléfono de contacto.
-            $table->string('phone')
-                ->nullable();
-
-            // Email de contacto.
-            $table->string('email')
-                ->nullable();
-
-            // Dirección del cliente.
-            $table->string('address')
-                ->nullable();
-
-
-            /*
-             * =====================================================
-             * BLOQUEO (BORRADO LEGAL)
-             * =====================================================
-             *
-             * Los clientes no se eliminan al instante: se bloquean
-             * y se conservan 5 años por obligación legal. Pasado
-             * ese plazo se borran (comando clients:purge-blocked).
-             *
-             * Los clientes bloqueados solo son accesibles
-             * directamente desde la base de datos.
-             */
-
-            // true = cliente bloqueado.
-            $table->boolean('blocked')
-                ->default(false);
-
-            // Momento en que se bloqueó (cuenta los 5 años).
-            $table->timestamp('blocked_at')
-                ->nullable();
-
-
-            /*
-             * =====================================================
-             * DATOS FISCALES ARCA
-             * =====================================================
-             *
-             * Estos datos permiten determinar qué tipo de
-             * comprobante corresponde emitir al cliente.
-             *
-             * La condición frente al IVA puede no conocerse
-             * todavía al crear el cliente.
-             */
-
-            // Condición frente al IVA:
-            // 1 = Responsable Inscripto
-            // 5 = Consumidor Final
-            // 6 = Monotributista
-            // etc.
-            //
-            // NULL = condición desconocida.
+            // Datos fiscales argentinos.
+            $table->string('cuit', 11)->nullable();
             $table->unsignedSmallInteger('arca_iva_condition')
-                ->nullable()
-                ->after('cuit');
-
+                ->nullable();
 
             /*
-             * =====================================================
-             * FECHAS
-             * =====================================================
+             * Datos fiscales del comprador del exterior.
+             *
+             * arca_destination_country: código de país de destino
+             * del catálogo que utiliza ARCA.
+             *
+             * arca_cuit_pais_cliente: identificador fiscal del
+             * comprador en su país, cuando corresponda.
+             *
+             * arca_id_impositivo: identificador fiscal alternativo.
              */
+            $table->unsignedSmallInteger('arca_destination_country')
+                ->nullable();
 
-            // created_at y updated_at.
+            $table->string('arca_cuit_pais_cliente', 11)
+                ->nullable();
+
+            $table->string('arca_id_impositivo', 50)
+                ->nullable();
+
+            // Contacto.
+            $table->string('phone')->nullable();
+            $table->string('email')->nullable();
+            $table->string('address')->nullable();
+
+            // Bloqueo legal.
+            $table->boolean('blocked')->default(false);
+            $table->timestamp('blocked_at')->nullable();
+
             $table->timestamps();
         });
     }
 
-    /**
-     * Elimina la tabla clients.
-     */
     public function down(): void
     {
         Schema::dropIfExists('clients');

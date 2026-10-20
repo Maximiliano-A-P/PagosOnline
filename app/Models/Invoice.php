@@ -11,34 +11,44 @@ class Invoice extends Model
     protected $fillable = [
         'issued_at',
 
-        // Datos históricos del cliente
+        // Datos históricos del cliente.
         'client_name',
         'client_document',
         'client_cuit',
+        'client_document_type',
+        'client_iva_condition',
 
-        // Identificación y datos históricos del servicio
+        // Snapshot fiscal de exportación.
+        'client_address',
+        'client_arca_destination_country',
+        'client_arca_cuit_pais_cliente',
+        'client_arca_id_impositivo',
+
+        // Identificación y datos históricos del servicio.
         'service_id',
         'service_name',
+        'service_period_start',
+        'service_period_end',
 
-        // Datos económicos
+        // Datos económicos.
         'price',
         'due_date',
         'overdue_price',
         'tax_percentage',
         'expected_amount',
 
-        // Estado del pago
+        // Estado del pago.
         'payment_status',
         'amount_paid',
         'paid_at',
         'payment_method',
         'paid_by',
 
-        // Datos Mercado Pago
+        // Mercado Pago.
         'mercadopago_preference_id',
         'mercadopago_payment_id',
 
-        // Datos ARCA
+        // ARCA.
         'arca_status',
         'arca_cae',
         'arca_cae_expires_at',
@@ -46,10 +56,6 @@ class Invoice extends Model
         'arca_point_of_sale',
         'arca_invoice_number',
         'arca_qr',
-        'client_document_type',
-        'client_iva_condition',
-        'service_period_start',
-        'service_period_end',
         'arca_retry_attempts',
         'arca_last_attempt_at',
         'arca_retry_at',
@@ -61,28 +67,27 @@ class Invoice extends Model
         return [
             'issued_at' => 'date',
 
-            // Datos del cliente
             'client_document' => 'integer',
+            'client_document_type' => 'integer',
+            'client_iva_condition' => 'integer',
+            'client_arca_destination_country' => 'integer',
 
-            // Servicio asociado
-            // Puede ser NULL en facturas históricas/manuales.
             'service_id' => 'integer',
+            'service_period_start' => 'date',
+            'service_period_end' => 'date',
 
-            // Datos económicos
             'price' => 'decimal:2',
             'due_date' => 'date',
             'overdue_price' => 'decimal:2',
-            'amount_paid' => 'decimal:2',
-            'paid_at' => 'date',
+            'tax_percentage' => 'decimal:2',
             'expected_amount' => 'decimal:2',
 
-            // Datos ARCA
+            'amount_paid' => 'decimal:2',
+            'paid_at' => 'date',
+
             'arca_cae_expires_at' => 'datetime',
             'arca_point_of_sale' => 'integer',
             'arca_invoice_number' => 'integer',
-            'service_period_start' => 'date',
-            'service_period_end' => 'date',
-            'tax_percentage' => 'decimal:2',
             'arca_retry_attempts' => 'integer',
             'arca_last_attempt_at' => 'datetime',
             'arca_retry_at' => 'datetime',
@@ -90,75 +95,55 @@ class Invoice extends Model
         ];
     }
 
-    /**
-     * Servicio asociado a la factura.
-     *
-     * Puede ser NULL cuando se trata de una factura histórica
-     * cuyo servicio ya no existe o no está asociado al sistema.
-     */
     public function service(): BelongsTo
     {
-        return $this->belongsTo(
-            Service::class,
-            'service_id'
-        );
+        return $this->belongsTo(Service::class, 'service_id');
     }
 
-    /**
-     * Usuario que registró manualmente el pago.
-     *
-     * Puede ser NULL cuando el pago todavía no fue registrado.
-     */
     public function paidBy(): BelongsTo
     {
-        return $this->belongsTo(
-            User::class,
-            'paid_by'
-        );
+        return $this->belongsTo(User::class, 'paid_by');
     }
-
-    /*
-     * ------------------------------------------------------------
-     * Valores de la factura: normal y vencido (siempre + impuestos)
-     * ------------------------------------------------------------
-     */
 
     private function tasaImpuesto(): float
     {
         return (float) ($this->tax_percentage ?? 0) / 100;
     }
 
-    /** Total con precio normal + impuestos. */
     public function totalNormal(): float
     {
-        return round((float) $this->price * (1 + $this->tasaImpuesto()), 2);
+        return round(
+            (float) $this->price * (1 + $this->tasaImpuesto()),
+            2
+        );
     }
 
-    /** Total con precio vencido + impuestos. */
     public function totalVencido(): float
     {
-        return round((float) $this->overdue_price * (1 + $this->tasaImpuesto()), 2);
+        return round(
+            (float) $this->overdue_price * (1 + $this->tasaImpuesto()),
+            2
+        );
     }
 
-    /** Diferencia entre el total vencido y el normal (nunca negativa). */
     public function recargoPorMora(): float
     {
-        return max(0.0, round($this->totalVencido() - $this->totalNormal(), 2));
+        return max(
+            0.0,
+            round($this->totalVencido() - $this->totalNormal(), 2)
+        );
     }
 
-    /** Primer día en que rige el precio vencido (día siguiente al vencimiento). */
     public function fechaAumento(): Carbon
     {
         return $this->due_date->copy()->startOfDay()->addDay();
     }
 
-    /** True si en esa fecha ya rige el precio vencido. */
     public function estaVencidaAl(Carbon $fecha): bool
     {
         return $fecha->copy()->startOfDay()->gte($this->fechaAumento());
     }
 
-    /** Importe (con impuestos) que corresponde pagar en esa fecha. */
     public function montoAl(Carbon $fecha): float
     {
         return $this->estaVencidaAl($fecha)
@@ -166,21 +151,12 @@ class Invoice extends Model
             : $this->totalNormal();
     }
 
-    /**
-     * True si, a día de hoy, corresponde el precio con recargo
-     * por mora (todavía no fue pagada y ya venció).
-     */
     public function estaVencida(): bool
     {
         return $this->payment_status !== 'paid'
             && $this->estaVencidaAl(now());
     }
 
-    /**
-     * Monto que corresponde cobrar en este momento: el ya pagado
-     * si la factura está paga, o el normal / vencido (+ impuestos)
-     * según la fecha de hoy si todavía está pendiente.
-     */
     public function montoACobrar(): float
     {
         if ($this->payment_status === 'paid') {
@@ -191,25 +167,19 @@ class Invoice extends Model
     }
 
     /**
-     * Movimientos contables de la factura (única fuente de verdad
-     * para el asiento del cliente y para el saldo del index).
-     *
-     * - Factura:  debe = total normal (con impuestos), en la emisión.
-     * - Aumento:  debe = recargo por vencimiento, el primer día vencida.
-     *             Si ya está paga, solo si se pagó vencida.
-     * - Pago:     haber = importe pagado, en la fecha de pago.
+     * Movimientos contables de la factura.
      */
     public function movimientos(): array
     {
         $pagada = $this->payment_status === 'paid';
 
         $movimientos = [[
-            'fecha'   => $this->issued_at->copy()->startOfDay(),
-            'orden'   => 0,
-            'id'      => $this->id,
+            'fecha' => $this->issued_at->copy()->startOfDay(),
+            'orden' => 0,
+            'id' => $this->id,
             'detalle' => "Factura #{$this->id} — {$this->service_name}",
-            'debe'    => $this->totalNormal(),
-            'haber'   => 0.0,
+            'debe' => $this->totalNormal(),
+            'haber' => 0.0,
         ]];
 
         $fechaPago = $pagada
@@ -223,30 +193,29 @@ class Invoice extends Model
             && (! $pagada || $fechaPago->gte($this->fechaAumento()))
         ) {
             $movimientos[] = [
-                'fecha'   => $this->fechaAumento(),
-                'orden'   => 0,
-                'id'      => $this->id,
+                'fecha' => $this->fechaAumento(),
+                'orden' => 0,
+                'id' => $this->id,
                 'detalle' => "Aumento por vencimiento — Factura #{$this->id}",
-                'debe'    => $recargo,
-                'haber'   => 0.0,
+                'debe' => $recargo,
+                'haber' => 0.0,
             ];
         }
 
         if ($pagada) {
             $movimientos[] = [
-                'fecha'   => $fechaPago,
-                'orden'   => 1,
-                'id'      => $this->id,
+                'fecha' => $fechaPago,
+                'orden' => 1,
+                'id' => $this->id,
                 'detalle' => "Pago factura #{$this->id}",
-                'debe'    => 0.0,
-                'haber'   => round((float) $this->amount_paid, 2),
+                'debe' => 0.0,
+                'haber' => round((float) $this->amount_paid, 2),
             ];
         }
 
         return $movimientos;
     }
 
-    /** Saldo de esta factura a una fecha (positivo = el cliente debe). */
     public function saldoAl(Carbon $fecha): float
     {
         $fecha = $fecha->copy()->startOfDay();

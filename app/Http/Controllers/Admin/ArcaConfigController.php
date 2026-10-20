@@ -24,6 +24,21 @@ class ArcaConfigController extends Controller
                 'min:1',
             ],
 
+            /*
+             * Tipo de Factura A autorizado para el emisor:
+             * 1  = Factura A.
+             * 51 = Factura A con leyenda de retención.
+             *
+             * El usuario final de la aplicación no elige este código.
+             * Lo configura el administrador según la autorización
+             * correspondiente al CUIT emisor.
+             */
+            'tipo_factura_a' => [
+                'required',
+                'integer',
+                'in:1,51',
+            ],
+
             'punto_venta' => [
                 'required',
                 'integer',

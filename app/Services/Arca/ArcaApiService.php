@@ -16,10 +16,6 @@ class ArcaApiService
     private const CLIENTE_EXTERIOR = 9;
     private const CONCEPTO_SERVICIOS = 2;
 
-    /*
-     * Unidades de medida de WSFEX.
-     * El código 7 se usa como unidad en el ejemplo del manual.
-     */
     private const UNIDAD_MEDIDA_UNIDAD = 7;
 
     private const ALICUOTAS_AFIP = [
@@ -39,19 +35,12 @@ class ArcaApiService
     /**
      * Emite una factura ante ARCA.
      *
-     * La emisión solo se permite cuando la factura está pagada.
-     * $automatico = true cuando viene del proceso automático.
-     * $automatico = false cuando viene del webhook o del botón manual.
+     * Solo se permite emitir cuando la factura está pagada.
      */
     public function emitir(
         Invoice $invoice,
         bool $automatico = false
     ): void {
-        /*
-         * No registrar intentos ni contactar a ARCA antes de confirmar
-         * el pago. Esta validación también protege las llamadas directas
-         * desde controladores, webhooks y procesos automáticos.
-         */
         if ($invoice->payment_status !== 'paid') {
             return;
         }
@@ -86,15 +75,16 @@ class ArcaApiService
             return;
         }
 
+        /*
+         * La selección de Factura A utiliza el código definido
+         * en la configuración del emisor: 1 o 51.
+         */
         $tipoComprobante = ComprobanteResolver::determinarTipoComprobante(
             (int) $this->config->condicion_iva,
-            $invoice->client_iva_condition
+            $invoice->client_iva_condition,
+            (int) ($this->config->tipo_factura_a ?? 1)
         );
 
-        /*
-         * Los comprobantes E se envían mediante WSFEXv1.
-         * El resto continúa utilizando WSFEv1.
-         */
         if (ComprobanteResolver::esExportacion($tipoComprobante)) {
             $this->emitirExportacion(
                 $invoice,
@@ -115,7 +105,7 @@ class ArcaApiService
     }
 
     /**
-     * Emisión de comprobantes A, B y C por WSFEv1.
+     * Emisión de comprobantes nacionales por WSFEv1.
      */
     private function emitirComprobanteNacional(
         Invoice $invoice,
@@ -241,9 +231,6 @@ class ArcaApiService
 
     /**
      * Emisión de facturas de exportación mediante WSFEXv1.
-     *
-     * Se requiere que la factura tenga los datos del comprador
-     * del exterior guardados como snapshot.
      */
     private function emitirExportacion(
         Invoice $invoice,
@@ -304,10 +291,6 @@ class ArcaApiService
             return;
         }
 
-        /*
-         * Las exportaciones utilizan un punto de venta específico
-         * habilitado para WSFEXv1, independiente del de WSFEv1.
-         */
         $puntoVentaExportacion = (int) (
             $this->config->punto_venta_exportacion ?? 0
         );
@@ -322,10 +305,6 @@ class ArcaApiService
         }
 
         try {
-            /*
-             * El token WSAA debe solicitarse para WSFEX,
-             * no se puede reutilizar el token de WSFE.
-             */
             $wsfexClient = new WsaaClient(
                 $this->config,
                 'wsfex'
@@ -355,16 +334,9 @@ class ArcaApiService
             return;
         }
 
-        /*
-         * La aplicación cobra actualmente en pesos mediante
-         * Mercado Pago. Por eso el comprobante utiliza PES y
-         * cotización 1. Si más adelante se cobra en moneda extranjera,
-         * esos valores deberán salir de una configuración específica.
-         */
         $payload = [
             'invoiceId' => $invoice->id,
             'reintentoAutomatico' => $automatico,
-
             'token' => $credenciales['token'],
             'sign' => $credenciales['sign'],
             'cuit' => preg_replace(
@@ -372,41 +344,24 @@ class ArcaApiService
                 '',
                 (string) config('arca.cuit')
             ),
-
             'puntoVenta' => $puntoVentaExportacion,
             'tipoComprobante' => $tipoComprobante,
-
-            // Servicio exportado.
             'tipoExpo' => 2,
-
             'fecha' => $fechaComprobante->format('Ymd'),
             'permisoExistente' => '',
-
             'paisDestino' => (int) $paisDestino,
             'cliente' => trim((string) $invoice->client_name),
             'domicilioCliente' => $domicilioCliente,
-
             'monedaId' => 'PES',
             'monedaCotizacion' => 1,
-
             'importeTotal' => $total,
             'idiomaComprobante' => 1,
             'formaPago' => 'Mercado Pago',
-
-            /*
-             * WSFEX exige Fecha_pago para Factura E de servicios.
-             * El comprobante se emite tras confirmar el pago.
-             */
             'fechaPago' => (
                 $invoice->paid_at
                     ? $invoice->paid_at->copy()
                     : $momentoIntento->copy()
             )->format('Ymd'),
-
-            /*
-             * Un servicio facturado como una unidad.
-             * El importe del ítem debe coincidir con el total.
-             */
             'items' => [[
                 'proDescripcion' => mb_substr(
                     (string) $invoice->service_name,
@@ -594,10 +549,6 @@ class ArcaApiService
             );
         }
 
-        /*
-         * Los errores funcionales de ARCA no se reintentan
-         * automáticamente: requieren corregir los datos.
-         */
         $this->marcarError($invoice, $mensaje);
     }
 
@@ -640,9 +591,6 @@ class ArcaApiService
                 'arca_retry_attempts' => $proximoIntento,
             ]);
         } else {
-            /*
-             * Un intento manual no consume el contador automático.
-             */
             $proximoIntento = max(1, $intentosActuales + 1);
         }
 

@@ -8,8 +8,9 @@ class ArcaConfig extends Model
 {
     protected $table = 'arca_config';
 
-    protected $fillable = [ 
+    protected $fillable = [
         'condicion_iva',
+        'tipo_factura_a',
 
         'punto_venta',
         'punto_venta_exportacion',
@@ -29,6 +30,8 @@ class ArcaConfig extends Model
     {
         return [
             'condicion_iva' => 'integer',
+            'tipo_factura_a' => 'integer',
+
             'punto_venta' => 'integer',
             'punto_venta_exportacion' => 'integer',
 

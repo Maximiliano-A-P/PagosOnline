@@ -6,7 +6,6 @@ use App\Models\Client;
 use App\Models\Invoice;
 use App\Services\Arca\ComprobanteResolver;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Carbon\Carbon;
 use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\Writer\PngWriter;
 
@@ -123,9 +122,18 @@ class InvoicePdfService
 
         $tipoComprobante = (int) ($invoice->arca_invoice_type ?? 0);
 
-        $esExportacion = ComprobanteResolver::esExportacion(
-            $tipoComprobante
+        $condicionIvaCodigo = (int) (
+            $invoice->client_iva_condition ?: 5
         );
+
+        /*
+         * La factura puede ser de exportación antes de que ARCA
+         * haya asignado un tipo de comprobante. En ese caso se
+         * identifica al comprador extranjero mediante su condición IVA.
+         */
+        $esExportacion =
+            ComprobanteResolver::esExportacion($tipoComprobante)
+            || $condicionIvaCodigo === 9;
 
         $esAConLeyendaRetencion =
             ComprobanteResolver::esAConLeyendaRetencion(
@@ -175,10 +183,6 @@ class InvoicePdfService
             $metodo = 'Mercado Pago';
         }
 
-        $condicionIvaCodigo = (int) (
-            $invoice->client_iva_condition ?: 5
-        );
-
         $comprobanteLetra =
             self::TIPOS_COMPROBANTE[$tipoComprobante] ?? null;
 
@@ -186,11 +190,16 @@ class InvoicePdfService
             ? 'OPERACIÓN SUJETA A RETENCIÓN'
             : null;
 
+        /*
+         * Solo se informa una fecha de intento cuando existe
+         * un intento real registrado. No usar issued_at como
+         * sustituto, porque esa fecha no acredita un envío a ARCA.
+         */
         $fechaComprobante = $invoice->arca_last_attempt_at
             ? $invoice->arca_last_attempt_at
                 ->copy()
                 ->setTimezone('America/Argentina/Buenos_Aires')
-            : $invoice->issued_at;
+            : null;
 
         $identificadorFiscalExtranjero = $esExportacion
             ? (

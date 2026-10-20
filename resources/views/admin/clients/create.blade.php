@@ -248,7 +248,7 @@
 
                         <div>
                             <h3 class="section-title">
-                                Datos fiscales del comprador extranjero
+                                Datos fiscales del comprador extranjero (opcional)
                             </h3>
                             <p class="section-help">
                                 Completá estos campos para poder emitir comprobantes

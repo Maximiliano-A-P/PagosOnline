@@ -1,14 +1,22 @@
 <x-app-layout>
+
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4 flex-wrap">
+
+        <div class="flex items-center justify-between">
+
             <h2 class="font-semibold text-white leading-tight text-[32px]">
                 Detalle de factura
             </h2>
 
-            <a href="{{ route('admin.invoices.index') }}" class="btn">
+            <a
+                href="{{ route('admin.invoices.index') }}"
+                class="btn"
+            >
                 Volver
             </a>
+
         </div>
+
     </x-slot>
 
     <style>
@@ -17,14 +25,14 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 42px;
-            padding: 7px 14px;
+            height: 42px;
+            padding: 6px 14px;
             background-color: #111827;
             border: 1px solid #111827;
             border-radius: 6px;
             font-weight: 600;
             color: #ffffff;
-            font-size: 18px;
+            font-size: 21px;
             line-height: normal;
             font-family: inherit;
             text-decoration: none;
@@ -32,6 +40,7 @@
             cursor: pointer;
             appearance: none;
             -webkit-appearance: none;
+            margin: 0;
             transition: background-color 0.15s ease-in-out;
         }
 
@@ -69,7 +78,7 @@
             background-color: #111827;
             color: #ffffff;
             font-weight: 600;
-            font-size: 22px;
+            font-size: 24px;
             padding: 16px 20px;
             border-radius: 8px;
             margin: 0;
@@ -81,20 +90,17 @@
             padding: 4px 12px;
             border-radius: 9999px;
             font-weight: 600;
-            font-size: 16px;
+            font-size: 18px;
             color: #ffffff;
         }
 
-        .badge-paid {
+        .badge-paid,
+        .badge-approved {
             background-color: #15803d;
         }
 
         .badge-pending {
             background-color: #111827;
-        }
-
-        .badge-approved {
-            background-color: #15803d;
         }
 
         .badge-error {
@@ -108,7 +114,7 @@
             padding: 16px 20px;
             border-radius: 8px;
             font-weight: 700;
-            font-size: 18px;
+            font-size: 21px;
         }
 
         .export-notice {
@@ -117,19 +123,7 @@
             color: #1e40af;
             padding: 16px 20px;
             border-radius: 8px;
-            font-size: 17px;
-        }
-
-        .detail-label {
-            color: #374151;
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        .detail-value {
-            color: #111827;
-            font-size: 19px;
-            overflow-wrap: anywhere;
+            font-size: 21px;
         }
     </style>
 
@@ -170,9 +164,9 @@
             20 => 'Nota de débito E',
             21 => 'Nota de crédito E',
 
-            51 => 'Factura A sujeta a retención',
-            52 => 'Nota de débito A sujeta a retención',
-            53 => 'Nota de crédito A sujeta a retención',
+            51 => 'Factura A con leyenda de retención',
+            52 => 'Nota de débito A con leyenda de retención',
+            53 => 'Nota de crédito A con leyenda de retención',
         ];
 
         $letrasComprobante = [
@@ -196,10 +190,17 @@
             19 => 'E',
             20 => 'E',
             21 => 'E',
+
+            51 => 'A',
+            52 => 'A',
+            53 => 'A',
         ];
 
-        $esExportacion = in_array($tipoComprobante, [19, 20, 21], true)
-            || (int) ($invoice->client_iva_condition ?? 0) === 9;
+        $esExportacion = in_array(
+            $tipoComprobante,
+            [19, 20, 21],
+            true
+        ) || (int) ($invoice->client_iva_condition ?? 0) === 9;
 
         $esAConLeyendaRetencion = in_array(
             $tipoComprobante,
@@ -208,7 +209,7 @@
         );
 
         $nombreComprobante = $tiposComprobante[$tipoComprobante]
-            ?? ($esExportacion ? 'Factura E' : 'Sin determinar');
+            ?? ($esExportacion ? 'Factura E' : null);
 
         $letraComprobante = $letrasComprobante[$tipoComprobante]
             ?? ($esExportacion ? 'E' : null);
@@ -235,12 +236,27 @@
 
         $estadoArca = $invoice->arca_status ?: 'Sin procesar';
 
-        $arcaAprobado = strtolower((string) $invoice->arca_status)
-            === 'aprobado';
+        $estadoArcaNormalizado = strtolower(
+            (string) $invoice->arca_status
+        );
+
+        $arcaAprobado = $estadoArcaNormalizado === 'aprobado';
+
+        $arcaError = str_starts_with(
+            $estadoArcaNormalizado,
+            'error'
+        ) || in_array(
+            $estadoArcaNormalizado,
+            ['rechazado', 'fallido'],
+            true
+        );
 
         $numeroComprobante = null;
 
-        if ($invoice->arca_point_of_sale && $invoice->arca_invoice_number) {
+        if (
+            $invoice->arca_point_of_sale !== null
+            && $invoice->arca_invoice_number !== null
+        ) {
             $numeroComprobante = str_pad(
                 (string) $invoice->arca_point_of_sale,
                 5,
@@ -256,24 +272,42 @@
     @endphp
 
     <div class="py-12">
-        <div class="mx-auto" style="width: 90vw; max-width: 1600px;">
+
+        <div class="mx-auto" style="width: 90vw;">
 
             @if (session('success'))
-                <div class="mb-8 rounded-lg bg-green-700 border border-green-800 text-white px-6 py-4 shadow-sm text-lg">
+                <div
+                    class="mb-8 rounded-lg bg-green-700 border border-green-800
+                           text-white px-6 py-4 shadow-sm text-[21px]"
+                >
                     {{ session('success') }}
                 </div>
             @endif
 
             @if (session('error'))
-                <div class="mb-8 rounded-lg bg-red-700 border border-red-800 text-white px-6 py-4 shadow-sm text-lg">
+                <div
+                    class="mb-8 rounded-lg bg-red-700 border border-red-800
+                           text-white px-6 py-4 shadow-sm text-[21px]"
+                >
                     {{ session('error') }}
+                </div>
+            @endif
+
+            @if (session('arca_warning'))
+                <div
+                    class="mb-8 rounded-lg bg-yellow-100 border border-yellow-400
+                           text-yellow-900 px-6 py-4 shadow-sm text-[21px]"
+                >
+                    {{ session('arca_warning') }}
                 </div>
             @endif
 
             <div class="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden">
 
                 <div class="card-header">
-                    <h3>Información de la factura #{{ $invoice->id }}</h3>
+                    <h3>
+                        Información de la factura
+                    </h3>
                 </div>
 
                 <div class="p-6">
@@ -287,134 +321,187 @@
                     @if ($esExportacion)
                         <div class="export-notice mb-6">
                             <strong>Comprobante de exportación.</strong>
-                            Este comprobante corresponde a un cliente del exterior
-                            y se procesa mediante el servicio WSFEX de ARCA.
-                            No se muestra el IVA nacional como en una factura A, B o C.
+                            Corresponde a un cliente del exterior y se procesa
+                            mediante el servicio WSFEX de ARCA.
                         </div>
                     @endif
 
                     <dl class="grid grid-cols-1 md:grid-cols-2 gap-8">
 
                         <div>
-                            <dt class="detail-label">ID de factura</dt>
-                            <dd class="mt-2 detail-value">#{{ $invoice->id }}</dd>
-                        </div>
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                ID
+                            </dt>
 
-                        <div>
-                            <dt class="detail-label">Fecha de emisión</dt>
-                            <dd class="mt-2 detail-value">
-                                {{ $invoice->issued_at?->format('d/m/Y') ?? '—' }}
+                            <dd class="mt-2 text-gray-900 text-[21px]">
+                                #{{ $invoice->id }}
                             </dd>
                         </div>
 
                         <div>
-                            <dt class="detail-label">Vencimiento</dt>
-                            <dd class="mt-2 detail-value">
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                Fecha de emisión
+                            </dt>
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
+                                {{ $invoice->issued_at?->format('d/m/Y H:i') ?? '—' }}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                Vencimiento
+                            </dt>
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
                                 {{ $invoice->due_date?->format('d/m/Y') ?? '—' }}
                             </dd>
                         </div>
 
                         <div>
-                            <dt class="detail-label">Cliente</dt>
-                            <dd class="mt-2 detail-value">
-                                {{ $invoice->client_name }}
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                Cliente
+                            </dt>
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
+                                {{ $invoice->client_name ?? '—' }}
                             </dd>
                         </div>
 
                         <div>
-                            <dt class="detail-label">
+                            <dt class="font-semibold text-gray-700 text-[21px]">
                                 {{ $esExportacion ? 'Identificador fiscal extranjero' : 'Documento' }}
                             </dt>
-                            <dd class="mt-2 detail-value">
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
                                 @if ($esExportacion)
                                     {{ $identificadorFiscalExtranjero ?: '—' }}
                                 @else
-                                    {{ $invoice->client_document ?: '—' }}
+                                    {{ $invoice->client_document ?? '—' }}
                                 @endif
                             </dd>
                         </div>
 
                         @unless ($esExportacion)
                             <div>
-                                <dt class="detail-label">CUIT del cliente</dt>
-                                <dd class="mt-2 detail-value">
+                                <dt class="font-semibold text-gray-700 text-[21px]">
+                                    CUIT del cliente
+                                </dt>
+
+                                <dd class="mt-2 text-gray-900 text-[21px]">
                                     {{ $invoice->client_cuit ?: '—' }}
                                 </dd>
                             </div>
                         @endunless
 
                         <div>
-                            <dt class="detail-label">Servicio</dt>
-                            <dd class="mt-2 detail-value">
-                                {{ $invoice->service_name }}
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                Condición frente al IVA
+                            </dt>
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
+                                {{ $condicionIva }}
                             </dd>
                         </div>
 
                         <div>
-                            <dt class="detail-label">ID del servicio</dt>
-                            <dd class="mt-2 detail-value">
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                Servicio
+                            </dt>
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
+                                {{ $invoice->service_name ?? '—' }}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                ID del servicio
+                            </dt>
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
                                 {{ $invoice->service_id ?? 'Sin servicio asociado' }}
                             </dd>
                         </div>
 
                         <div>
-                            <dt class="detail-label">Precio</dt>
-                            <dd class="mt-2 detail-value">
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                Precio
+                            </dt>
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
                                 ${{ number_format((float) $invoice->price, 2, ',', '.') }}
                             </dd>
                         </div>
 
                         <div>
-                            <dt class="detail-label">Precio vencido</dt>
-                            <dd class="mt-2 detail-value">
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                Precio vencido
+                            </dt>
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
                                 ${{ number_format((float) $invoice->overdue_price, 2, ',', '.') }}
                             </dd>
                         </div>
 
                         @unless ($esExportacion)
                             <div>
-                                <dt class="detail-label">Impuestos</dt>
-                                <dd class="mt-2 detail-value">
+                                <dt class="font-semibold text-gray-700 text-[21px]">
+                                    Impuestos %
+                                </dt>
+
+                                <dd class="mt-2 text-gray-900 text-[21px]">
                                     {{ number_format($taxPercentage, 2, ',', '.') }}%
                                 </dd>
                             </div>
 
                             <div>
-                                <dt class="detail-label">Precio con impuestos</dt>
-                                <dd class="mt-2 detail-value">
+                                <dt class="font-semibold text-gray-700 text-[21px]">
+                                    Neto + Impuestos
+                                </dt>
+
+                                <dd class="mt-2 text-gray-900 text-[21px]">
                                     ${{ number_format($priceWithTax, 2, ',', '.') }}
                                 </dd>
                             </div>
 
                             <div>
-                                <dt class="detail-label">Precio vencido con impuestos</dt>
-                                <dd class="mt-2 detail-value">
+                                <dt class="font-semibold text-gray-700 text-[21px]">
+                                    Vencido + Impuestos
+                                </dt>
+
+                                <dd class="mt-2 text-gray-900 text-[21px]">
                                     ${{ number_format($overduePriceWithTax, 2, ',', '.') }}
                                 </dd>
                             </div>
                         @endunless
 
                         <div>
-                            <dt class="detail-label">Condición frente al IVA</dt>
-                            <dd class="mt-2 detail-value">
-                                {{ $condicionIva }}
-                            </dd>
-                        </div>
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                Estado
+                            </dt>
 
-                        <div>
-                            <dt class="detail-label">Estado del pago</dt>
                             <dd class="mt-2">
+
                                 @if ($invoice->payment_status === 'paid')
-                                    <span class="badge badge-paid">Pagada</span>
+                                    <span class="badge badge-paid">
+                                        Pagada
+                                    </span>
                                 @else
-                                    <span class="badge badge-pending">Pendiente</span>
+                                    <span class="badge badge-pending">
+                                        Pendiente
+                                    </span>
                                 @endif
+
                             </dd>
                         </div>
 
                         <div>
-                            <dt class="detail-label">Importe pagado</dt>
-                            <dd class="mt-2 detail-value">
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                Importe pagado
+                            </dt>
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
                                 @if ($invoice->amount_paid !== null)
                                     ${{ number_format((float) $invoice->amount_paid, 2, ',', '.') }}
                                 @else
@@ -424,15 +511,21 @@
                         </div>
 
                         <div>
-                            <dt class="detail-label">Fecha de pago</dt>
-                            <dd class="mt-2 detail-value">
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                Fecha de pago
+                            </dt>
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
                                 {{ $invoice->paid_at?->format('d/m/Y H:i') ?? '—' }}
                             </dd>
                         </div>
 
                         <div>
-                            <dt class="detail-label">Método de pago</dt>
-                            <dd class="mt-2 detail-value">
+                            <dt class="font-semibold text-gray-700 text-[21px]">
+                                Método de pago
+                            </dt>
+
+                            <dd class="mt-2 text-gray-900 text-[21px]">
                                 @if ($invoice->payment_method === 'mercadopago')
                                     Mercado Pago
                                 @else
@@ -443,9 +536,10 @@
 
                     </dl>
 
-                    {{-- Datos fiscales específicos del comprador extranjero --}}
                     @if ($esExportacion)
+
                         <div class="mt-12 pt-8 border-t border-gray-300">
+
                             <h3 class="section-header">
                                 Datos de exportación
                             </h3>
@@ -453,143 +547,183 @@
                             <dl class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
 
                                 <div>
-                                    <dt class="detail-label">Domicilio del cliente extranjero</dt>
-                                    <dd class="mt-2 detail-value">
+                                    <dt class="font-semibold text-gray-700 text-[21px]">
+                                        Domicilio del cliente extranjero
+                                    </dt>
+
+                                    <dd class="mt-2 text-gray-900 text-[21px]">
                                         {{ $invoice->client_address ?: '—' }}
                                     </dd>
                                 </div>
 
                                 <div>
-                                    <dt class="detail-label">Código de país de destino ARCA</dt>
-                                    <dd class="mt-2 detail-value">
+                                    <dt class="font-semibold text-gray-700 text-[21px]">
+                                        Código de país de destino ARCA
+                                    </dt>
+
+                                    <dd class="mt-2 text-gray-900 text-[21px]">
                                         {{ $invoice->client_arca_destination_country ?: '—' }}
                                     </dd>
                                 </div>
 
                                 <div>
-                                    <dt class="detail-label">CUIT del país del cliente</dt>
-                                    <dd class="mt-2 detail-value">
+                                    <dt class="font-semibold text-gray-700 text-[21px]">
+                                        CUIT del país del cliente
+                                    </dt>
+
+                                    <dd class="mt-2 text-gray-900 text-[21px]">
                                         {{ $invoice->client_arca_cuit_pais_cliente ?: '—' }}
                                     </dd>
                                 </div>
 
                                 <div>
-                                    <dt class="detail-label">Identificación impositiva del cliente</dt>
-                                    <dd class="mt-2 detail-value">
+                                    <dt class="font-semibold text-gray-700 text-[21px]">
+                                        Identificación impositiva del cliente
+                                    </dt>
+
+                                    <dd class="mt-2 text-gray-900 text-[21px]">
                                         {{ $invoice->client_arca_id_impositivo ?: '—' }}
                                     </dd>
                                 </div>
 
                             </dl>
+
                         </div>
+
                     @endif
 
-                    {{-- Datos del comprobante ARCA --}}
-                    <div class="mt-12 pt-8 border-t border-gray-300">
-                        <h3 class="section-header">
-                            Datos ARCA — {{ $esExportacion ? 'WSFEX' : 'WSFE' }}
-                        </h3>
+                    {{-- Los datos ARCA solo se muestran después de registrar el pago. --}}
+                    @if ($invoice->payment_status === 'paid')
 
-                        <dl class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+                        <div class="mt-12 pt-8 border-t border-gray-300">
 
-                            <div>
-                                <dt class="detail-label">Estado ARCA</dt>
-                                <dd class="mt-2">
-                                    @if ($arcaAprobado)
-                                        <span class="badge badge-approved">
-                                            {{ $estadoArca }}
-                                        </span>
-                                    @elseif (
-                                        in_array(
-                                            strtolower((string) $invoice->arca_status),
-                                            ['rechazado', 'error', 'fallido'],
-                                            true
-                                        )
-                                    )
-                                        <span class="badge badge-error">
-                                            {{ $estadoArca }}
-                                        </span>
-                                    @else
-                                        <span class="badge badge-pending">
-                                            {{ $estadoArca }}
-                                        </span>
-                                    @endif
-                                </dd>
-                            </div>
+                            <h3 class="section-header">
+                                Datos ARCA — {{ $esExportacion ? 'WSFEX' : 'WSFE' }}
+                            </h3>
 
-                            <div>
-                                <dt class="detail-label">Tipo de comprobante</dt>
-                                <dd class="mt-2 detail-value">
-                                    {{ $nombreComprobante }}
+                            <dl class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
 
-                                    @if ($tipoComprobante > 0)
-                                        (tipo {{ $tipoComprobante }})
-                                    @elseif ($esExportacion)
-                                        (emisión pendiente)
-                                    @endif
+                                <div>
+                                    <dt class="font-semibold text-gray-700 text-[21px]">
+                                        Estado ARCA
+                                    </dt>
 
-                                    @if ($letraComprobante)
-                                        — Letra {{ $letraComprobante }}
-                                    @endif
-                                </dd>
-                            </div>
-
-                            @if ($esAConLeyendaRetencion)
-                                <div class="md:col-span-2">
-                                    <dt class="detail-label">Leyenda del comprobante</dt>
-                                    <dd class="mt-2 detail-value font-bold">
-                                        OPERACIÓN SUJETA A RETENCIÓN
+                                    <dd class="mt-2 text-gray-900 text-[21px]">
+                                        @if ($arcaAprobado)
+                                            <span class="badge badge-approved">
+                                                {{ $estadoArca }}
+                                            </span>
+                                        @elseif ($arcaError)
+                                            <span class="badge badge-error">
+                                                {{ $estadoArca }}
+                                            </span>
+                                        @else
+                                            <span class="badge badge-pending">
+                                                {{ $estadoArca }}
+                                            </span>
+                                        @endif
                                     </dd>
                                 </div>
-                            @endif
 
-                            <div>
-                                <dt class="detail-label">Punto de venta</dt>
-                                <dd class="mt-2 detail-value">
-                                    {{ $invoice->arca_point_of_sale ?? '—' }}
-                                </dd>
-                            </div>
+                                <div>
+                                    <dt class="font-semibold text-gray-700 text-[21px]">
+                                        Tipo de comprobante
+                                    </dt>
 
-                            <div>
-                                <dt class="detail-label">Número de comprobante</dt>
-                                <dd class="mt-2 detail-value">
-                                    {{ $numeroComprobante ?? '—' }}
-                                </dd>
-                            </div>
+                                    <dd class="mt-2 text-gray-900 text-[21px]">
+                                        {{ $nombreComprobante ?? 'Sin determinar' }}
 
-                            <div>
-                                <dt class="detail-label">CAE</dt>
-                                <dd class="mt-2 detail-value">
-                                    {{ $invoice->arca_cae ?: '—' }}
-                                </dd>
-                            </div>
+                                        @if ($tipoComprobante > 0)
+                                            (tipo {{ $tipoComprobante }})
+                                        @endif
 
-                            <div>
-                                <dt class="detail-label">Vencimiento del CAE</dt>
-                                <dd class="mt-2 detail-value">
-                                    {{ $invoice->arca_cae_expires_at?->format('d/m/Y') ?? '—' }}
-                                </dd>
-                            </div>
+                                        @if ($letraComprobante)
+                                            — Letra {{ $letraComprobante }}
+                                        @endif
+                                    </dd>
+                                </div>
 
-                            <div>
-                                <dt class="detail-label">Último intento de emisión</dt>
-                                <dd class="mt-2 detail-value">
-                                    {{ $invoice->arca_last_attempt_at?->format('d/m/Y H:i') ?? '—' }}
-                                </dd>
-                            </div>
+                                @if ($esAConLeyendaRetencion)
+                                    <div>
+                                        <dt class="font-semibold text-gray-700 text-[21px]">
+                                            Leyenda del comprobante
+                                        </dt>
 
-                            <div>
-                                <dt class="detail-label">Cantidad de reintentos</dt>
-                                <dd class="mt-2 detail-value">
-                                    {{ $invoice->arca_retry_attempts ?? 0 }}
-                                </dd>
-                            </div>
+                                        <dd class="mt-2 text-gray-900 text-[21px] font-bold">
+                                            OPERACIÓN SUJETA A RETENCIÓN
+                                        </dd>
+                                    </div>
+                                @endif
 
-                        </dl>
-                    </div>
+                                <div>
+                                    <dt class="font-semibold text-gray-700 text-[21px]">
+                                        Punto de venta
+                                    </dt>
+
+                                    <dd class="mt-2 text-gray-900 text-[21px]">
+                                        {{ $invoice->arca_point_of_sale ?? '—' }}
+                                    </dd>
+                                </div>
+
+                                <div>
+                                    <dt class="font-semibold text-gray-700 text-[21px]">
+                                        Número de comprobante
+                                    </dt>
+
+                                    <dd class="mt-2 text-gray-900 text-[21px]">
+                                        {{ $numeroComprobante ?? '—' }}
+                                    </dd>
+                                </div>
+
+                                <div>
+                                    <dt class="font-semibold text-gray-700 text-[21px]">
+                                        CAE
+                                    </dt>
+
+                                    <dd class="mt-2 text-gray-900 text-[21px]">
+                                        {{ $invoice->arca_cae ?: '—' }}
+                                    </dd>
+                                </div>
+
+                                <div>
+                                    <dt class="font-semibold text-gray-700 text-[21px]">
+                                        Vencimiento del CAE
+                                    </dt>
+
+                                    <dd class="mt-2 text-gray-900 text-[21px]">
+                                        {{ $invoice->arca_cae_expires_at?->format('d/m/Y') ?? '—' }}
+                                    </dd>
+                                </div>
+
+                                <div>
+                                    <dt class="font-semibold text-gray-700 text-[21px]">
+                                        Último intento de emisión
+                                    </dt>
+
+                                    <dd class="mt-2 text-gray-900 text-[21px]">
+                                        {{ $invoice->arca_last_attempt_at?->format('d/m/Y H:i') ?? '—' }}
+                                    </dd>
+                                </div>
+
+                                <div>
+                                    <dt class="font-semibold text-gray-700 text-[21px]">
+                                        Cantidad de reintentos
+                                    </dt>
+
+                                    <dd class="mt-2 text-gray-900 text-[21px]">
+                                        {{ $invoice->arca_retry_attempts ?? 0 }}
+                                    </dd>
+                                </div>
+
+                            </dl>
+
+                        </div>
+
+                    @endif
 
                     {{-- Acciones --}}
                     <div class="mt-12 pt-8 border-t border-gray-300">
+
                         <div class="flex items-center gap-4 flex-wrap">
 
                             <a
@@ -619,7 +753,10 @@
                                 >
                                     @csrf
 
-                                    <button type="submit" class="btn">
+                                    <button
+                                        type="submit"
+                                        class="btn"
+                                    >
                                         Reintentar {{ $esExportacion ? 'WSFEX' : 'ARCA' }}
                                     </button>
                                 </form>
@@ -635,22 +772,32 @@
                                 <form
                                     method="POST"
                                     action="{{ route('admin.invoices.destroy', $invoice) }}"
-                                    onsubmit="return confirm('¿Eliminar esta factura? Esta acción no se puede deshacer.');"
+                                    onsubmit="return confirm(
+                                        '¿Eliminar esta factura? Esta acción no se puede deshacer.'
+                                    );"
                                 >
                                     @csrf
                                     @method('DELETE')
 
-                                    <button type="submit" class="btn btn-danger">
+                                    <button
+                                        type="submit"
+                                        class="btn btn-danger"
+                                    >
                                         Eliminar
                                     </button>
                                 </form>
                             @endif
 
                         </div>
+
                     </div>
 
                 </div>
+
             </div>
+
         </div>
+
     </div>
+
 </x-app-layout>

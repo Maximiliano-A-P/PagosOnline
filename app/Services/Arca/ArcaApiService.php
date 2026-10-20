@@ -39,6 +39,7 @@ class ArcaApiService
     /**
      * Emite una factura ante ARCA.
      *
+     * La emisión solo se permite cuando la factura está pagada.
      * $automatico = true cuando viene del proceso automático.
      * $automatico = false cuando viene del webhook o del botón manual.
      */
@@ -46,6 +47,15 @@ class ArcaApiService
         Invoice $invoice,
         bool $automatico = false
     ): void {
+        /*
+         * No registrar intentos ni contactar a ARCA antes de confirmar
+         * el pago. Esta validación también protege las llamadas directas
+         * desde controladores, webhooks y procesos automáticos.
+         */
+        if ($invoice->payment_status !== 'paid') {
+            return;
+        }
+
         if (
             $invoice->arca_status === 'aprobado'
             || ! empty($invoice->arca_cae)

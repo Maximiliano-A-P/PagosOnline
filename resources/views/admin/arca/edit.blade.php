@@ -302,6 +302,7 @@
                         Explicaciones
                     </h3>
 
+                    {{-- Explicación de la selección del comprobante --}}
                     <div class="mb-8">
                         <h4 class="font-semibold text-gray-900 text-[22px] mb-2">
                             Selección del comprobante
@@ -353,6 +354,154 @@
                         </ul>
                     </div>
 
+                    {{-- Explicación recuperada: condición frente al IVA --}}
+                    <div class="mb-8">
+                        <h4 class="font-semibold text-gray-900 text-[22px] mb-2">
+                            Condición frente al IVA
+                        </h4>
+
+                        <p class="text-gray-700 text-[16px] mb-4">
+                            Es la categoría del emisor (la empresa o persona que factura)
+                            ante ARCA. El sistema utiliza esta condición para determinar
+                            cómo emitir los comprobantes nacionales. Cuando el emisor
+                            es Responsable Inscripto, también se considera la condición
+                            fiscal del cliente para decidir entre Factura A y Factura B.
+                            Para las demás condiciones del emisor, se mantienen las
+                            reglas configuradas para la emisión nacional.
+                        </p>
+
+                        <ul class="help-list">
+                            <li>
+                                <div class="help-name">
+                                    1 — IVA Responsable Inscripto
+                                </div>
+                                <div class="help-desc">
+                                    Inscripto en IVA. Es la condición que permite
+                                    generar Factura A cuando el cliente también es
+                                    Responsable Inscripto, o Factura B para otros
+                                    clientes nacionales. Para una Factura A, el cliente
+                                    necesita tener CUIT cargado.
+                                </div>
+                            </li>
+
+                            <li>
+                                <div class="help-name">
+                                    4 — IVA Sujeto Exento
+                                </div>
+                                <div class="help-desc">
+                                    El emisor está exento de IVA por la actividad que
+                                    realiza. Su tratamiento depende de las reglas
+                                    configuradas para el tipo de comprobante nacional.
+                                </div>
+                            </li>
+
+                            <li>
+                                <div class="help-name">
+                                    5 — Consumidor Final
+                                </div>
+                                <div class="help-desc">
+                                    Identifica la condición de consumidor final. También
+                                    es uno de los valores de referencia utilizados para
+                                    clientes cuya condición fiscal no está cargada.
+                                </div>
+                            </li>
+
+                            <li>
+                                <div class="help-name">
+                                    6 — Responsable Monotributo
+                                </div>
+                                <div class="help-desc">
+                                    Identifica al emisor adherido al monotributo.
+                                    El sistema conserva las reglas de emisión
+                                    correspondientes a esa condición fiscal.
+                                </div>
+                            </li>
+
+                            <li>
+                                <div class="help-name">
+                                    7 — Sujeto No Categorizado
+                                </div>
+                                <div class="help-desc">
+                                    Identifica a un sujeto que no tiene definida una
+                                    categoría de IVA en los términos de esta clasificación.
+                                </div>
+                            </li>
+
+                            <li>
+                                <div class="help-name">
+                                    8 — Proveedor del Exterior
+                                </div>
+                                <div class="help-desc">
+                                    Identifica a un proveedor radicado fuera del país.
+                                    No debe confundirse con la condición fiscal del
+                                    emisor nacional.
+                                </div>
+                            </li>
+
+                            <li>
+                                <div class="help-name">
+                                    9 — Cliente del Exterior
+                                </div>
+                                <div class="help-desc">
+                                    Identifica a un cliente radicado fuera del país.
+                                    En el flujo de exportación del sistema, esta
+                                    condición corresponde al receptor y permite
+                                    determinar cuándo debe utilizarse una Factura E,
+                                    siempre que se cumplan los requisitos aplicables.
+                                </div>
+                            </li>
+
+                            <li>
+                                <div class="help-name">
+                                    10 — IVA Liberado – Ley N.º 19.640
+                                </div>
+                                <div class="help-desc">
+                                    Identifica una condición relacionada con un régimen
+                                    especial de liberación del IVA, como el aplicable
+                                    en Tierra del Fuego.
+                                </div>
+                            </li>
+
+                            <li>
+                                <div class="help-name">
+                                    13 — Monotributista Social
+                                </div>
+                                <div class="help-desc">
+                                    Variante del monotributo destinada a determinados
+                                    emprendimientos y trabajadores de la economía social.
+                                </div>
+                            </li>
+
+                            <li>
+                                <div class="help-name">
+                                    15 — IVA No Alcanzado
+                                </div>
+                                <div class="help-desc">
+                                    Identifica actividades u operaciones que no están
+                                    alcanzadas por el impuesto al valor agregado.
+                                </div>
+                            </li>
+
+                            <li>
+                                <div class="help-name">
+                                    16 — Monotributo Trabajador Independiente Promovido
+                                </div>
+                                <div class="help-desc">
+                                    Variante prevista para trabajadores independientes
+                                    promovidos dentro del régimen correspondiente.
+                                </div>
+                            </li>
+                        </ul>
+
+                        <p class="text-gray-700 text-[16px] mt-4">
+                            Los códigos anteriores describen categorías de la
+                            clasificación fiscal. La validez concreta de cada código
+                            depende de que corresponda al emisor o al receptor según
+                            el dato que se esté completando y el tipo de operación.
+                        </p>
+                    </div>
+
+                    {{-- Explicación del punto de venta nacional --}}
                     <div class="mb-8">
                         <h4 class="font-semibold text-gray-900 text-[22px] mb-2">
                             Punto de venta nacional
@@ -365,6 +514,7 @@
                         </p>
                     </div>
 
+                    {{-- Explicación del punto de venta de exportación --}}
                     <div class="mb-8">
                         <h4 class="font-semibold text-gray-900 text-[22px] mb-2">
                             Punto de venta de exportación
@@ -376,6 +526,49 @@
                             de venta nacional sirve también para exportaciones. Si no
                             se configura, el sistema detendrá el intento de emisión de
                             la Factura E y mostrará el motivo en el estado de la factura.
+                        </p>
+                    </div>
+
+                    {{-- Explicación recuperada: requisitos del punto de venta --}}
+                    <div class="mb-8">
+                        <h4 class="font-semibold text-gray-900 text-[22px] mb-2">
+                            Requisitos del punto de venta en producción y homologación
+                        </h4>
+
+                        <p class="text-gray-700 text-[16px]">
+                            El punto de venta es el número que identifica, dentro del
+                            CUIT del emisor, el canal por el que se factura, por ejemplo,
+                            una sucursal web. Cada punto de venta tiene su propia
+                            numeración correlativa de comprobantes. Al solicitar un CAE,
+                            el sistema informa este número para que ARCA determine qué
+                            numeración corresponde.
+                        </p>
+
+                        <p class="text-gray-700 text-[16px] mt-3">
+                            En producción, el punto de venta debe estar dado de alta
+                            en ARCA en la administración de puntos de venta y domicilios,
+                            con el sistema habilitado que corresponda al emisor y al
+                            servicio de facturación electrónica utilizado. Si el punto
+                            de venta 1 ya se utiliza para facturas manuales u otro canal
+                            de emisión, es necesario verificar su configuración antes
+                            de reutilizarlo.
+                        </p>
+
+                        <p class="text-gray-700 text-[16px] mt-3">
+                            En homologación, el entorno de pruebas tiene una
+                            configuración independiente de producción. Se deben utilizar
+                            las credenciales, certificados y puntos de venta que
+                            correspondan al entorno de pruebas, sin asumir que la
+                            configuración de producción sirve automáticamente para
+                            homologación.
+                        </p>
+
+                        <p class="text-gray-700 text-[16px] mt-3">
+                            El punto de venta nacional configurado arriba se utiliza
+                            con WSFEv1. Para las Facturas E, debe configurarse por
+                            separado el punto de venta destinado a WSFEXv1. Ambos deben
+                            estar habilitados para el servicio que corresponda y tener
+                            una configuración válida en el entorno utilizado.
                         </p>
                     </div>
 

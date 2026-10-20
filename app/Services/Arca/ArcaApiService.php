@@ -241,10 +241,6 @@ class ArcaApiService
         Carbon $momentoIntento,
         int $tipoComprobante
     ): void {
-        /*
-         * Estos campos se incorporan en las migraciones y modelos
-         * que siguen en esta actualización.
-         */
         $domicilioCliente = trim(
             (string) ($invoice->client_address ?? '')
         );
@@ -293,6 +289,23 @@ class ArcaApiService
             $this->marcarError(
                 $invoice,
                 'El tipo de comprobante de exportación no está soportado.'
+            );
+
+            return;
+        }
+
+        /*
+         * Las exportaciones utilizan un punto de venta específico
+         * habilitado para WSFEXv1, independiente del de WSFEv1.
+         */
+        $puntoVentaExportacion = (int) (
+            $this->config->punto_venta_exportacion ?? 0
+        );
+
+        if ($puntoVentaExportacion < 1) {
+            $this->marcarError(
+                $invoice,
+                'Falta configurar el punto de venta habilitado para exportaciones WSFEX.'
             );
 
             return;
@@ -350,7 +363,7 @@ class ArcaApiService
                 (string) config('arca.cuit')
             ),
 
-            'puntoVenta' => $this->config->punto_venta,
+            'puntoVenta' => $puntoVentaExportacion,
             'tipoComprobante' => $tipoComprobante,
 
             // Servicio exportado.
@@ -519,6 +532,12 @@ class ArcaApiService
             $respuesta->successful()
             && ($datos['exito'] ?? false)
         ) {
+            $puntoVentaUtilizado = ComprobanteResolver::esExportacion(
+                $tipoComprobante
+            )
+                ? $this->config->punto_venta_exportacion
+                : $this->config->punto_venta;
+
             $invoice->update([
                 'arca_status' => 'aprobado',
                 'arca_cae' => $datos['cae'],
@@ -526,7 +545,7 @@ class ArcaApiService
                     $datos['caeVencimiento'] ?? null
                 ),
                 'arca_invoice_type' => $tipoComprobante,
-                'arca_point_of_sale' => $this->config->punto_venta,
+                'arca_point_of_sale' => $puntoVentaUtilizado,
                 'arca_invoice_number' => $datos['numeroComprobante'],
                 'arca_retry_attempts' => 0,
                 'arca_retry_at' => null,

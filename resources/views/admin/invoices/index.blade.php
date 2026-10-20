@@ -1,78 +1,82 @@
 <x-app-layout>
-
     <x-slot name="header">
-
-        <div class="flex items-center justify-between">
-
+        <div class="flex items-center justify-between gap-4 flex-wrap">
             <h2 class="font-semibold text-white leading-tight text-[32px]">
                 Facturas
             </h2>
 
-            <div class="header-actions flex items-center gap-4">
-
-                {{-- Volver al panel --}}
-                <a
-                    href="{{ route('admin.dashboard') }}"
-                    class="btn"
-                >
+            <div class="flex items-center gap-4 flex-wrap">
+                <a href="{{ route('admin.dashboard') }}" class="btn">
                     Volver al panel
                 </a>
 
-                {{-- Generar facturas periódicas por lote --}}
-                <button
-                    type="button"
-                    id="batch-open"
-                    class="btn"
-                    disabled
-                >
+                <button type="button" id="batch-open" class="btn" disabled>
                     Generar por lote
                 </button>
-
             </div>
-
         </div>
-
     </x-slot>
 
+    @php
+        $nombresComprobante = [
+            1 => 'Factura A',
+            2 => 'Nota de débito A',
+            3 => 'Nota de crédito A',
+            4 => 'Recibo A',
+            5 => 'Nota de venta al contado A',
+            6 => 'Factura B',
+            7 => 'Nota de débito B',
+            8 => 'Nota de crédito B',
+            9 => 'Recibo B',
+            10 => 'Nota de venta al contado B',
+            11 => 'Factura C',
+            12 => 'Nota de débito C',
+            13 => 'Nota de crédito C',
+            15 => 'Recibo C',
+            19 => 'Factura E',
+            20 => 'Nota de débito E',
+            21 => 'Nota de crédito E',
+            51 => 'Factura A sujeta a retención',
+            52 => 'Nota de débito A sujeta a retención',
+            53 => 'Nota de crédito A sujeta a retención',
+        ];
+    @endphp
 
     <style>
-
         .btn {
             box-sizing: border-box;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            height: 42px;
-            padding: 6px 14px;
-            background-color: #111827; /* gray-900 */
+            min-height: 42px;
+            padding: 7px 14px;
+            background-color: #111827;
             border: 1px solid #111827;
             border-radius: 6px;
             font-weight: 600;
-            color: #ffffff;
-            font-size: 21px;
+            color: #fff;
+            font-size: 17px;
             line-height: normal;
-            font-family: inherit;
             text-decoration: none;
             white-space: nowrap;
             cursor: pointer;
             appearance: none;
             -webkit-appearance: none;
-            margin: 0;
-            transition: background-color 0.15s ease-in-out;
+            transition: background-color .15s ease-in-out;
         }
 
         .btn:hover {
-            background-color: #374151; /* gray-700 */
+            background-color: #374151;
         }
 
         .btn:focus {
             outline: none;
-            box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #4b5563; /* ring-gray-600 + offset */
+            box-shadow: 0 0 0 2px #fff, 0 0 0 4px #4b5563;
         }
 
         .btn-secondary {
-            background-color: #ffffff;
-            border: 1px solid #9ca3af;
+            background-color: #fff;
+            border-color: #9ca3af;
             color: #111827;
         }
 
@@ -80,26 +84,225 @@
             background-color: #f3f4f6;
         }
 
-        .btn-success {
-            background-color: #15803d;
-            border-color: #15803d;
+        .btn-danger {
+            background-color: #991b1b;
+            border-color: #991b1b;
         }
 
-        .btn-success:hover {
-            background-color: #166534;
+        .btn-danger:hover {
+            background-color: #b91c1c;
         }
-
 
         .btn:disabled {
-            opacity: 0.55;
+            opacity: .55;
             cursor: not-allowed;
         }
 
-        /*
-         * ==========================================================
-         * TARJETA DE CONFIRMACIÓN DE LOTE
-         * ==========================================================
-         */
+        .invoice-summary {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 24px;
+            padding: 24px;
+            margin-bottom: 32px;
+        }
+
+        .summary-label {
+            font-size: 18px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .summary-value {
+            margin-top: 8px;
+            font-size: 30px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .invoice-card {
+            padding: 24px;
+            margin-bottom: 14px;
+            background: #fff;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+        }
+
+        .invoice-card-content {
+            display: flex;
+            justify-content: space-between;
+            gap: 28px;
+        }
+
+        .invoice-data {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .invoice-info,
+        .invoice-amounts {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 20px;
+        }
+
+        .invoice-amounts {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .invoice-field {
+            min-width: 0;
+        }
+
+        .invoice-label {
+            margin-bottom: 5px;
+            color: #6b7280;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .invoice-value {
+            color: #111827;
+            font-size: 18px;
+            font-weight: 600;
+            overflow-wrap: anywhere;
+        }
+
+        .invoice-value-normal {
+            color: #111827;
+            font-size: 17px;
+            overflow-wrap: anywhere;
+        }
+
+        .invoice-actions {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 10px;
+            min-width: 155px;
+            padding-left: 22px;
+            border-left: 1px solid #e5e7eb;
+        }
+
+        .invoice-actions .btn,
+        .invoice-actions form {
+            width: 100%;
+        }
+
+        .invoice-actions form {
+            margin: 0;
+        }
+
+        .invoice-status {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 14px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .status-paid,
+        .status-approved {
+            background: #15803d;
+        }
+
+        .status-pending {
+            background: #374151;
+        }
+
+        .status-error {
+            background: #b91c1c;
+        }
+
+        .status-neutral {
+            background: #6b7280;
+        }
+
+        .retention-notice {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 7px 10px;
+            border: 1px solid #d97706;
+            border-radius: 6px;
+            background: #fffbeb;
+            color: #92400e;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .export-notice {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 7px 10px;
+            border: 1px solid #93c5fd;
+            border-radius: 6px;
+            background: #eff6ff;
+            color: #1e40af;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .invoice-empty {
+            padding: 40px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            background: #fff;
+            text-align: center;
+            color: #111827;
+            font-size: 20px;
+        }
+
+        .ac-wrap {
+            position: relative;
+        }
+
+        .ac-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 30;
+            max-height: 340px;
+            overflow-y: auto;
+            margin: 4px 0 0;
+            padding: 0;
+            list-style: none;
+            background: #fff;
+            border: 1px solid #9ca3af;
+            border-radius: 6px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, .15);
+        }
+
+        .ac-list[hidden] {
+            display: none;
+        }
+
+        .ac-item {
+            padding: 10px 14px;
+            border-bottom: 1px solid #e5e7eb;
+            color: #111827;
+            font-size: 17px;
+            cursor: pointer;
+        }
+
+        .ac-item:last-child {
+            border-bottom: none;
+        }
+
+        .ac-item small {
+            display: block;
+            color: #4b5563;
+            font-size: 14px;
+        }
+
+        .ac-item.is-active,
+        .ac-item:hover {
+            background: #f3f4f6;
+        }
 
         .batch-overlay {
             position: fixed;
@@ -109,7 +312,7 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
-            background-color: rgba(17, 24, 39, 0.6);
+            background: rgba(17, 24, 39, .6);
         }
 
         .batch-overlay.is-open {
@@ -117,47 +320,47 @@
         }
 
         .batch-card {
+            display: flex;
+            flex-direction: column;
             width: 100%;
             max-width: 640px;
             max-height: 90vh;
-            display: flex;
-            flex-direction: column;
-            background-color: #ffffff;
+            overflow: hidden;
             border: 1px solid #d1d5db;
             border-radius: 10px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
-            overflow: hidden;
+            background: #fff;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, .25);
         }
 
         .batch-card-header {
-            background-color: #111827;
             padding: 20px 24px;
+            background: #111827;
         }
 
         .batch-card-header h3 {
             margin: 0;
-            color: #ffffff;
-            font-weight: 600;
-            font-size: 24px;
+            color: #fff;
+            font-size: 22px;
+            font-weight: 700;
         }
 
         .batch-card-body {
             padding: 24px;
             overflow-y: auto;
             color: #111827;
-            font-size: 21px;
+            font-size: 17px;
         }
 
         .batch-card-body p {
-            margin: 0 0 14px 0;
+            margin: 0 0 14px;
         }
 
         .batch-list {
-            list-style: none;
             margin: 0;
             padding: 0;
             border: 1px solid #e5e7eb;
             border-radius: 8px;
+            list-style: none;
         }
 
         .batch-list li {
@@ -172,14 +375,14 @@
             border-bottom: none;
         }
 
-        .batch-list .batch-qty {
-            font-weight: 600;
+        .batch-qty {
+            font-weight: 700;
             white-space: nowrap;
         }
 
         .batch-total {
             margin-top: 14px;
-            font-weight: 600;
+            font-weight: 700;
         }
 
         .batch-error {
@@ -194,210 +397,48 @@
             border-top: 1px solid #e5e7eb;
         }
 
-        /*
-         * ==========================================================
-         * TARJETAS DE FACTURAS
-         * ==========================================================
-         */
-
-        .invoice-list,
-        .invoice-filters {
-            width: 100%;
-            margin: 0 auto 40px auto;
-        }
-
-        .invoice-summary {
-            width: 100%;
-            margin: 0 auto 40px auto;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 24px;
-            padding: 24px;
-            box-sizing: border-box;
-        }
-
-        @media (max-width: 900px) {
-            .invoice-summary {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .invoice-summary-label {
-            font-size: 21px;
-            font-weight: 600;
-            color: #374151;
-        }
-
-        .invoice-summary-value {
-            margin-top: 8px;
-            font-size: 32px;
-            font-weight: 700;
-            color: #111827;
-        }
-
-        .invoice-card {
-            background-color: #ffffff;
-            border: 1px solid #d1d5db;
-            border-radius: 10px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-            padding: 24px;
-            margin-bottom: 10px;
-        }
-
-        .invoice-card-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: stretch;
-            gap: 30px;
-        }
-
-        .invoice-data {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .invoice-info {
-            display: grid;
-            grid-template-columns: repeat(5, minmax(0, 1fr));
-            gap: 20px;
-        }
-
-        .invoice-amounts {
-            display: grid;
-            grid-template-columns: repeat(5, minmax(0, 1fr));
-            gap: 20px;
-            margin-top: 25px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-        }
-
-        .invoice-field {
-            min-width: 0;
-        }
-
-        .invoice-label {
-            font-size: 18px;
-            font-weight: 600;
-            color: #6b7280;
-            margin-bottom: 4px;
-        }
-
-        .invoice-value {
-            font-size: 21px;
-            font-weight: 600;
-            color: #111827;
-            overflow-wrap: anywhere;
-        }
-
-        .invoice-value-normal {
-            font-size: 21px;
-            font-weight: 500;
-            color: #111827;
-            overflow-wrap: anywhere;
-        }
-
-        .invoice-actions {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 10px;
-            min-width: 160px;
-            border-left: 1px solid #e5e7eb;
-            padding-left: 25px;
-        }
-
-        .invoice-actions .btn,
-        .invoice-actions form {
-            width: 100%;
-        }
-
-        .invoice-actions form {
-            margin: 0;
-        }
-
-        .invoice-filters input,
-        .invoice-filters select {
-            height: 42px;
-            box-sizing: border-box;
-        }
-
-        .invoice-status {
-            display: inline-flex;
-            align-items: center;
-            padding: 4px 12px;
-            border-radius: 9999px;
-            font-weight: 600;
-            font-size: 18px;
-            color: #ffffff;
-        }
-
-        .invoice-status-paid {
-            background-color: #15803d;
-        }
-
-        .invoice-status-pending {
-            background-color: #111827;
-        }
-
-        .invoice-empty {
-            background-color: #ffffff;
-            border: 1px solid #d1d5db;
-            border-radius: 10px;
-            padding: 40px;
-            text-align: center;
-            color: #111827;
-            font-size: 21px;
-        }
-
         @media (max-width: 1100px) {
-
-            .invoice-info {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-            }
-
+            .invoice-info,
             .invoice-amounts {
                 grid-template-columns: repeat(3, minmax(0, 1fr));
             }
 
+            .invoice-card-content {
+                gap: 20px;
+            }
         }
 
         @media (max-width: 768px) {
-
-            .invoice-list {
-                width: 100%;
-            }
-
-            .invoice-card {
-                padding: 18px;
+            .invoice-summary {
+                grid-template-columns: 1fr;
             }
 
             .invoice-card-content {
                 flex-direction: column;
-                gap: 20px;
             }
 
-            .invoice-info {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
+            .invoice-info,
             .invoice-amounts {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
             .invoice-actions {
-                border-left: none;
-                border-top: 1px solid #e5e7eb;
-                padding-left: 0;
-                padding-top: 20px;
                 flex-direction: row;
                 flex-wrap: wrap;
-                min-width: auto;
+                min-width: 0;
+                padding-top: 18px;
+                padding-left: 0;
+                border-top: 1px solid #e5e7eb;
+                border-left: none;
             }
 
+            .invoice-actions .btn,
+            .invoice-actions form {
+                width: auto;
+            }
         }
 
         @media (max-width: 500px) {
-
             .invoice-info,
             .invoice-amounts {
                 grid-template-columns: 1fr;
@@ -407,139 +448,48 @@
                 flex-direction: column;
             }
 
-        }
-
-
-        /* ---- Desplegable de sugerencias del buscador ---- */
-        .ac-wrap {
-            position: relative;
-        }
-
-        .ac-list {
-            position: absolute;
-            left: 0;
-            right: 0;
-            top: 100%;
-            z-index: 30;
-            margin: 4px 0 0;
-            padding: 0;
-            list-style: none;
-            background-color: #ffffff;
-            border: 1px solid #9ca3af;
-            border-radius: 6px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-            max-height: 340px;
-            overflow-y: auto;
-        }
-
-        .ac-list[hidden] {
-            display: none;
-        }
-
-        .ac-item {
-            padding: 10px 14px;
-            font-size: 21px;
-            color: #111827;
-            cursor: pointer;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .ac-item:last-child {
-            border-bottom: 0;
-        }
-
-        .ac-item small {
-            display: block;
-            font-size: 18px;
-            color: #4b5563;
-        }
-
-        .ac-item.is-active,
-        .ac-item:hover {
-            background-color: #f3f4f6;
+            .invoice-actions .btn,
+            .invoice-actions form {
+                width: 100%;
+            }
         }
     </style>
 
-
     <div class="py-12">
-
-        <div class="mx-auto" style="width: 90vw;">
-
-
-            {{-- ================================================== --}}
-            {{-- Mensaje de éxito --}}
-            {{-- ================================================== --}}
+        <div class="mx-auto" style="width: 90vw; max-width: 1800px;">
 
             @if (session('success'))
-
-                <div
-                    class="mb-8 rounded-lg bg-green-700 border border-green-800
-                           text-white px-6 py-4 shadow-sm text-[21px]"
-                >
+                <div class="mb-8 rounded-lg bg-green-700 border border-green-800 text-white px-6 py-4 shadow-sm text-lg">
                     {{ session('success') }}
                 </div>
-
             @endif
-
-
-            {{-- ================================================== --}}
-            {{-- Mensaje de error --}}
-            {{-- ================================================== --}}
 
             @if (session('error'))
-
-                <div
-                    class="mb-8 rounded-lg bg-red-700 border border-red-800
-                           text-white px-6 py-4 shadow-sm text-[21px]"
-                >
+                <div class="mb-8 rounded-lg bg-red-700 border border-red-800 text-white px-6 py-4 shadow-sm text-lg">
                     {{ session('error') }}
                 </div>
-
             @endif
 
-
-            {{-- ================================================== --}}
-            {{-- Encabezado --}}
-            {{-- ================================================== --}}
-
             <div class="mb-8">
-
-                <h3 class="font-semibold text-white text-[32px]">
+                <h3 class="font-semibold text-white text-[30px]">
                     Facturas registradas
                 </h3>
-
             </div>
 
-
-            {{-- ================================================== --}}
-            {{-- Búsqueda y filtros --}}
-            {{-- ================================================== --}}
-
-            <div
-                class="invoice-filters bg-white border border-gray-300 rounded-lg
-                    shadow-sm"
-            >
-
+            {{-- Filtros --}}
+            <div class="mb-8 bg-white border border-gray-300 rounded-lg shadow-sm">
                 <div class="p-6">
-
                     <form
                         method="GET"
                         action="{{ route('admin.invoices.index') }}"
                         class="grid grid-cols-1 md:grid-cols-4 gap-6"
                     >
-
-                        {{-- Búsqueda --}}
                         <div>
-
-                            <label
-                                for="search"
-                                class="block font-semibold text-gray-900 text-[21px]"
-                            >
+                            <label for="search" class="block font-semibold text-gray-900">
                                 Buscar
                             </label>
 
                             <div class="ac-wrap">
-
                                 <input
                                     id="search"
                                     name="search"
@@ -547,102 +497,35 @@
                                     value="{{ request('search') }}"
                                     placeholder="Cliente, documento o servicio"
                                     autocomplete="off"
-                                    class="mt-2 block w-full rounded-md
-                                           border-gray-400
-                                           bg-white
-                                           text-gray-900
-                                           text-[21px]
-                                           shadow-sm
-                                           focus:border-indigo-600
-                                           focus:ring-indigo-600"
+                                    class="mt-2 block w-full rounded-md border-gray-400 bg-white text-gray-900 text-lg shadow-sm focus:border-indigo-600 focus:ring-indigo-600"
                                 >
 
                                 <ul id="searchList" class="ac-list" hidden></ul>
-
                             </div>
-
                         </div>
 
-
-                        {{-- Estado --}}
                         <div>
-
-                            <label
-                                for="payment_status"
-                                class="block font-semibold text-gray-900 text-[21px]"
-                            >
-                                Estado
+                            <label for="payment_status" class="block font-semibold text-gray-900">
+                                Estado del pago
                             </label>
 
                             <select
                                 id="payment_status"
                                 name="payment_status"
-                                class="mt-2 block w-full rounded-md
-                                       border-gray-400
-                                       bg-white
-                                       text-gray-900
-                                       text-[21px]
-                                       shadow-sm
-                                       focus:border-indigo-600
-                                       focus:ring-indigo-600"
+                                class="mt-2 block w-full rounded-md border-gray-400 bg-white text-gray-900 text-lg shadow-sm focus:border-indigo-600 focus:ring-indigo-600"
                             >
-
-                                <option value="">
-                                    Todos
-                                </option>
-
-                                <option
-                                    value="pending"
-                                    @selected(request('payment_status') === 'pending')
-                                >
+                                <option value="">Todos</option>
+                                <option value="pending" @selected(request('payment_status') === 'pending')>
                                     Pendientes
                                 </option>
-
-                                <option
-                                    value="paid"
-                                    @selected(request('payment_status') === 'paid')
-                                >
+                                <option value="paid" @selected(request('payment_status') === 'paid')>
                                     Pagadas
                                 </option>
-
                             </select>
-
                         </div>
 
-
-                        {{-- Buscar --}}
-                        <div class="flex items-end">
-
-                            <button
-                                type="submit"
-                                class="btn"
-                            >
-                                Buscar
-                            </button>
-
-                        </div>
-
-
-                        {{-- Limpiar --}}
-                        <div class="flex items-end">
-
-                            <a
-                                href="{{ route('admin.invoices.index') }}"
-                                class="btn"
-                            >
-                                Limpiar
-                            </a>
-
-                        </div>
-
-
-                        {{-- Fecha de emisión desde --}}
                         <div>
-
-                            <label
-                                for="date_from"
-                                class="block font-semibold text-gray-900 text-[21px]"
-                            >
+                            <label for="date_from" class="block font-semibold text-gray-900">
                                 Emisión desde
                             </label>
 
@@ -651,26 +534,12 @@
                                 name="date_from"
                                 type="date"
                                 value="{{ request('date_from') }}"
-                                class="mt-2 block w-full rounded-md
-                                       border-gray-400
-                                       bg-white
-                                       text-gray-900
-                                       text-[21px]
-                                       shadow-sm
-                                       focus:border-indigo-600
-                                       focus:ring-indigo-600"
+                                class="mt-2 block w-full rounded-md border-gray-400 bg-white text-gray-900 text-lg shadow-sm focus:border-indigo-600 focus:ring-indigo-600"
                             >
-
                         </div>
 
-
-                        {{-- Fecha de emisión hasta --}}
                         <div>
-
-                            <label
-                                for="date_to"
-                                class="block font-semibold text-gray-900 text-[21px]"
-                            >
+                            <label for="date_to" class="block font-semibold text-gray-900">
                                 Emisión hasta
                             </label>
 
@@ -679,354 +548,352 @@
                                 name="date_to"
                                 type="date"
                                 value="{{ request('date_to') }}"
-                                class="mt-2 block w-full rounded-md
-                                       border-gray-400
-                                       bg-white
-                                       text-gray-900
-                                       text-[21px]
-                                       shadow-sm
-                                       focus:border-indigo-600
-                                       focus:ring-indigo-600"
+                                class="mt-2 block w-full rounded-md border-gray-400 bg-white text-gray-900 text-lg shadow-sm focus:border-indigo-600 focus:ring-indigo-600"
                             >
-
                         </div>
 
+                        <div class="flex items-end gap-3 flex-wrap">
+                            <button type="submit" class="btn">
+                                Buscar
+                            </button>
+
+                            <a href="{{ route('admin.invoices.index') }}" class="btn btn-secondary">
+                                Limpiar
+                            </a>
+                        </div>
                     </form>
-
                 </div>
-
             </div>
 
-
-            {{-- ================================================== --}}
-            {{-- Resumen de deuda --}}
-            {{-- ================================================== --}}
-
-            <div
-                class="invoice-summary bg-white border border-gray-300
-                       rounded-lg shadow-sm"
-            >
-
+            {{-- Resumen global de deuda --}}
+            <div class="invoice-summary bg-white border border-gray-300 rounded-lg shadow-sm">
                 <div>
-                    <div class="invoice-summary-label">
-                        Total de facturas pendientes de pago
+                    <div class="summary-label">
+                        Facturas pendientes de pago
                     </div>
 
-                    <div class="invoice-summary-value">
+                    <div class="summary-value">
                         {{ number_format($resumen['facturas'], 0, ',', '.') }}
                     </div>
                 </div>
 
                 <div>
-                    <div class="invoice-summary-label">
-                        Total de clientes deudores
+                    <div class="summary-label">
+                        Clientes deudores
                     </div>
 
-                    <div class="invoice-summary-value">
+                    <div class="summary-value">
                         {{ number_format($resumen['clientes'], 0, ',', '.') }}
                     </div>
                 </div>
 
                 <div>
-                    <div class="invoice-summary-label">
-                        Total del importe por cobrar
+                    <div class="summary-label">
+                        Importe pendiente
                     </div>
 
-                    <div class="invoice-summary-value">
+                    <div class="summary-value">
                         ${{ number_format($resumen['importe'], 2, ',', '.') }}
                     </div>
                 </div>
-
             </div>
 
-
-            {{-- ================================================== --}}
-            {{-- Listado de facturas --}}
-            {{-- ================================================== --}}
-
-            <div class="invoice-list">
-
+            {{-- Listado --}}
+            <div class="space-y-4">
                 @forelse ($invoices as $invoice)
-
                     @php
+                        $taxPercentage = (float) ($invoice->tax_percentage ?? 0);
+                        $price = (float) $invoice->price;
+                        $overduePrice = (float) $invoice->overdue_price;
 
-                        $taxPercentage =
-                            $invoice->tax_percentage ?? 0;
+                        $priceWithTax = round(
+                            $price * (1 + ($taxPercentage / 100)),
+                            2
+                        );
 
-                        $price =
-                            (float) $invoice->price;
+                        $overduePriceWithTax = round(
+                            $overduePrice * (1 + ($taxPercentage / 100)),
+                            2
+                        );
 
-                        $overduePrice =
-                            (float) $invoice->overdue_price;
+                        $tipoComprobante = (int) ($invoice->arca_invoice_type ?? 0);
 
-                        $priceWithTax =
-                            round(
-                                $price * (1 + ($taxPercentage / 100)),
-                                2
+                        $esExportacion = in_array(
+                            $tipoComprobante,
+                            [19, 20, 21],
+                            true
+                        ) || (int) ($invoice->client_iva_condition ?? 0) === 9;
+
+                        $esAConLeyendaRetencion = in_array(
+                            $tipoComprobante,
+                            [51, 52, 53],
+                            true
+                        );
+
+                        $nombreComprobante = $nombresComprobante[$tipoComprobante]
+                            ?? ($esExportacion ? 'Factura E' : null);
+
+                        $estadoArca = $invoice->arca_status ?: 'Sin procesar';
+
+                        $arcaAprobado = strtolower(
+                            (string) $invoice->arca_status
+                        ) === 'aprobado';
+
+                        $arcaError = in_array(
+                            strtolower((string) $invoice->arca_status),
+                            ['rechazado', 'error', 'fallido'],
+                            true
+                        );
+
+                        $identificadorFiscalExtranjero =
+                            $invoice->client_arca_cuit_pais_cliente
+                            ?: $invoice->client_arca_id_impositivo;
+
+                        $numeroComprobante = null;
+
+                        if (
+                            $invoice->arca_point_of_sale
+                            && $invoice->arca_invoice_number
+                        ) {
+                            $numeroComprobante = str_pad(
+                                (string) $invoice->arca_point_of_sale,
+                                5,
+                                '0',
+                                STR_PAD_LEFT
+                            ) . '-' . str_pad(
+                                (string) $invoice->arca_invoice_number,
+                                8,
+                                '0',
+                                STR_PAD_LEFT
                             );
-
-                        $overduePriceWithTax =
-                            round(
-                                $overduePrice * (1 + ($taxPercentage / 100)),
-                                2
-                            );
-
+                        }
                     @endphp
 
-
-                    {{-- ================================================== --}}
-                    {{-- TARJETA --}}
-                    {{-- ================================================== --}}
-
-                    <div class="invoice-card">
-
+                    <article class="invoice-card">
                         <div class="invoice-card-content">
-
-
-                            {{-- ================================================== --}}
-                            {{-- DATOS --}}
-                            {{-- ================================================== --}}
-
                             <div class="invoice-data">
 
-
-                                {{-- ================================================== --}}
-                                {{-- INFORMACIÓN --}}
-                                {{-- ================================================== --}}
-
                                 <div class="invoice-info">
-
-                                    {{-- Cliente --}}
                                     <div class="invoice-field">
-
-                                        <div class="invoice-label">
-                                            Cliente
-                                        </div>
+                                        <div class="invoice-label">Cliente</div>
 
                                         <div class="invoice-value">
                                             {{ $invoice->client_name ?? 'N/A' }}
                                         </div>
 
                                         <div class="invoice-value-normal">
-                                            {{ $invoice->client_document ?? 'N/A' }}
+                                            @if ($esExportacion)
+                                                {{ $identificadorFiscalExtranjero ?: 'Sin identificador fiscal' }}
+                                            @else
+                                                Documento: {{ $invoice->client_document ?? 'N/A' }}
+                                            @endif
                                         </div>
-
                                     </div>
 
-
-                                    {{-- Servicio --}}
                                     <div class="invoice-field">
-
-                                        <div class="invoice-label">
-                                            Servicio
-                                        </div>
+                                        <div class="invoice-label">Servicio</div>
 
                                         <div class="invoice-value-normal">
                                             {{ $invoice->service_name ?? 'N/A' }}
                                         </div>
-
                                     </div>
 
-
-                                    {{-- Emisión --}}
                                     <div class="invoice-field">
-
-                                        <div class="invoice-label">
-                                            Emisión
-                                        </div>
+                                        <div class="invoice-label">Emisión</div>
 
                                         <div class="invoice-value-normal">
                                             {{ $invoice->issued_at?->format('d/m/Y') ?? 'N/A' }}
                                         </div>
-
                                     </div>
 
-
-                                    {{-- Vencimiento --}}
                                     <div class="invoice-field">
-
-                                        <div class="invoice-label">
-                                            Vencimiento
-                                        </div>
+                                        <div class="invoice-label">Vencimiento</div>
 
                                         <div class="invoice-value-normal">
                                             {{ $invoice->due_date?->format('d/m/Y') ?? 'N/A' }}
                                         </div>
-
                                     </div>
+                                </div>
 
-
-                                    {{-- Estado --}}
+                                <div class="invoice-info mt-6">
                                     <div class="invoice-field">
-
-                                        <div class="invoice-label">
-                                            Estado
-                                        </div>
+                                        <div class="invoice-label">Estado del pago</div>
 
                                         @if ($invoice->payment_status === 'paid')
-
-                                            <span
-                                                class="invoice-status invoice-status-paid"
-                                            >
+                                            <span class="invoice-status status-paid">
                                                 Pagada
                                             </span>
-
                                         @else
-
-                                            <span
-                                                class="invoice-status invoice-status-pending"
-                                            >
+                                            <span class="invoice-status status-pending">
                                                 Pendiente
                                             </span>
+                                        @endif
+                                    </div>
 
+                                    <div class="invoice-field">
+                                        <div class="invoice-label">Estado ARCA</div>
+
+                                        @if ($arcaAprobado)
+                                            <span class="invoice-status status-approved">
+                                                {{ $estadoArca }}
+                                            </span>
+                                        @elseif ($arcaError)
+                                            <span class="invoice-status status-error">
+                                                {{ $estadoArca }}
+                                            </span>
+                                        @else
+                                            <span class="invoice-status status-neutral">
+                                                {{ $estadoArca }}
+                                            </span>
+                                        @endif
+                                    </div>
+
+                                    <div class="invoice-field">
+                                        <div class="invoice-label">Tipo de comprobante</div>
+
+                                        <div class="invoice-value-normal">
+                                            @if ($nombreComprobante)
+                                                {{ $nombreComprobante }}
+                                                <span class="text-gray-500">
+                                                    ({{ $tipoComprobante }})
+                                                </span>
+                                            @elseif ($esExportacion)
+                                                Factura E — pendiente de emisión
+                                            @else
+                                                Sin emitir
+                                            @endif
+                                        </div>
+
+                                        @if ($esExportacion)
+                                            <div class="export-notice">
+                                                Exportación
+                                            </div>
                                         @endif
 
+                                        @if ($esAConLeyendaRetencion)
+                                            <div class="retention-notice">
+                                                OPERACIÓN SUJETA A RETENCIÓN
+                                            </div>
+                                        @endif
                                     </div>
 
+                                    <div class="invoice-field">
+                                        <div class="invoice-label">Comprobante ARCA</div>
+
+                                        <div class="invoice-value-normal">
+                                            {{ $numeroComprobante ?? 'Sin número' }}
+                                        </div>
+
+                                        <div class="invoice-label mt-2">CAE</div>
+
+                                        <div class="invoice-value-normal">
+                                            {{ $invoice->arca_cae ?: '—' }}
+                                        </div>
+                                    </div>
                                 </div>
 
+                                @if ($esExportacion)
+                                    <div class="invoice-amounts">
+                                        <div class="invoice-field">
+                                            <div class="invoice-label">Importe</div>
 
-                                {{-- ================================================== --}}
-                                {{-- IMPORTES --}}
-                                {{-- ================================================== --}}
-
-                                <div class="invoice-amounts">
-
-                                    {{-- Precio neto --}}
-                                    <div class="invoice-field">
-
-                                        <div class="invoice-label">
-                                            Precio (NETO)
+                                            <div class="invoice-value">
+                                                ${{ number_format($price, 2, ',', '.') }}
+                                            </div>
                                         </div>
 
-                                        <div class="invoice-value">
-                                            ${{ number_format(
-                                                $price,
-                                                2,
-                                                ',',
-                                                '.'
-                                            ) }}
+                                        <div class="invoice-field">
+                                            <div class="invoice-label">Importe vencido</div>
+
+                                            <div class="invoice-value">
+                                                ${{ number_format($overduePrice, 2, ',', '.') }}
+                                            </div>
                                         </div>
 
+                                        <div class="invoice-field">
+                                            <div class="invoice-label">Importe pagado</div>
+
+                                            <div class="invoice-value">
+                                                @if ($invoice->amount_paid !== null)
+                                                    ${{ number_format((float) $invoice->amount_paid, 2, ',', '.') }}
+                                                @else
+                                                    —
+                                                @endif
+                                            </div>
+                                        </div>
+
+                                        <div class="invoice-field">
+                                            <div class="invoice-label">País de destino</div>
+
+                                            <div class="invoice-value-normal">
+                                                {{ $invoice->client_arca_destination_country ?: '—' }}
+                                            </div>
+                                        </div>
                                     </div>
+                                @else
+                                    <div class="invoice-amounts">
+                                        <div class="invoice-field">
+                                            <div class="invoice-label">Precio neto</div>
 
-
-                                    {{-- Precio vencido neto --}}
-                                    <div class="invoice-field">
-
-                                        <div class="invoice-label">
-                                            Precio vencido (NETO)
+                                            <div class="invoice-value">
+                                                ${{ number_format($price, 2, ',', '.') }}
+                                            </div>
                                         </div>
 
-                                        <div class="invoice-value">
-                                            ${{ number_format(
-                                                $overduePrice,
-                                                2,
-                                                ',',
-                                                '.'
-                                            ) }}
+                                        <div class="invoice-field">
+                                            <div class="invoice-label">Precio vencido neto</div>
+
+                                            <div class="invoice-value">
+                                                ${{ number_format($overduePrice, 2, ',', '.') }}
+                                            </div>
                                         </div>
 
+                                        <div class="invoice-field">
+                                            <div class="invoice-label">Impuestos</div>
+
+                                            <div class="invoice-value">
+                                                {{ number_format($taxPercentage, 2, ',', '.') }}%
+                                            </div>
+                                        </div>
+
+                                        <div class="invoice-field">
+                                            <div class="invoice-label">Precio con impuestos</div>
+
+                                            <div class="invoice-value">
+                                                ${{ number_format($priceWithTax, 2, ',', '.') }}
+                                            </div>
+
+                                            <div class="invoice-label mt-2">Vencido con impuestos</div>
+
+                                            <div class="invoice-value-normal">
+                                                ${{ number_format($overduePriceWithTax, 2, ',', '.') }}
+                                            </div>
+                                        </div>
                                     </div>
-
-
-                                    {{-- Impuestos --}}
-                                    <div class="invoice-field">
-
-                                        <div class="invoice-label">
-                                            Impuestos %
-                                        </div>
-
-                                        <div class="invoice-value">
-                                            {{ number_format(
-                                                $taxPercentage,
-                                                2,
-                                                ',',
-                                                '.'
-                                            ) }}%
-                                        </div>
-
-                                    </div>
-
-
-                                    {{-- Neto + impuestos --}}
-                                    <div class="invoice-field">
-
-                                        <div class="invoice-label">
-                                            Neto + Impuestos
-                                        </div>
-
-                                        <div class="invoice-value">
-                                            ${{ number_format(
-                                                $priceWithTax,
-                                                2,
-                                                ',',
-                                                '.'
-                                            ) }}
-                                        </div>
-
-                                    </div>
-
-
-                                    {{-- Vencido + impuestos --}}
-                                    <div class="invoice-field">
-
-                                        <div class="invoice-label">
-                                            Vencido + Impuestos
-                                        </div>
-
-                                        <div class="invoice-value">
-                                            ${{ number_format(
-                                                $overduePriceWithTax,
-                                                2,
-                                                ',',
-                                                '.'
-                                            ) }}
-                                        </div>
-
-                                    </div>
-
-                                </div>
-
-
+                                @endif
                             </div>
 
-
-                            {{-- ================================================== --}}
-                            {{-- ACCIONES --}}
-                            {{-- ================================================== --}}
-
                             <div class="invoice-actions">
-
                                 <a
-                                    href="{{ route(
-                                        'admin.invoices.show',
-                                        $invoice
-                                    ) }}"
+                                    href="{{ route('admin.invoices.show', $invoice) }}"
                                     class="btn"
                                 >
-                                    Ver
+                                    Ver detalle
                                 </a>
 
-
                                 @if ($invoice->payment_status !== 'paid')
-
                                     <a
-                                        href="{{ route(
-                                            'admin.invoices.payment',
-                                            $invoice
-                                        ) }}"
+                                        href="{{ route('admin.invoices.payment', $invoice) }}"
                                         class="btn"
                                     >
                                         Registrar pago
                                     </a>
-
                                 @endif
 
                                 @if (
                                     $invoice->payment_status === 'paid'
                                     && empty($invoice->arca_cae)
-                                    && $invoice->arca_status !== 'aprobado'
+                                    && ! $arcaAprobado
                                 )
                                     <form
                                         method="POST"
@@ -1034,78 +901,49 @@
                                     >
                                         @csrf
 
-                                        <button
-                                            type="submit"
-                                            class="btn"
-                                        >
-                                            Reintentar ARCA
+                                        <button type="submit" class="btn">
+                                            Reintentar {{ $esExportacion ? 'WSFEX' : 'ARCA' }}
                                         </button>
                                     </form>
                                 @endif
-
 
                                 @if (
                                     $invoice->payment_status !== 'paid'
                                     && $invoice->amount_paid === null
                                     && empty($invoice->mercadopago_payment_id)
                                     && empty($invoice->arca_cae)
-                                    && $invoice->arca_status !== 'aprobado'
+                                    && ! $arcaAprobado
                                 )
                                     <form
                                         method="POST"
                                         action="{{ route('admin.invoices.destroy', $invoice) }}"
-                                        onsubmit="return confirm(
-                                            '¿Eliminar esta factura? Esta acción no se puede deshacer.'
-                                        );"
+                                        onsubmit="return confirm('¿Eliminar esta factura? Esta acción no se puede deshacer.');"
                                     >
                                         @csrf
-
                                         @method('DELETE')
 
-                                        <button
-                                            type="submit"
-                                            class="btn"
-                                        >
+                                        <button type="submit" class="btn btn-danger">
                                             Eliminar
                                         </button>
                                     </form>
                                 @endif
-
                             </div>
-
                         </div>
-
-                    </div>
-
+                    </article>
                 @empty
-
                     <div class="invoice-empty">
-                        No hay facturas registradas.
+                        No hay facturas registradas con esos filtros.
                     </div>
-
                 @endforelse
-
             </div>
-
-
-            {{-- ================================================== --}}
-            {{-- Paginación --}}
-            {{-- ================================================== --}}
 
             <div class="mt-8">
-
                 {{ $invoices->links() }}
-
             </div>
-
         </div>
-
     </div>
 
-    {{-- ================================================== --}}
-    {{-- Tarjeta de confirmación: generar por lote --}}
-    {{-- ================================================== --}}
-
+    {{-- Confirmación para generar facturas por lote --}}
     <div
         id="batch-overlay"
         class="batch-overlay"
@@ -1113,17 +951,14 @@
         aria-modal="true"
         aria-labelledby="batch-title"
     >
-
         <div class="batch-card">
-
             <div class="batch-card-header">
-                <h3 id="batch-title">Generar por lote</h3>
+                <h3 id="batch-title">Generar facturas por lote</h3>
             </div>
 
             <div class="batch-card-body" id="batch-body"></div>
 
             <div class="batch-card-footer">
-
                 <form
                     id="batch-form"
                     method="POST"
@@ -1132,79 +967,96 @@
                 >
                     @csrf
 
-                    <button type="submit" id="batch-accept" class="btn" disabled>
+                    <button
+                        type="submit"
+                        id="batch-accept"
+                        class="btn"
+                        disabled
+                    >
                         Aceptar
                     </button>
                 </form>
 
-                <button type="button" id="batch-reject" class="btn btn-secondary">
-                    Rechazar
+                <button
+                    type="button"
+                    id="batch-reject"
+                    class="btn btn-secondary"
+                >
+                    Cancelar
                 </button>
-
             </div>
-
         </div>
-
     </div>
-
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-
             const openButton = document.getElementById('batch-open');
-            const overlay    = document.getElementById('batch-overlay');
-            const body       = document.getElementById('batch-body');
-            const form       = document.getElementById('batch-form');
-            const accept     = document.getElementById('batch-accept');
-            const reject     = document.getElementById('batch-reject');
+            const overlay = document.getElementById('batch-overlay');
+            const body = document.getElementById('batch-body');
+            const form = document.getElementById('batch-form');
+            const accept = document.getElementById('batch-accept');
+            const reject = document.getElementById('batch-reject');
 
             const previewUrl = @json(route('admin.invoices.generate.preview'));
 
-            // Estado propio de la tarjeta de lote.
-            const state = { loading: false, submitting: false };
+            const state = {
+                loading: false,
+                submitting: false,
+            };
 
             function close() {
-                if (state.submitting) return;
+                if (state.submitting) {
+                    return;
+                }
+
                 overlay.classList.remove('is-open');
             }
 
-            function showMessage(text, isError) {
+            function showMessage(message, isError = false) {
                 body.innerHTML = '';
-                const p = document.createElement('p');
-                p.textContent = text;
-                if (isError) p.className = 'batch-error';
-                body.appendChild(p);
+
+                const paragraph = document.createElement('p');
+                paragraph.textContent = message;
+
+                if (isError) {
+                    paragraph.className = 'batch-error';
+                }
+
+                body.appendChild(paragraph);
             }
 
             function renderPreview(data) {
                 body.innerHTML = '';
 
                 if (!data.total) {
-                    showMessage('No hay facturas para generar en este momento.', false);
+                    showMessage(
+                        'No hay facturas para generar en este momento.'
+                    );
+
                     accept.disabled = true;
                     return;
                 }
 
                 const intro = document.createElement('p');
-                intro.textContent = 'Se generarán facturas de:';
+                intro.textContent = 'Se generarán facturas de los siguientes servicios:';
                 body.appendChild(intro);
 
                 const list = document.createElement('ul');
                 list.className = 'batch-list';
 
                 data.services.forEach(function (item) {
-                    const li = document.createElement('li');
+                    const row = document.createElement('li');
 
                     const name = document.createElement('span');
                     name.textContent = item.service;
 
-                    const qty = document.createElement('span');
-                    qty.className = 'batch-qty';
-                    qty.textContent = item.count;
+                    const quantity = document.createElement('span');
+                    quantity.className = 'batch-qty';
+                    quantity.textContent = item.count;
 
-                    li.appendChild(name);
-                    li.appendChild(qty);
-                    list.appendChild(li);
+                    row.appendChild(name);
+                    row.appendChild(quantity);
+                    list.appendChild(row);
                 });
 
                 body.appendChild(list);
@@ -1223,13 +1075,15 @@
             }
 
             async function openCard() {
-                if (state.loading || state.submitting) return;
+                if (state.loading || state.submitting) {
+                    return;
+                }
 
                 state.loading = true;
                 openButton.disabled = true;
                 accept.disabled = true;
 
-                showMessage('Calculando facturas a generar…', false);
+                showMessage('Calculando las facturas que se generarían…');
                 overlay.classList.add('is-open');
 
                 try {
@@ -1240,12 +1094,17 @@
                         },
                     });
 
-                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    if (!response.ok) {
+                        throw new Error('No se pudo obtener la vista previa.');
+                    }
 
-                    renderPreview(await response.json());
-
+                    const data = await response.json();
+                    renderPreview(data);
                 } catch (error) {
-                    showMessage('No se pudo calcular el lote. Intentá de nuevo.', true);
+                    showMessage(
+                        'No se pudo calcular el lote. Cerrá esta ventana e intentá nuevamente.',
+                        true
+                    );
                 } finally {
                     state.loading = false;
                     openButton.disabled = false;
@@ -1256,14 +1115,17 @@
             reject.addEventListener('click', close);
 
             overlay.addEventListener('click', function (event) {
-                if (event.target === overlay) close();
+                if (event.target === overlay) {
+                    close();
+                }
             });
 
             document.addEventListener('keydown', function (event) {
-                if (event.key === 'Escape') close();
+                if (event.key === 'Escape') {
+                    close();
+                }
             });
 
-            // Evita doble envío al aceptar.
             form.addEventListener('submit', function (event) {
                 if (state.submitting) {
                     event.preventDefault();
@@ -1276,12 +1138,12 @@
                 accept.textContent = 'Generando…';
             });
 
-            // Todo listo: recién ahora se habilita el botón.
             openButton.disabled = false;
         });
     </script>
 
     <script src="{{ asset('js/search-dropdown.js') }}"></script>
+
     <script>
         searchDropdown({
             inputId: 'search',
@@ -1289,32 +1151,31 @@
             sources: [
                 {
                     url: @json(route('admin.invoices.generate-manual.clients')),
-                    value: function (c) {
-                        return c.name;
+                    value: function (client) {
+                        return client.name;
                     },
-                    render: function (c, li) {
-                        li.textContent = c.name + ' — DNI ' + c.document;
+                    render: function (client, item) {
+                        item.textContent = client.name + ' — Documento ' + client.document;
 
                         const small = document.createElement('small');
                         small.textContent = 'Cliente';
-                        li.appendChild(small);
+                        item.appendChild(small);
                     },
                 },
                 {
                     url: @json(route('admin.invoices.generate-manual.services')),
-                    value: function (s) {
-                        return s.name;
+                    value: function (service) {
+                        return service.name;
                     },
-                    render: function (s, li) {
-                        li.textContent = s.name;
+                    render: function (service, item) {
+                        item.textContent = service.name;
 
                         const small = document.createElement('small');
                         small.textContent = 'Servicio';
-                        li.appendChild(small);
+                        item.appendChild(small);
                     },
                 },
             ],
         });
     </script>
-
 </x-app-layout>

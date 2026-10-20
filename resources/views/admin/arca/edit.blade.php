@@ -1,15 +1,11 @@
 <x-app-layout>
-
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-white leading-tight text-[32px]">
                 Configuración ARCA
             </h2>
 
-            <a
-                href="{{ route('admin.dashboard') }}"
-                class="btn"
-            >
+            <a href="{{ route('admin.dashboard') }}" class="btn">
                 Volver
             </a>
         </div>
@@ -22,7 +18,7 @@
             align-items: center;
             justify-content: center;
             padding: 10px 22px;
-            background-color: #111827; /* gray-900 */
+            background-color: #111827;
             border: 1px solid #111827;
             border-radius: 6px;
             font-weight: 600;
@@ -39,16 +35,16 @@
         }
 
         .btn:hover {
-            background-color: #374151; /* gray-700 */
+            background-color: #374151;
         }
 
         .info-box {
-            background-color: #111827; /* gray-900 */
+            background-color: #111827;
             border-radius: 8px;
             padding: 20px;
         }
 
-                .info-box h4 {
+        .info-box h4 {
             color: #ffffff;
             font-weight: 600;
             font-size: 22px;
@@ -56,7 +52,7 @@
         }
 
         .info-box p {
-            color: #d1d5db; /* gray-300 */
+            color: #d1d5db;
             font-size: 18px;
             margin: 8px 0 0;
         }
@@ -69,7 +65,7 @@
 
         .help-list li {
             padding: 12px 0;
-            border-bottom: 1px solid #e5e7eb; /* gray-200 */
+            border-bottom: 1px solid #e5e7eb;
         }
 
         .help-list li:last-child {
@@ -78,12 +74,12 @@
 
         .help-list .help-name {
             font-weight: 600;
-            color: #111827; /* gray-900 */
+            color: #111827;
             font-size: 18px;
         }
 
         .help-list .help-desc {
-            color: #4b5563; /* gray-600 */
+            color: #4b5563;
             font-size: 16px;
             margin-top: 4px;
         }
@@ -92,20 +88,14 @@
     <div class="py-12">
         <div class="max-w-[1600px] mx-auto sm:px-6 lg:px-8">
 
-            {{-- Mensaje de éxito --}}
             @if (session('success'))
-                <div
-                    class="mb-6 p-4 bg-green-700 text-white rounded-lg shadow-sm text-[24px]"
-                >
+                <div class="mb-6 p-4 bg-green-700 text-white rounded-lg shadow-sm text-[24px]">
                     {{ session('success') }}
                 </div>
             @endif
 
-            {{-- Errores de validación --}}
             @if ($errors->any())
-                <div
-                    class="mb-6 p-4 bg-red-700 text-white rounded-lg shadow-sm"
-                >
+                <div class="mb-6 p-4 bg-red-700 text-white rounded-lg shadow-sm">
                     <ul class="list-disc list-inside text-[24px]">
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
@@ -115,7 +105,6 @@
             @endif
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-
                 <div class="p-6 text-gray-900">
 
                     <div class="mb-8">
@@ -124,8 +113,8 @@
                         </h3>
 
                         <p class="mt-2 text-gray-700 text-[24px]">
-                            Configuración necesaria para la comunicación
-                            del sistema con ARCA.
+                            Configuración necesaria para emitir comprobantes
+                            fiscales nacionales y de exportación.
                         </p>
                     </div>
 
@@ -137,13 +126,13 @@
                         @csrf
                         @method('PUT')
 
-                        {{-- Condición frente al IVA (emisor) --}}
+                        {{-- Condición fiscal del emisor --}}
                         <div>
                             <label
                                 for="condicion_iva"
                                 class="block font-medium text-gray-900 text-[24px]"
                             >
-                                Condición frente al IVA (código AFIP)
+                                Condición frente al IVA del emisor
                             </label>
 
                             <input
@@ -151,6 +140,7 @@
                                 name="condicion_iva"
                                 type="number"
                                 min="1"
+                                step="1"
                                 list="condicionIvaReferencia"
                                 value="{{ old('condicion_iva', $config?->condicion_iva) }}"
                                 required
@@ -165,30 +155,26 @@
                                 <option value="7">Sujeto No Categorizado</option>
                                 <option value="8">Proveedor del Exterior</option>
                                 <option value="9">Cliente del Exterior</option>
-                                <option value="10">IVA Liberado – Ley N° 19.640</option>
+                                <option value="10">IVA Liberado – Ley N.º 19.640</option>
                                 <option value="13">Monotributista Social</option>
                                 <option value="15">IVA No Alcanzado</option>
                                 <option value="16">Monotributo Trabajador Independiente Promovido</option>
                             </datalist>
 
-                            <p class="mt-2 text-gray-700 text-[24px]">
-                                Se puede escribir cualquier código numérico. La lista es
-                                solo de referencia (tabla de condiciones de ARCA/AFIP
-                                vigente al momento de escribir esto) — si ARCA agrega o
-                                modifica códigos, se carga el nuevo valor directamente
-                                acá sin necesitar ningún cambio de código. Ver la
-                                sección "Explicaciones" más abajo para el detalle de
-                                qué implica cada una.
+                            <p class="mt-2 text-gray-700 text-[18px]">
+                                Indicá la condición fiscal registrada para el emisor.
+                                La condición fiscal del cliente también se utiliza
+                                para determinar el tipo de comprobante.
                             </p>
                         </div>
 
-                        {{-- Punto de venta --}}
+                        {{-- Punto de venta nacional --}}
                         <div>
                             <label
                                 for="punto_venta"
                                 class="block font-medium text-gray-900 text-[24px]"
                             >
-                                Punto de venta
+                                Punto de venta nacional (WSFEv1)
                             </label>
 
                             <input
@@ -196,48 +182,71 @@
                                 name="punto_venta"
                                 type="number"
                                 min="1"
-                                max="99999"
+                                max="99998"
+                                step="1"
                                 value="{{ old('punto_venta', $config?->punto_venta) }}"
                                 required
                                 class="mt-2 block w-full rounded-md border-gray-400 shadow-sm text-[24px] text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
                             >
 
-                            <p class="mt-2 text-gray-700 text-[24px]">
-                                Número entero de 1 a 99999: el punto de venta que la
-                                empresa tiene habilitado en ARCA para Web Services y
-                                que se usa para pedir el CAE. En homologación
-                                normalmente alcanza con el 1. Ver "Explicaciones" más
-                                abajo.
+                            <p class="mt-2 text-gray-700 text-[18px]">
+                                Se utiliza para los comprobantes nacionales emitidos
+                                mediante WSFEv1. Debe coincidir con un punto de venta
+                                habilitado para el servicio correspondiente en ARCA.
                             </p>
                         </div>
 
-                        {{-- Información del certificado --}}
-                        <div class="info-box">
+                        {{-- Punto de venta para exportación --}}
+                        <div>
+                            <label
+                                for="punto_venta_exportacion"
+                                class="block font-medium text-gray-900 text-[24px]"
+                            >
+                                Punto de venta de exportación (WSFEXv1)
+                            </label>
 
-                            <h4>
-                                Certificado y clave privada
-                            </h4>
+                            <input
+                                id="punto_venta_exportacion"
+                                name="punto_venta_exportacion"
+                                type="number"
+                                min="1"
+                                max="99998"
+                                step="1"
+                                value="{{ old('punto_venta_exportacion', $config?->punto_venta_exportacion) }}"
+                                class="mt-2 block w-full rounded-md border-gray-400 shadow-sm text-[24px] text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
+                            >
+
+                            <p class="mt-2 text-gray-700 text-[18px]">
+                                Es independiente del punto de venta nacional. Debe
+                                estar habilitado para emitir comprobantes de exportación
+                                mediante WSFEXv1. Es necesario configurarlo antes de
+                                emitir una Factura E.
+                            </p>
+
+                            @error('punto_venta_exportacion')
+                                <p class="mt-2 text-red-700 text-[18px]">
+                                    {{ $message }}
+                                </p>
+                            @enderror
+                        </div>
+
+                        {{-- Certificado --}}
+                        <div class="info-box">
+                            <h4>Certificado y clave privada</h4>
 
                             <p>
-                                No se cargan desde acá: salen de las variables
-                                de entorno ARCA_CERTIFICATE_CRT y
-                                ARCA_PRIVATE_KEY (Base64) configuradas en el
-                                servidor.
+                                Se configuran en las variables de entorno
+                                ARCA_CERTIFICATE_CRT y ARCA_PRIVATE_KEY del servidor.
+                                No se cargan desde esta pantalla.
                             </p>
-
                         </div>
 
-                        {{-- Información del token --}}
+                        {{-- Estado de WSFE --}}
                         <div class="info-box">
-
-                            <h4>
-                                Estado de autenticación
-                            </h4>
+                            <h4>Autenticación nacional (WSFEv1)</h4>
 
                             @if ($config?->token && $config?->sign)
-                                <p>
-                                    Token y Sign configurados.
-                                </p>
+                                <p>Token y Sign configurados.</p>
 
                                 @if ($config->token_expires_at)
                                     <p>
@@ -247,35 +256,45 @@
                                 @endif
                             @else
                                 <p>
-                                    Todavía no se generó un Token/Sign de autenticación
-                                    contra ARCA.
+                                    Todavía no se generaron credenciales para WSFEv1.
+                                    Se obtendrán automáticamente cuando sean necesarias.
+                                </p>
+                            @endif
+                        </div>
+
+                        {{-- Estado de WSFEX --}}
+                        <div class="info-box">
+                            <h4>Autenticación de exportación (WSFEXv1)</h4>
+
+                            @if ($config?->token_wsfex && $config?->sign_wsfex)
+                                <p>Token y Sign de WSFEXv1 configurados.</p>
+
+                                @if ($config->token_wsfex_expires_at)
+                                    <p>
+                                        Vencimiento:
+                                        {{ $config->token_wsfex_expires_at->format('d/m/Y H:i') }}
+                                    </p>
+                                @endif
+                            @else
+                                <p>
+                                    Todavía no se generaron credenciales para WSFEXv1.
+                                    Se obtendrán automáticamente cuando se emita una
+                                    factura de exportación.
                                 </p>
                             @endif
 
                             <p>
-                                El Token y el Sign son gestionados automáticamente por
-                                la integración con ARCA — no se cargan manualmente acá.
+                                Las credenciales de WSFEXv1 son independientes de
+                                las de WSFEv1.
                             </p>
-
                         </div>
 
-                        {{-- Botón --}}
                         <div class="flex items-center justify-end" style="margin-top: 8px;">
-
-                            <button
-                                type="submit"
-                                class="btn"
-                            >
+                            <button type="submit" class="btn">
                                 Guardar configuración
                             </button>
-
                         </div>
-
                     </form>
-
-                    {{-- ================================================== --}}
-                    {{-- Explicaciones --}}
-                    {{-- ================================================== --}}
 
                     <hr class="my-10 border-gray-300">
 
@@ -284,141 +303,84 @@
                     </h3>
 
                     <div class="mb-8">
-                        <h4 class="font-semibold text-gray-900 text-[20px] mb-2">
-                            Condición frente al IVA
+                        <h4 class="font-semibold text-gray-900 text-[22px] mb-2">
+                            Selección del comprobante
                         </h4>
 
                         <p class="text-gray-700 text-[16px] mb-4">
-                            Es la categoría del emisor (la empresa/persona que factura)
-                            ante ARCA/AFIP. El sistema la usa para decidir si el
-                            comprobante se emite como Factura A, B o C. Con condición
-                            "Responsable Inscripto" el sistema mira también la condición
-                            del cliente (Responsable Inscripto → Factura A, cualquier otra
-                            → Factura B). Con cualquier otra condición del emisor
-                            (Monotributo, Exento, etc.), siempre se emite Factura C.
+                            Para los clientes nacionales, el sistema utiliza la
+                            condición fiscal del emisor y la del receptor para decidir
+                            entre los comprobantes A, B o C según las reglas existentes.
+                            Cuando el receptor está identificado como cliente del
+                            exterior mediante el código 9, el sistema deriva la emisión
+                            a una Factura E mediante WSFEXv1.
                         </p>
 
                         <ul class="help-list">
                             <li>
-                                <div class="help-name">1 — IVA Responsable Inscripto</div>
+                                <div class="help-name">
+                                    1 — IVA Responsable Inscripto
+                                </div>
                                 <div class="help-desc">
-                                    Inscripto en IVA. Es la única condición que puede
-                                    generar Factura A (si el cliente también es
-                                    Responsable Inscripto) o Factura B (para el resto de
-                                    los clientes). Para Factura A el cliente necesita
-                                    CUIT cargado.
+                                    Para operaciones nacionales, el tipo de comprobante
+                                    depende también de la condición fiscal del cliente.
+                                    Una operación que corresponda a Factura A requiere
+                                    que el cliente tenga CUIT.
                                 </div>
                             </li>
+
                             <li>
-                                <div class="help-name">4 — IVA Sujeto Exento</div>
+                                <div class="help-name">
+                                    6 — Responsable Monotributo
+                                </div>
                                 <div class="help-desc">
-                                    Exento de IVA por la actividad que realiza. El
-                                    sistema lo trata igual que cualquier condición que
-                                    no sea Responsable Inscripto: siempre emite Factura C.
+                                    Condición fiscal del emisor. El sistema mantiene
+                                    las reglas configuradas para comprobantes nacionales.
                                 </div>
                             </li>
+
                             <li>
-                                <div class="help-name">5 — Consumidor Final</div>
-                                <div class="help-desc">
-                                    No está inscripto ante AFIP como contribuyente.
-                                    Es también el valor por defecto que usa el sistema
-                                    para un cliente sin condición cargada. Como emisor,
-                                    resulta en Factura C.
+                                <div class="help-name">
+                                    9 — Cliente del Exterior
                                 </div>
-                            </li>
-                            <li>
-                                <div class="help-name">6 — Responsable Monotributo</div>
                                 <div class="help-desc">
-                                    Monotributista. Siempre emite Factura C y nunca
-                                    discrimina IVA por separado.
-                                </div>
-                            </li>
-                            <li>
-                                <div class="help-name">7 — Sujeto No Categorizado</div>
-                                <div class="help-desc">
-                                    Contribuyente sin categoría de IVA definida todavía
-                                    ante AFIP. Como emisor, resulta en Factura C.
-                                </div>
-                            </li>
-                            <li>
-                                <div class="help-name">8 — Proveedor del Exterior</div>
-                                <div class="help-desc">
-                                    Proveedor radicado fuera del país. Como emisor,
-                                    resulta en Factura C.
-                                </div>
-                            </li>
-                            <li>
-                                <div class="help-name">9 — Cliente del Exterior</div>
-                                <div class="help-desc">
-                                    Cliente radicado fuera del país. Como emisor,
-                                    resulta en Factura C.
-                                </div>
-                            </li>
-                            <li>
-                                <div class="help-name">10 — IVA Liberado – Ley N° 19.640</div>
-                                <div class="help-desc">
-                                    Liberado de IVA por un régimen especial (Tierra del
-                                    Fuego). Como emisor, resulta en Factura C.
-                                </div>
-                            </li>
-                            <li>
-                                <div class="help-name">13 — Monotributista Social</div>
-                                <div class="help-desc">
-                                    Variante del monotributo para emprendimientos
-                                    sociales. Como emisor, resulta en Factura C.
-                                </div>
-                            </li>
-                            <li>
-                                <div class="help-name">15 — IVA No Alcanzado</div>
-                                <div class="help-desc">
-                                    La actividad no está alcanzada por el impuesto al
-                                    IVA. Como emisor, resulta en Factura C.
-                                </div>
-                            </li>
-                            <li>
-                                <div class="help-name">16 — Monotributo Trabajador Independiente Promovido</div>
-                                <div class="help-desc">
-                                    Variante del monotributo para trabajadores
-                                    independientes promovidos. Como emisor, resulta en
-                                    Factura C.
+                                    Es el código que identifica al receptor extranjero
+                                    en la clasificación usada por el sistema. Cuando se
+                                    selecciona para el cliente, corresponde una Factura E
+                                    si la operación cumple los requisitos de exportación.
                                 </div>
                             </li>
                         </ul>
                     </div>
 
-                    <div>
-                        <h4 class="font-semibold text-gray-900 text-[20px] mb-2">
-                            Punto de venta
+                    <div class="mb-8">
+                        <h4 class="font-semibold text-gray-900 text-[22px] mb-2">
+                            Punto de venta nacional
                         </h4>
 
                         <p class="text-gray-700 text-[16px]">
-                            Es el número que identifica, dentro del CUIT del emisor,
-                            el canal por el que se factura (por ejemplo, "sucursal web").
-                            Puede ser cualquier entero de 1 a 99999 (lo define la
-                            empresa al darlo de alta en ARCA), por eso no hay una lista
-                            fija de valores para explicar. Cada punto de venta tiene su
-                            propia numeración correlativa de comprobantes: al pedir un
-                            CAE, el sistema informa este número para que ARCA sepa qué
-                            numeración corresponde.
+                            Es el punto de venta habilitado para los comprobantes
+                            nacionales de WSFEv1. Se utiliza para solicitar el CAE y
+                            mantener la numeración correlativa correspondiente.
                         </p>
+                    </div>
 
-                        <p class="text-gray-700 text-[16px] mt-3">
-                            En producción el punto de venta tiene que estar dado de alta
-                            en ARCA (Administración de puntos de venta y domicilios) con
-                            el sistema "RECE para aplicativo y webservices" si el emisor
-                            es Responsable Inscripto, o "Factura electrónica –
-                            Monotributo – Webservices" si es Monotributista. Si ya se
-                            usa el 1 para facturas manuales o "Comprobantes en línea",
-                            hay que crear uno nuevo. En homologación (pruebas) no hace
-                            falta darlo de alta: alcanza con usar el 1.
+                    <div class="mb-8">
+                        <h4 class="font-semibold text-gray-900 text-[22px] mb-2">
+                            Punto de venta de exportación
+                        </h4>
+
+                        <p class="text-gray-700 text-[16px]">
+                            WSFEXv1 utiliza el punto de venta habilitado para los
+                            comprobantes de exportación. No debe asumirse que el punto
+                            de venta nacional sirve también para exportaciones. Si no
+                            se configura, el sistema detendrá el intento de emisión de
+                            la Factura E y mostrará el motivo en el estado de la factura.
                         </p>
                     </div>
 
                 </div>
-
             </div>
-
         </div>
     </div>
-
 </x-app-layout>

@@ -10,6 +10,15 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function () {
+            /*
+             * Rutas solo locales (no se suben al repo).
+             * Si el archivo no existe, no pasa nada.
+             */
+            if (file_exists(__DIR__.'/../routes/reset.php')) {
+                require __DIR__.'/../routes/reset.php';
+            }
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
 

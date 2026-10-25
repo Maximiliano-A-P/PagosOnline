@@ -174,6 +174,12 @@ Route::middleware(['auth', 'admin'])
             [ClientServiceController::class, 'create']
         )->name('client-services.create');
 
+        // Buscador de servicios (autocompletado) del formulario de asignación.
+        Route::get(
+            '/client-services/{client}/services',
+            [ClientServiceController::class, 'searchServices']
+        )->name('client-services.search-services');
+
         Route::post(
             '/client-services/{client}',
             [ClientServiceController::class, 'store']

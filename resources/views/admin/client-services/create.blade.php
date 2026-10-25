@@ -42,6 +42,55 @@
         .btn:hover {
             background-color: #374151; /* gray-700 */
         }
+
+        /* ---- Desplegable de sugerencias del buscador ---- */
+        .ac-wrap {
+            position: relative;
+        }
+
+        .ac-list {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 100%;
+            z-index: 30;
+            margin: 4px 0 0;
+            padding: 0;
+            list-style: none;
+            background-color: #ffffff;
+            border: 1px solid #9ca3af;
+            border-radius: 6px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            max-height: 340px;
+            overflow-y: auto;
+        }
+
+        .ac-list[hidden] {
+            display: none;
+        }
+
+        .ac-item {
+            padding: 10px 14px;
+            font-size: 21px;
+            color: #111827;
+            cursor: pointer;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .ac-item:last-child {
+            border-bottom: 0;
+        }
+
+        .ac-item small {
+            display: block;
+            font-size: 18px;
+            color: #4b5563;
+        }
+
+        .ac-item.is-active,
+        .ac-item:hover {
+            background-color: #f3f4f6;
+        }
     </style>
 
 
@@ -232,44 +281,44 @@
                                 Servicio
                             </label>
 
-                            <select
+                            <input
+                                type="hidden"
                                 id="service_id"
                                 name="service_id"
-                                required
-                                class="mt-2 block w-full rounded-md
-                                       border-gray-400
-                                       bg-white
-                                       text-gray-900
-                                       text-[21px]
-                                       shadow-sm
-                                       focus:border-indigo-600
-                                       focus:ring-indigo-600"
+                                value="{{ old('service_id') }}"
                             >
 
-                                <option value="">
-                                    Seleccioná un servicio
-                                </option>
+                            <div class="ac-wrap">
 
-                                @foreach ($services as $service)
+                                <input
+                                    type="text"
+                                    id="service_name"
+                                    name="service_name"
+                                    value="{{ old('service_name') }}"
+                                    placeholder="Nombre del servicio"
+                                    autocomplete="off"
+                                    class="mt-2 block w-full rounded-md
+                                           border-gray-400
+                                           bg-white
+                                           text-gray-900
+                                           text-[21px]
+                                           shadow-sm
+                                           focus:border-indigo-600
+                                           focus:ring-indigo-600"
+                                    style="height: 42px;"
+                                >
 
-                                    <option
-                                        value="{{ $service->id }}"
-                                        @selected(
-                                            old('service_id') == $service->id
-                                        )
-                                    >
-                                        {{ $service->service }}
-                                        — ${{ number_format(
-                                            $service->price,
-                                            2,
-                                            ',',
-                                            '.'
-                                        ) }}
-                                    </option>
+                                <ul
+                                    id="serviceList"
+                                    class="ac-list"
+                                    hidden
+                                ></ul>
 
-                                @endforeach
+                            </div>
 
-                            </select>
+                            <p class="mt-2 text-gray-700 text-[21px]">
+                                Escribí el nombre y elegí el servicio de la lista.
+                            </p>
 
                             @error('service_id')
 
@@ -311,5 +360,41 @@
         </div>
 
     </div>
+
+    <script src="{{ asset('js/search-dropdown.js') }}"></script>
+    <script>
+        const money = new Intl.NumberFormat('es-AR', {
+            style: 'currency',
+            currency: 'ARS',
+        });
+
+        searchDropdown({
+            inputId: 'service_name',
+            listId: 'serviceList',
+            sources: [{
+                url: @json(route('admin.client-services.search-services', $client)),
+                value: function (s) {
+                    return s.name;
+                },
+                render: function (s, li) {
+                    li.textContent = s.name;
+
+                    const small = document.createElement('small');
+                    small.textContent = money.format(s.price) + ' · cada ' + s.period + ' mes(es)';
+                    li.appendChild(small);
+                },
+            }],
+
+            // Al elegir: se guarda el id y NO se envía el formulario.
+            onPick: function (s) {
+                document.getElementById('service_id').value = s.id;
+            },
+
+            // Si se vuelve a escribir, se descarta la selección anterior.
+            onType: function () {
+                document.getElementById('service_id').value = '';
+            },
+        });
+    </script>
 
 </x-app-layout>

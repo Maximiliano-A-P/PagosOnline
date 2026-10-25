@@ -69,6 +69,23 @@
             display: none;
         }
 
+        /*
+         * Espacio de fondo (fuera de la tarjeta blanca) para que el
+         * desplegable no estire la página al abrirse. Siempre está,
+         * haya o no búsqueda activa.
+         *
+         * Cuenta desde el borde de abajo del input:
+         *   350px + 4px  = lista (.ac-list) + su margen superior
+         *   15px         = espacio de sobra
+         *   -150px       = lo que ya hay debajo del input dentro de la
+         *                  tarjeta (texto de ayuda + botones + márgenes)
+         *   -48px        = el pb-12 que ya tiene el contenedor de la vista
+         * Total = 171px. Si el espacio no coincide, tocar solo este valor.
+         */
+        .ac-space {
+            height: 171px;
+        }
+
         .ac-item {
             box-sizing: border-box;
             padding: 10px 14px;
@@ -359,6 +376,9 @@
                 </div>
 
             </div>
+
+            {{-- Espacio de fondo para el desplegable del buscador --}}
+            <div class="ac-space" aria-hidden="true"></div>
 
         </div>
 

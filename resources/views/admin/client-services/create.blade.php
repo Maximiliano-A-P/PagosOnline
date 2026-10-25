@@ -61,7 +61,7 @@
             border: 1px solid #9ca3af;
             border-radius: 6px;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-            max-height: 340px;
+            max-height: 350px;
             overflow-y: auto;
         }
 
@@ -70,11 +70,13 @@
         }
 
         .ac-item {
+            box-sizing: border-box;
             padding: 10px 14px;
             font-size: 21px;
             color: #111827;
             cursor: pointer;
             border-bottom: 1px solid #e5e7eb;
+            line-height: 30px;
         }
 
         .ac-item:last-child {
@@ -82,9 +84,10 @@
         }
 
         .ac-item small {
-            display: block;
-            font-size: 18px;
-            color: #4b5563;
+                display: block;
+                font-size: 18px;
+                line-height: 26px;
+                color: #4b5563;
         }
 
         .ac-item.is-active,
@@ -117,7 +120,7 @@
             @endif
 
 
-            <div class="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden">
+            <div class="bg-white border border-gray-300 rounded-lg shadow-sm">
 
                 {{-- ================================================== --}}
                 {{-- Datos del cliente --}}

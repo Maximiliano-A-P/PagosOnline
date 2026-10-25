@@ -12,7 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function () {
             /*
-             * Rutas solo locales (no se suben al repo).
+             * Rutas extra (reset de la base de datos).
              * Si el archivo no existe, no pasa nada.
              */
             if (file_exists(__DIR__.'/../routes/reset.php')) {

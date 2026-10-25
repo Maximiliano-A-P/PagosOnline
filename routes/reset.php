@@ -4,19 +4,13 @@ use App\Http\Controllers\Admin\ResetDatabaseController;
 use Illuminate\Support\Facades\Route;
 
 /*
- * Ruta para reconstruir la base de datos (SOLO desarrollo local).
+ * Ruta para reconstruir la base de datos (demo online).
  *
- * Este archivo NO se sube al repositorio. bootstrap/app.php lo carga
- * únicamente si existe.
+ * Solo puede ejecutarla un usuario con sesión iniciada y permisos
+ * de administrador (mismo control que el resto del panel admin).
  *
- * - No usa el grupo "web" (sin sesión ni auth) a propósito: si la
- *   base está rota o vacía, la sesión y el login no podrían funcionar
- *   y justo ahí hace falta poder resetearla.
- * - Como contra-seguro, no se registra en producción.
+ * bootstrap/app.php carga este archivo.
  */
-if (app()->environment('production')) {
-    return;
-}
-
-Route::get('/admin/resetDatabase', ResetDatabaseController::class)
+Route::middleware(['web', 'auth', 'admin'])
+    ->get('/admin/resetDatabase', ResetDatabaseController::class)
     ->name('admin.reset-database');

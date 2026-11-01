@@ -4,37 +4,43 @@ MAPA DE ESTRUCTURA DE BASE DE DATOS
 (La estructura de autenticación — users y tablas de códigos — está
  en "logic-parte 1.txt".)
 
-┌──────────────────────┐          ┌──────────────────────┐
-│       clients        │          │       services       │
-├──────────────────────┤          ├──────────────────────┤
-│ id                   │          │ id                   │
-│ created_at           │          │ created_at           │
-│ updated_at           │          │ updated_at           │
-│ name                 │          │ service              │
-│ document             │          │ price                │
-│ cuit                 │          │ tax_percentage       │
-│ arca_iva_condition   │          │ due_day              │
-└───────┬──────┬───────┘          │ overdue_price        │
-        │      │                  │ period               │
-        │      │                  └───────────┬──────────┘
-        │      │                              │
-        │      │   N ──────────────────── N   │
-        │      │      ┌──────────────────┐    │
-        │      └─────►│  client_services │◄───┘
-        │             ├──────────────────┤
-        │             │ client_id        │  (se borra en cascada
-        │             │ service_id       │   si se elimina cliente
-        │             └──────────────────┘   o servicio)
-        │
-        │  N ─────────── N
-        │     ┌──────────────────┐        ┌──────────────┐
-        └────►│   client_user    │◄───────│    users     │
-              ├──────────────────┤        └──────────────┘
-              │ client_id        │
-              │ user_id          │  (único por par; cascada)
-              └──────────────────┘
-              → qué documentos vinculó cada usuario a su cuenta
+┌──────────────────────────┐          ┌──────────────────────┐
+│         clients          │          │       services       │
+├──────────────────────────┤          ├──────────────────────┤
+│ id, created_at,          │          │ id, created_at,      │
+│ updated_at               │          │ updated_at           │
+│ name                     │          │ service              │
+│ document                 │          │ price                │
+│ cuit                     │          │ tax_percentage       │
+│ arca_iva_condition       │          │ due_day              │
+│                          │          │ overdue_price        │
+│ ---- cliente del ----    │          │ period               │
+│ ---- exterior (E) ----   │          └───────────┬──────────┘
+│ arca_destination_country │                      │
+│ arca_cuit_pais_cliente   │                      │
+│ arca_id_impositivo       │      N ───────────── N
+│                          │         ┌──────────────────┐
+│ ---- contacto ----       │ ◄───────│  client_services │───►
+│ phone                    │         ├──────────────────┤
+│ email                    │         │ client_id        │  (se borra en
+│ address                  │         │ service_id       │   cascada si se
+│                          │         └──────────────────┘   elimina cliente
+│ ---- bloqueo legal ----  │                                 o servicio)
+│ blocked (default false)  │
+│ blocked_at               │
+└──────────────────────────┘
+   Los clientes bloqueados quedan fuera de todas las consultas
+   (global scope). Se borran a los 5 años (clients:purge-blocked).
 
+┌──────────────────────────┐        ┌──────────────┐
+│       client_user        │◄───────│    users     │
+├──────────────────────────┤        └──────────────┘
+│ user_id  → users         │  (cascada; único por par user_id +
+│ document (número)        │   document)
+└──────────────────────────┘
+   → qué NÚMEROS DE DOCUMENTO vinculó cada usuario a su cuenta.
+     No hay client_id: la lista sobrevive al bloqueo o borrado del
+     cliente.
 
 Vínculo de facturas con clientes:  invoices.client_document ↔ clients.document
 (NO hay clave foránea: la factura conserva sus propios datos del
@@ -52,6 +58,12 @@ cliente aunque el cliente cambie o se elimine).
 │ client_cuit                          │
 │ client_document_type                 │
 │ client_iva_condition                 │
+│                                      │
+│ ---- COMPRADOR EXTRANJERO ----       │
+│ client_address                       │
+│ client_arca_destination_country      │
+│ client_arca_cuit_pais_cliente        │
+│ client_arca_id_impositivo            │
 │                                      │
 │ ---- SERVICIO (histórico) ----       │
 │ service_id       → services (NULL    │
@@ -87,10 +99,15 @@ cliente aunque el cliente cambie o se elimine).
 │ arca_invoice_type                    │
 │ arca_point_of_sale                   │
 │ arca_invoice_number                  │
-│ arca_qr                              │
+│ arca_qr  (sin uso: el QR se arma     │
+│           al generar el PDF)         │
 │ arca_retry_attempts                  │
 │ arca_last_attempt_at                 │
 │ arca_retry_at                        │
+│                                      │
+│ ---- CORREO ----                     │
+│ receipt_sent_at  (cuándo salió el    │
+│                   PDF por correo)    │
 │                                      │
 │ índice: (payment_status,             │
 │          arca_retry_at)              │
@@ -101,10 +118,19 @@ cliente aunque el cliente cambie o se elimine).
 ├──────────────────────────────────┤
 │ id, created_at, updated_at       │
 │ condicion_iva  (del emisor)      │
+│ tipo_factura_a (1 o 51)          │
 │ punto_venta                      │
+│ punto_venta_exportacion          │
+│                                  │
+│ ---- credenciales WSFE ----      │
 │ token                            │
 │ sign                             │
 │ token_expires_at                 │
+│                                  │
+│ ---- credenciales WSFEX ----     │
+│ token_wsfex                      │
+│ sign_wsfex                       │
+│ token_wsfex_expires_at           │
 └──────────────────────────────────┘
    (tabla de configuración global, sin relaciones.
     CUIT, certificado y clave privada NO están acá:
@@ -146,7 +172,7 @@ AdminMiddleware
       crear             crear             asignar servicio
       ver (saldos)      editar            quitar servicio
       editar            eliminar
-      eliminar
+      bloquear
           │                 │
           ↓                 ↓
     Las facturas       Los servicios
@@ -164,13 +190,15 @@ AdminMiddleware
  CLIENTES      SERVICIOS  CLIENTES ×  FACTURAS     CONFIG ARCA
      │              │     SERVICIOS       │             │
      └──────────────┴─────────┬───────────┘       condición IVA
-                              ↓                   punto de venta
-                          FACTURAS
+                              ↓                   tipo de Factura A
+                          FACTURAS                punto de venta
+                                                  punto de venta (export.)
                               │
         ┌───────────┬─────────┼──────────┬──────────┐
         ↓           ↓         ↓          ↓          ↓
      Crear      Generar   Registrar   Reintentar  Eliminar
-   histórica   periódicas    pago       ARCA     (con reglas)
+   histórica   (lote o     pago       ARCA     (con reglas)
+               manual)
         │           │         │          │
         └───────────┴────┬────┴──────────┘
                          ↓
@@ -181,6 +209,7 @@ AdminMiddleware
 
 
 /// CLIENTES ///
+(Detalle en: admin-clientes-y-saldos.txt)
 
 Admin accede a Clientes
         ↓
@@ -188,15 +217,16 @@ Admin accede a Clientes
    ↓          ↓
  NO          SÍ
  ↓            ↓
-Todos      Buscar por:
-           - nombre
-           - documento
+Todos      Buscar por nombre o documento
+           (palabras en cualquier orden, sin tildes ni mayúsculas,
+            con desplegable de sugerencias)
         ↓
-      Listado (15 por página, más recientes primero)
+      Listado (15 por página): primero el que más debe,
+      luego por nombre; los bloqueados no aparecen
         ↓
-   ┌────┼─────┬──────┐
-   ↓    ↓     ↓      ↓
- Crear Ver  Editar Eliminar
+   ┌────┼─────┬───────┐
+   ↓    ↓     ↓       ↓
+ Crear Ver  Editar  Bloquear
    ↓
 Validar datos
    ↓
@@ -204,17 +234,22 @@ name
 document
 cuit (11 dígitos, opcional)
 arca_iva_condition (opcional)
+phone, email, address (opcionales)
+si es cliente del exterior (condición 9):
+   país de destino, domicilio e identificador fiscal extranjero
    ↓
 Crear / actualizar cliente
 
-Eliminar cliente
+Bloquear cliente (no se elimina)
         ↓
-Eliminar relaciones cliente ↔ servicios
+blocked = true, blocked_at = ahora
         ↓
-Eliminar cliente
+Desaparece de la aplicación; los datos se conservan 5 años
         ↓
-Facturas existentes permanecen intactas
-porque contienen sus propios datos históricos
+A los 5 años, clients:purge-blocked borra solo el cliente y sus
+relaciones con servicios
+        ↓
+Facturas y documentos de los usuarios permanecen intactos
 
 Ver cliente:
    Información + Saldos a fecha + Facturas del cliente
@@ -275,10 +310,13 @@ CONSULTA:   búsqueda (cliente / documento / servicio),
 
 CREAR:      factura histórica (service_id opcional, ARCA en null)
 
-GENERAR:    periódicas según period de cada servicio
-            (solo cuando el admin lo ejecuta)
+GENERAR:    por lote: periódicas según period de cada servicio,
+            con tarjeta de confirmación (solo cuando el admin lo
+            ejecuta)
+            manual: un cliente y un servicio elegidos
 
 PAGO:       manual (admin) u online (Mercado Pago)
+            el importe lo define la fecha de pago (normal o vencido)
 
 ELIMINAR:   solo facturas sin pago y sin ARCA
             (no se pueden borrar pagadas ni autorizadas)
@@ -304,12 +342,17 @@ payment_status = paid              │
              Datos del pago
                    ↓
               paid_at
-              amount_paid
+              amount_paid  (online: lo cobrado por MP |
+                            manual: precio normal o vencido
+                            según la fecha de pago)
               payment_method
               paid_by  (online: null | manual: id del admin)
                    ↓
                  ARCA
-        (online: automático | manual: botón "Reintentar ARCA")
+        (automático en ambos casos; si falla, botón
+         "Reintentar ARCA")
+                   ↓
+          PDF con CAE y QR por correo
 
 
 /// ARCA — CONFIGURACIÓN ///
@@ -327,8 +370,10 @@ Editar          Crear configuración
    └────────┬──────────┘
             ↓
 Validar:
-- condicion_iva  (código numérico)
-- punto_venta    (número)
+- condicion_iva            (código numérico)
+- tipo_factura_a           (1 o 51)
+- punto_venta              (número, 1 a 99998)
+- punto_venta_exportacion  (opcional, solo para Factura E)
             ↓
 Guardar configuración ARCA
 
@@ -346,13 +391,14 @@ Invoice
           ├── arca_status
           ├── arca_cae
           ├── arca_cae_expires_at
-          ├── arca_invoice_type
+          ├── arca_invoice_type      (1/51 A, 6 B, 11 C, 19 E)
           ├── arca_point_of_sale
           ├── arca_invoice_number
-          ├── arca_qr
+          ├── arca_qr                (sin uso)
           ├── arca_retry_attempts
           ├── arca_last_attempt_at
-          └── arca_retry_at
+          ├── arca_retry_at
+          └── receipt_sent_at        (correo con el PDF enviado)
 
 
 /// PAGO ONLINE ///
@@ -385,8 +431,8 @@ error          ↓
                    ↓
           ┌────────┴────────┐
           ↓                 ↓
-       IMPRIMIR           PAGAR
-       (PDF: pendiente)     ↓
+     DESCARGAR PDF         PAGAR
+                            ↓
                        Mercado Pago
                             ↓
                        Crear Preference

@@ -1,21 +1,22 @@
-Laravel se encarga de WSAA
+Laravel se encarga de WSAA y de toda la lógica de negocio
 
-La configuración y autenticación ante WSAA quedan exclusivamente en Laravel:
+La configuración y autenticación ante WSAA quedan exclusivamente en Laravel.
+La API ARCA (Node) solo recibe un pedido ya armado y lo transmite a ARCA.
 
 LARAVEL
 │
 ├── Configuración ARCA
-│   ├── CUIT
-│   ├── certificado
-│   └── clave privada
+│   ├── .env:   CUIT, certificado, clave privada, ambiente
+│   └── panel:  condición IVA del emisor, tipo de Factura A,
+│               punto de venta, punto de venta de exportación
 │
-├── WSAA
+├── WSAA (uno por servicio: wsfe y wsfex)
 │   ├── generar solicitud
 │   ├── firmarla
 │   ├── autenticarse
 │   ├── obtener Token
 │   ├── obtener Sign
-│   └── renovar/cachear Token + Sign
+│   └── renovar/cachear Token + Sign (por servicio)
 │
 └── Cuando necesita emitir
             │
@@ -24,7 +25,7 @@ LARAVEL
             ▼
        API ARCA
             │
-            └── WSFE
+            └── WSFE / WSFEX
                  ├── consultar último comprobante
                  ├── preparar comprobante
                  ├── solicitar CAE
@@ -32,9 +33,12 @@ LARAVEL
                         │
                         ▼
                       ARCA
+
+
 La API no toca WSAA
 
-La API recibe de Laravel las credenciales temporales necesarias para realizar la operación de WSFE:
+La API recibe de Laravel las credenciales temporales necesarias para
+realizar la operación:
 
 Laravel
    │
@@ -44,7 +48,7 @@ Laravel
 ┌─────────────────────┐
 │       API ARCA      │
 │                     │
-│       WSFE          │
+│   WSFE  /  WSFEX    │
 │                     │
 │ consultar último    │
 │ comprobante         │
@@ -68,7 +72,18 @@ Laravel
            │
            ▼
          Laravel
-El plan queda dividido así
+
+
+Tipos de comprobante que se emiten
+
+   WSFEv1   Factura A (código 1 o 51), Factura B (6), Factura C (11)
+   WSFEXv1  Factura E de exportación (19)
+
+Qué comprobante corresponde en cada caso: ARCA-Laravel-detalle.txt
+
+
+El plan quedó dividido así
+
 ARCA
 │
 ├── 1. Cliente HTTP/SOAP para ARCA
@@ -80,21 +95,21 @@ ARCA
 │      ├── autenticarse            → LARAVEL
 │      └── obtener Token + Sign     → LARAVEL
 │
-├── 3. Cache/renovación del Token
+├── 3. Cache/renovación del Token (wsfe y wsfex por separado)
 │       → LARAVEL
 │
-├── 4. WSFE
+├── 4. WSFE / WSFEX
 │      ├── consultar último comprobante → API ARCA
 │      ├── preparar comprobante        → API ARCA
 │      └── solicitar CAE               → API ARCA
 │
-├── 5. Definir tipos de comprobante
+├── 5. Definir tipos de comprobante (A / B / C / E)
 │       → LARAVEL
 │
-├── 6. Definir datos fiscales del cliente
+├── 6. Definir datos fiscales del cliente (nacional o del exterior)
 │       → LARAVEL
 │
-├── 7. Configurar punto de venta
+├── 7. Configurar puntos de venta (nacional y exportación)
 │       → LARAVEL
 │
 ├── 8. Guardar respuesta ARCA
@@ -108,10 +123,10 @@ ARCA
 │       → LARAVEL
 │
 ├── 11. Generación del QR
-│       → LARAVEL
+│       → LARAVEL                              
 │
-├── 12. Generación del comprobante
-│       → LARAVEL
+├── 12. Generación del comprobante (PDF)
+│       → LARAVEL                              
 │
 └── 13. Envío por email
-        → LARAVEL
+        → LARAVEL                              

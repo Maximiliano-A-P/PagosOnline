@@ -4,15 +4,21 @@ PANEL ADMIN — FACTURAS
 Controlador: app/Http/Controllers/Admin/InvoiceController.php
 Rutas (todas bajo /admin, middleware auth + admin):
 
-   GET    /invoices                       index     listado
-   GET    /invoices/create                create    factura histórica
-   POST   /invoices                       store     guardar histórica
-   GET    /invoices/{invoice}             show      detalle
-   DELETE /invoices/{invoice}             destroy   eliminar (con reglas)
-   POST   /invoices/generate              generate  generación periódica
-   GET    /invoices/{invoice}/payment     payment   form. pago manual
-   POST   /invoices/{invoice}/pay         registerPayment
-   POST   /invoices/{invoice}/retry-arca  retryArca
+   GET    /invoices                          index            listado
+   GET    /invoices/create                   create           factura histórica
+   POST   /invoices                          store            guardar histórica
+   GET    /invoices/{invoice}                show             detalle
+   DELETE /invoices/{invoice}                destroy          eliminar (con reglas)
+   GET    /invoices/{invoice}/pdf            pdf              descargar PDF
+   GET    /invoices/generate/preview         generatePreview  vista previa del lote (JSON)
+   POST   /invoices/generate                 generate         generación por lote
+   GET    /invoices/generate-manual          generateManual   factura manual (pantalla)
+   POST   /invoices/generate-manual          storeManual      crear la factura manual
+   GET    /invoices/generate-manual/clients  searchClients    buscador de clientes (JSON)
+   GET    /invoices/generate-manual/services searchServices   buscador de servicios (JSON)
+   GET    /invoices/{invoice}/payment        payment          form. pago manual
+   POST   /invoices/{invoice}/pay            registerPayment
+   POST   /invoices/{invoice}/retry-arca     retryArca
 
 
 /// LISTADO Y FILTROS (index) ///
@@ -20,23 +26,35 @@ Rutas (todas bajo /admin, middleware auth + admin):
 Admin accede a Facturas
         ↓
 ¿Busca texto?
-   ↓ SÍ → nombre del cliente (sin importar mayúsculas)
-          o documento
-          o nombre del servicio
+   ↓ SÍ → palabras en cualquier orden, sin importar mayúsculas ni
+          tildes (ver TextSearch en admin-clientes-y-saldos.txt),
+          sobre nombre del cliente, nombre del servicio y documento
         ↓
 ¿Filtra por estado?  → pending / paid
         ↓
 ¿Rango de fecha de EMISIÓN? → date_from / date_to
 (ambos opcionales, se combinan con lo anterior)
         ↓
-Orden: modificadas más recientemente primero
-       (updated_at desc, luego id desc)
+Orden:
+   1) primero las facturas PAGADAS que todavía no tienen CAE
+      (las que necesitan atención con ARCA)
+   2) después modificadas más recientemente primero
+      (updated_at desc, luego id desc)
         ↓
 Paginado de 15 (conserva los filtros al cambiar de página)
 
 El listado se muestra en tarjetas (no en tabla) con:
 Emisión, Vencimiento, Estado, Precio neto, Precio vencido neto,
 Impuestos %, Neto + Impuestos, Vencido + Impuestos.
+
+Resumen de deuda (global: NO depende de los filtros):
+   - cantidad de facturas pendientes
+   - cantidad de clientes distintos (por documento)
+   - importe total = suma de Invoice::montoACobrar() de cada pendiente
+     (precio normal o vencido de HOY, más impuestos)
+
+Accesos desde el listado: Generar facturas (por lote), Generar
+factura manual y Cargar factura histórica.
 
 
 /// DETALLE (show) ///
@@ -48,22 +66,40 @@ Información de la factura:
    Fecha de pago, Método de pago
 
 Datos ARCA:
-   Estado ARCA, CAE, Tipo de comprobante, Punto de venta,
+   Estado ARCA, CAE, Tipo de comprobante (con letra), Punto de venta,
    Número de comprobante, Vencimiento CAE
+   (en Factura E se muestran además los datos del comprador
+    extranjero; en 51/52/53, la leyenda de retención)
 
 Botones según el estado:
 
-   pendiente y sin pago                → Registrar pago
-   pagada, sin CAE y no aprobada       → Reintentar ARCA
-   sin pago, sin MP, sin CAE           → Eliminar
+   siempre                                → Descargar PDF
+   pendiente                              → Registrar pago
+   pagada, sin CAE y no aprobada          → Reintentar ARCA
+                                            (WSFEX si es exportación)
+   sin pago, sin MP, sin CAE y no aprobada→ Eliminar
+
+Mensajes: success / error y, si el pago se registró pero ARCA
+quedó pendiente, un aviso aparte (arca_warning).
 
 
-/// GENERACIÓN PERIÓDICA (generate) ///
+/// GENERACIÓN POR LOTE (preview + generate) ///
 
 Admin pulsa "Generar facturas"
 (conviene actualizar antes los precios de los servicios)
         ↓
-Para cada cliente y cada servicio asignado
+GET /invoices/generate/preview  (JSON, no crea nada)
+        ↓
+Tarjeta de confirmación (no un alert del navegador):
+   lista "servicio: cantidad" + total, con botones Aceptar / Rechazar
+        ↓
+Aceptar → POST /invoices/generate
+        ↓
+Candado de 120 s (Cache::lock "invoices-generate"):
+si ya hay una generación en curso (doble clic, otra pestaña o una
+factura manual) → "Ya hay una generación de facturas en curso"
+        ↓
+Para cada cliente NO bloqueado y cada servicio asignado
         ↓
 Busca la última factura de ese cliente (por documento)
 y de ESE service_id  (no por nombre: el nombre puede cambiar)
@@ -77,9 +113,13 @@ meses entre el mes de la última emisión y el mes actual
    ↓ NO → no genera
    ↓ SÍ → genera
 
+La vista previa y la generación real usan la MISMA función
+(facturasPorGenerar), así que lo que muestra la tarjeta es
+exactamente lo que se genera.
+
 period:  1 mensual | 3 trimestral | 6 semestral | 12 anual
 
-Datos de la factura generada:
+Datos de la factura generada (crearFactura):
 
    issued_at            hoy
    due_date             día due_day del mes actual
@@ -89,7 +129,8 @@ Datos de la factura generada:
    service_period_end   start + period meses - 1 día
    price, overdue_price, tax_percentage   copiados del servicio
    client_*             copiados del cliente (nombre, documento,
-                        CUIT, condición IVA, tipo doc = 96)
+                        CUIT, condición IVA, tipo doc = 96, domicilio
+                        y datos fiscales del comprador extranjero)
    service_name         copiado del servicio (dato histórico)
    payment_status       pending
    ARCA                 todo en null
@@ -98,21 +139,51 @@ Resultado: "Se generaron X factura(s) correctamente."
 No hay automatismo: solo se ejecuta cuando el admin lo pide.
 
 
+/// GENERAR FACTURA MANUAL (generate-manual) ///
+
+Pantalla de 2 tarjetas:
+   1. Cliente: se busca por nombre o documento y las coincidencias
+      aparecen en vivo (con CUIT, condición IVA, contacto)
+   2. Servicio: se busca por nombre (con precio, vencimiento, período)
+        ↓
+Debe elegirse un cliente y un servicio existentes
+        ↓
+POST /invoices/generate-manual
+   - cliente bloqueado → 404
+   - mismo candado que la generación por lote
+        ↓
+crearFactura(cliente, servicio, hoy)   (igual que el lote)
+        ↓
+Vuelve al detalle de la factura creada
+
+A diferencia del lote, no mira si ya corresponde facturar: crea la
+factura siempre.
+
+
 /// FACTURA HISTÓRICA (create / store) ///
 
 Sirve para cargar facturas anteriores al sistema.
 
 Admin completa:
-   emisión, cliente (nombre, documento, tipo doc, CUIT, IVA),
-   servicio (opcional) + nombre del servicio, precio, precio
-   vencido, % impuestos, vencimiento, estado, y si está pagada:
-   importe, fecha y método de pago
+   emisión
+   cliente: se escribe el nombre con autocompletado en vivo
+      - si existe, se completan documento, CUIT, condición IVA,
+        domicilio y datos del exterior
+      - si no existe, se cargan a mano
+   servicio: se escribe el nombre con autocompletado en vivo
+      - si existe, se completan precio, precio vencido y % de IVA
+      - si no existe, se cargan a mano (no hay select de servicio)
+   precio, precio vencido, % impuestos, vencimiento, estado
+   si está pagada: importe pagado (OBLIGATORIO), fecha y método
         ↓
 Validaciones destacadas:
    vencimiento >= emisión
    CUIT de 11 dígitos (opcional)
+   condición IVA obligatoria (1, 4, 5, 6, 7, 8, 9, 10, 13, 15, 16)
    % impuestos entre 0 y 100
    estado: pending o paid
+   condición IVA 9 (exterior): domicilio, país y un identificador
+   fiscal extranjero obligatorios
         ↓
 ¿tiene service_id?
    ↓ SÍ → guarda el id      ↓ NO → service_id = null
@@ -122,6 +193,8 @@ service_name siempre se guarda (dato histórico)
 ¿pagada y con fecha de pago? → paid_by = admin actual
         ↓
 Crea la factura. ARCA queda en null y NO se emite sola.
+(Si queda pagada y sin CAE, el detalle muestra "Reintentar ARCA":
+todavía no hay una marca que distinga las históricas.)
 
 
 /// PAGO MANUAL (payment / registerPayment) ///
@@ -131,21 +204,26 @@ Factura pendiente → "Registrar pago"
 ¿ya estaba pagada?
    ↓ SÍ → error "ya figura como pagada"
    ↓ NO
-Formulario:
-   - importe pagado  (número >= 0)
-   - fecha de pago
+Formulario (NO hay campo de importe):
+   - fecha de pago (>= emisión y no futura)
    - método de pago  (texto libre)
+        ↓
+El importe lo decide el sistema según la FECHA de pago:
+
+   fecha de pago <= due_date  → precio normal  + impuestos
+   fecha de pago >  due_date  → precio vencido + impuestos
         ↓
 Registra:
    payment_status = paid
-   amount_paid, paid_at, payment_method
+   amount_paid = Invoice::montoAl(fecha de pago)
+   paid_at, payment_method
    paid_by = ID del admin logueado
         ↓
-IMPORTANTE: el pago manual NO emite ante ARCA.
-Para emitir hay que usar "Reintentar ARCA" en el detalle.
-
-El importe no se compara con el precio: el admin puede cargar
-cualquier valor (ARCA se emite por el importe cargado).
+Emite ante ARCA automáticamente (ArcaApiService elige WSFE o
+WSFEX según el tipo de comprobante), dentro de un try/catch:
+   - aprobada → "Pago registrado y comprobante autorizado por ARCA"
+   - falla    → el pago queda guardado igual, se muestra un aviso y
+                el error queda en "Estado ARCA" para reintentar
 
 
 /// ELIMINAR (destroy) ///
@@ -171,7 +249,8 @@ Botón "Reintentar ARCA"
         ↓
 ¿factura pagada?            NO → error
         ↓ SÍ
-¿ya tiene CAE / aprobada?   SÍ → error
+¿ya tiene CAE / aprobada?   SÍ → no emite de nuevo; si faltaba el
+                                 correo, lo envía en segundo plano
         ↓ NO
 ¿existe arca_config?        NO → error
         ↓ SÍ
@@ -182,11 +261,20 @@ Vuelve al detalle (el resultado queda en "Estado ARCA")
 Detalle completo en: ARCA-Laravel-detalle.txt
 
 
+/// PDF ///
+
+Descargar PDF disponible en cualquier estado (pendiente, pagada o
+pagada con CAE y QR). Se genera al momento.
+Detalle en: ARCA-Laravel-detalle.txt, "PDF de la factura".
+
+
 /// CICLO DE VIDA DE UNA FACTURA ///
 
 Generada (pending) ──► Pago online (MP) ──┐
                   │                       ├─► paid ──► ARCA
                   └──► Pago manual (admin)┘            │
                                                        ├─ aprobado (CAE)
+                                                       │     │
+                                                       │     └─► PDF por correo
                                                        └─ error (reintentar)
 Histórica: se crea con el estado que se cargue, sin ARCA.

@@ -19,21 +19,34 @@ Supervisor (supervisord)
 
 /// DOCKERFILE ///
 
-Etapa 1: node:22
+Etapa 1: node:22-bookworm-slim
    npm ci → npm run build   (Vite + Tailwind)
    genera los assets del front
         ↓
-Etapa 2: php:8.4-fpm
-   extensiones: pdo_pgsql, bcmath, soap, intl, zip, gd (entre otras)
-   composer install
+Etapa 2: php:8.4.27-fpm-bookworm
+   (versión fijada con las correcciones de seguridad de PHP)
+   session.upload_progress.enabled=Off  (mitigación de seguridad)
+   paquetes del sistema: nginx, supervisor, git, unzip, libpq, libzip,
+      libicu, libxml2, libcurl, libpng, libjpeg, libfreetype, libssl
+   extensiones PHP: pdo_pgsql, mbstring, bcmath, exif, pcntl, soap,
+      intl, zip, gd (con freetype y jpeg), opcache
+   composer install --no-dev (sin scripts) + dump-autoload optimizado
    copia el código y los assets de la etapa 1
+   permisos de storage y bootstrap/cache (www-data, 775)
    copia la config de nginx, supervisord y start.sh
    EXPOSE 10000
    CMD start.sh
 
 La extensión soap (y openssl) son necesarias para el WSAA de ARCA.
+gd se usa para dibujar el QR y el PDF de las facturas.
 Ruta de control: /debug-extensions devuelve si soap y openssl están
 cargadas.
+
+Dependencias PHP relevantes (composer.json):
+   barryvdh/laravel-dompdf   PDF de las facturas
+   endroid/qr-code           QR de ARCA
+   mercadopago/dx-php        Mercado Pago
+   laravel/socialite         login con Google
 
 
 /// start.sh (cada arranque/deploy) ///
@@ -51,12 +64,20 @@ php artisan db:seed --force
    ├── AdminUserSeeder: crea/actualiza el admin (ADMIN_EMAIL,
    │                    ADMIN_PASSWORD) — idempotente
    └── DemoDataSeeder:  carga datos de demo solo si NO hay clientes
+                        (cuenta también los bloqueados)
    ↓
 optimize:clear
    ↓
 config:cache · route:cache · view:cache
    ↓
 supervisord (PHP-FPM + NGINX)
+
+Datos de demo (DemoDataSeeder, todo en español):
+   - 10 servicios (períodos mensual, trimestral, semestral y anual;
+     precio vencido = precio + 10 %)
+   - 200 clientes con DNI único, condición IVA, CUIT cuando
+     corresponde, teléfono, email y dirección (algunos sin contacto)
+   - 2 servicios aleatorios asignados a cada cliente
 
 
 /// VARIABLES DE ENTORNO (Render) ///
@@ -88,7 +109,7 @@ ARCA
 Google Login
    GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT
 
-Correo (códigos de verificación y desbloqueo)
+Correo (códigos de verificación, desbloqueo y facturas pagadas)
    MAIL_MAILER, MAIL_HOST, MAIL_PORT, MAIL_USERNAME,
    MAIL_PASSWORD, MAIL_ENCRYPTION, MAIL_FROM_ADDRESS, MAIL_FROM_NAME
 
@@ -98,6 +119,20 @@ Sesión y logs
                             en los logs de Render (Laravel escribe
                             en storage/logs/laravel.log, que no se ve)
 
+Todas figuran en .env.example.
+
+Proxy: bootstrap/app.php confía en el proxy de Render (trustProxies)
+para que Laravel genere URLs, cookies y redirects con https.
+
+
+/// ARRANQUE POR PRIMERA VEZ EN ARCA ///
+
+La tabla arca_config no se llena con seeders: el admin la completa en
+/admin/arca (condición IVA, tipo de Factura A, punto de venta y, si
+va a emitir Factura E, punto de venta de exportación).
+Sin esa configuración la emisión ARCA falla ("No existe configuración
+de ARCA").
+
 
 /// SISTEMA DE ARCHIVOS EFÍMERO ///
 
@@ -105,11 +140,7 @@ Render borra el disco en cada deploy. Por eso:
    - el certificado y la clave de ARCA van en variables de entorno
      (Base64), no en archivos
    - el token de WSAA se guarda en la base (arca_config), no en disco
+   - los PDF no se guardan: se generan cada vez que se piden o se
+     envían por correo
    - los logs van a stderr
 
-
-/// PROCESOS QUE FALTAN ///
-
-Hoy solo corren PHP-FPM y NGINX. No hay:
-   - scheduler / cron  → arca:retry-pending nunca se ejecuta solo
-   - queue worker      → no se usan colas hoy

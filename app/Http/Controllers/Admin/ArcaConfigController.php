@@ -8,22 +8,13 @@ use Illuminate\Http\Request;
 
 class ArcaConfigController extends Controller
 {
-    /**
-     * Muestra la configuración de ARCA.
-     */
     public function edit()
     {
         $config = ArcaConfig::first();
 
-        return view(
-            'admin.arca.edit',
-            compact('config')
-        );
+        return view('admin.arca.edit', compact('config'));
     }
 
-    /**
-     * Guarda o actualiza la configuración de ARCA.
-     */
     public function update(Request $request)
     {
         $validated = $request->validate([
@@ -33,10 +24,33 @@ class ArcaConfigController extends Controller
                 'min:1',
             ],
 
+            /*
+             * Tipo de Factura A autorizado para el emisor:
+             * 1  = Factura A.
+             * 51 = Factura A con leyenda de retención.
+             *
+             * El usuario final de la aplicación no elige este código.
+             * Lo configura el administrador según la autorización
+             * correspondiente al CUIT emisor.
+             */
+            'tipo_factura_a' => [
+                'required',
+                'integer',
+                'in:1,51',
+            ],
+
             'punto_venta' => [
                 'required',
                 'integer',
                 'min:1',
+                'max:99998',
+            ],
+
+            'punto_venta_exportacion' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:99998',
             ],
         ]);
 

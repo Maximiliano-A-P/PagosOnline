@@ -10,7 +10,6 @@
 
             <div class="header-actions flex items-center gap-4">
 
-                {{-- Volver al panel --}}
                 <a
                     href="{{ route('admin.dashboard') }}"
                     class="btn"
@@ -18,7 +17,6 @@
                     Volver al panel
                 </a>
 
-                {{-- Generar facturas periódicas por lote --}}
                 <button
                     type="button"
                     id="batch-open"
@@ -34,9 +32,7 @@
 
     </x-slot>
 
-
     <style>
-
         .btn {
             box-sizing: border-box;
             display: inline-flex;
@@ -44,7 +40,7 @@
             justify-content: center;
             height: 42px;
             padding: 6px 14px;
-            background-color: #111827; /* gray-900 */
+            background-color: #111827;
             border: 1px solid #111827;
             border-radius: 6px;
             font-weight: 600;
@@ -62,12 +58,12 @@
         }
 
         .btn:hover {
-            background-color: #374151; /* gray-700 */
+            background-color: #374151;
         }
 
         .btn:focus {
             outline: none;
-            box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #4b5563; /* ring-gray-600 + offset */
+            box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #4b5563;
         }
 
         .btn-secondary {
@@ -89,17 +85,10 @@
             background-color: #166534;
         }
 
-
         .btn:disabled {
             opacity: 0.55;
             cursor: not-allowed;
         }
-
-        /*
-         * ==========================================================
-         * TARJETA DE CONFIRMACIÓN DE LOTE
-         * ==========================================================
-         */
 
         .batch-overlay {
             position: fixed;
@@ -193,12 +182,6 @@
             padding: 16px 24px;
             border-top: 1px solid #e5e7eb;
         }
-
-        /*
-         * ==========================================================
-         * TARJETAS DE FACTURAS
-         * ==========================================================
-         */
 
         .invoice-list,
         .invoice-filters {
@@ -350,19 +333,13 @@
         }
 
         @media (max-width: 1100px) {
-
-            .invoice-info {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-            }
-
+            .invoice-info,
             .invoice-amounts {
                 grid-template-columns: repeat(3, minmax(0, 1fr));
             }
-
         }
 
         @media (max-width: 768px) {
-
             .invoice-list {
                 width: 100%;
             }
@@ -376,10 +353,7 @@
                 gap: 20px;
             }
 
-            .invoice-info {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
+            .invoice-info,
             .invoice-amounts {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
@@ -393,11 +367,9 @@
                 flex-wrap: wrap;
                 min-width: auto;
             }
-
         }
 
         @media (max-width: 500px) {
-
             .invoice-info,
             .invoice-amounts {
                 grid-template-columns: 1fr;
@@ -406,11 +378,8 @@
             .invoice-actions {
                 flex-direction: column;
             }
-
         }
 
-
-        /* ---- Desplegable de sugerencias del buscador ---- */
         .ac-wrap {
             position: relative;
         }
@@ -460,77 +429,43 @@
         }
     </style>
 
-
     <div class="py-12">
-
         <div class="mx-auto" style="width: 90vw;">
 
-
-            {{-- ================================================== --}}
-            {{-- Mensaje de éxito --}}
-            {{-- ================================================== --}}
-
             @if (session('success'))
-
                 <div
                     class="mb-8 rounded-lg bg-green-700 border border-green-800
                            text-white px-6 py-4 shadow-sm text-[21px]"
                 >
                     {{ session('success') }}
                 </div>
-
             @endif
 
-
-            {{-- ================================================== --}}
-            {{-- Mensaje de error --}}
-            {{-- ================================================== --}}
-
             @if (session('error'))
-
                 <div
                     class="mb-8 rounded-lg bg-red-700 border border-red-800
                            text-white px-6 py-4 shadow-sm text-[21px]"
                 >
                     {{ session('error') }}
                 </div>
-
             @endif
 
-
-            {{-- ================================================== --}}
-            {{-- Encabezado --}}
-            {{-- ================================================== --}}
-
             <div class="mb-8">
-
                 <h3 class="font-semibold text-white text-[32px]">
                     Facturas registradas
                 </h3>
-
             </div>
 
-
-            {{-- ================================================== --}}
-            {{-- Búsqueda y filtros --}}
-            {{-- ================================================== --}}
-
             <div
-                class="invoice-filters bg-white border border-gray-300 rounded-lg
-                    shadow-sm"
+                class="invoice-filters bg-white border border-gray-300 rounded-lg shadow-sm"
             >
-
                 <div class="p-6">
-
                     <form
                         method="GET"
                         action="{{ route('admin.invoices.index') }}"
                         class="grid grid-cols-1 md:grid-cols-4 gap-6"
                     >
-
-                        {{-- Búsqueda --}}
                         <div>
-
                             <label
                                 for="search"
                                 class="block font-semibold text-gray-900 text-[21px]"
@@ -539,7 +474,6 @@
                             </label>
 
                             <div class="ac-wrap">
-
                                 <input
                                     id="search"
                                     name="search"
@@ -547,26 +481,14 @@
                                     value="{{ request('search') }}"
                                     placeholder="Cliente, documento o servicio"
                                     autocomplete="off"
-                                    class="mt-2 block w-full rounded-md
-                                           border-gray-400
-                                           bg-white
-                                           text-gray-900
-                                           text-[21px]
-                                           shadow-sm
-                                           focus:border-indigo-600
-                                           focus:ring-indigo-600"
+                                    class="mt-2 block w-full rounded-md border-gray-400 bg-white text-gray-900 text-[21px] shadow-sm focus:border-indigo-600 focus:ring-indigo-600"
                                 >
 
                                 <ul id="searchList" class="ac-list" hidden></ul>
-
                             </div>
-
                         </div>
 
-
-                        {{-- Estado --}}
                         <div>
-
                             <label
                                 for="payment_status"
                                 class="block font-semibold text-gray-900 text-[21px]"
@@ -577,19 +499,9 @@
                             <select
                                 id="payment_status"
                                 name="payment_status"
-                                class="mt-2 block w-full rounded-md
-                                       border-gray-400
-                                       bg-white
-                                       text-gray-900
-                                       text-[21px]
-                                       shadow-sm
-                                       focus:border-indigo-600
-                                       focus:ring-indigo-600"
+                                class="mt-2 block w-full rounded-md border-gray-400 bg-white text-gray-900 text-[21px] shadow-sm focus:border-indigo-600 focus:ring-indigo-600"
                             >
-
-                                <option value="">
-                                    Todos
-                                </option>
+                                <option value="">Todos</option>
 
                                 <option
                                     value="pending"
@@ -604,41 +516,22 @@
                                 >
                                     Pagadas
                                 </option>
-
                             </select>
-
                         </div>
 
-
-                        {{-- Buscar --}}
                         <div class="flex items-end">
-
-                            <button
-                                type="submit"
-                                class="btn"
-                            >
+                            <button type="submit" class="btn">
                                 Buscar
                             </button>
-
                         </div>
 
-
-                        {{-- Limpiar --}}
                         <div class="flex items-end">
-
-                            <a
-                                href="{{ route('admin.invoices.index') }}"
-                                class="btn"
-                            >
+                            <a href="{{ route('admin.invoices.index') }}" class="btn">
                                 Limpiar
                             </a>
-
                         </div>
 
-
-                        {{-- Fecha de emisión desde --}}
                         <div>
-
                             <label
                                 for="date_from"
                                 class="block font-semibold text-gray-900 text-[21px]"
@@ -651,22 +544,11 @@
                                 name="date_from"
                                 type="date"
                                 value="{{ request('date_from') }}"
-                                class="mt-2 block w-full rounded-md
-                                       border-gray-400
-                                       bg-white
-                                       text-gray-900
-                                       text-[21px]
-                                       shadow-sm
-                                       focus:border-indigo-600
-                                       focus:ring-indigo-600"
+                                class="mt-2 block w-full rounded-md border-gray-400 bg-white text-gray-900 text-[21px] shadow-sm focus:border-indigo-600 focus:ring-indigo-600"
                             >
-
                         </div>
 
-
-                        {{-- Fecha de emisión hasta --}}
                         <div>
-
                             <label
                                 for="date_to"
                                 class="block font-semibold text-gray-900 text-[21px]"
@@ -679,34 +561,16 @@
                                 name="date_to"
                                 type="date"
                                 value="{{ request('date_to') }}"
-                                class="mt-2 block w-full rounded-md
-                                       border-gray-400
-                                       bg-white
-                                       text-gray-900
-                                       text-[21px]
-                                       shadow-sm
-                                       focus:border-indigo-600
-                                       focus:ring-indigo-600"
+                                class="mt-2 block w-full rounded-md border-gray-400 bg-white text-gray-900 text-[21px] shadow-sm focus:border-indigo-600 focus:ring-indigo-600"
                             >
-
                         </div>
-
                     </form>
-
                 </div>
-
             </div>
 
-
-            {{-- ================================================== --}}
-            {{-- Resumen de deuda --}}
-            {{-- ================================================== --}}
-
             <div
-                class="invoice-summary bg-white border border-gray-300
-                       rounded-lg shadow-sm"
+                class="invoice-summary bg-white border border-gray-300 rounded-lg shadow-sm"
             >
-
                 <div>
                     <div class="invoice-summary-label">
                         Total de facturas pendientes de pago
@@ -736,69 +600,36 @@
                         ${{ number_format($resumen['importe'], 2, ',', '.') }}
                     </div>
                 </div>
-
             </div>
-
-
-            {{-- ================================================== --}}
-            {{-- Listado de facturas --}}
-            {{-- ================================================== --}}
 
             <div class="invoice-list">
 
                 @forelse ($invoices as $invoice)
 
                     @php
+                        $taxPercentage = (float) ($invoice->tax_percentage ?? 0);
+                        $price = (float) $invoice->price;
+                        $overduePrice = (float) $invoice->overdue_price;
 
-                        $taxPercentage =
-                            $invoice->tax_percentage ?? 0;
+                        $priceWithTax = round(
+                            $price * (1 + ($taxPercentage / 100)),
+                            2
+                        );
 
-                        $price =
-                            (float) $invoice->price;
-
-                        $overduePrice =
-                            (float) $invoice->overdue_price;
-
-                        $priceWithTax =
-                            round(
-                                $price * (1 + ($taxPercentage / 100)),
-                                2
-                            );
-
-                        $overduePriceWithTax =
-                            round(
-                                $overduePrice * (1 + ($taxPercentage / 100)),
-                                2
-                            );
-
+                        $overduePriceWithTax = round(
+                            $overduePrice * (1 + ($taxPercentage / 100)),
+                            2
+                        );
                     @endphp
 
-
-                    {{-- ================================================== --}}
-                    {{-- TARJETA --}}
-                    {{-- ================================================== --}}
-
                     <div class="invoice-card">
-
                         <div class="invoice-card-content">
-
-
-                            {{-- ================================================== --}}
-                            {{-- DATOS --}}
-                            {{-- ================================================== --}}
 
                             <div class="invoice-data">
 
-
-                                {{-- ================================================== --}}
-                                {{-- INFORMACIÓN --}}
-                                {{-- ================================================== --}}
-
                                 <div class="invoice-info">
 
-                                    {{-- Cliente --}}
                                     <div class="invoice-field">
-
                                         <div class="invoice-label">
                                             Cliente
                                         </div>
@@ -810,13 +641,9 @@
                                         <div class="invoice-value-normal">
                                             {{ $invoice->client_document ?? 'N/A' }}
                                         </div>
-
                                     </div>
 
-
-                                    {{-- Servicio --}}
                                     <div class="invoice-field">
-
                                         <div class="invoice-label">
                                             Servicio
                                         </div>
@@ -824,13 +651,9 @@
                                         <div class="invoice-value-normal">
                                             {{ $invoice->service_name ?? 'N/A' }}
                                         </div>
-
                                     </div>
 
-
-                                    {{-- Emisión --}}
                                     <div class="invoice-field">
-
                                         <div class="invoice-label">
                                             Emisión
                                         </div>
@@ -838,13 +661,9 @@
                                         <div class="invoice-value-normal">
                                             {{ $invoice->issued_at?->format('d/m/Y') ?? 'N/A' }}
                                         </div>
-
                                     </div>
 
-
-                                    {{-- Vencimiento --}}
                                     <div class="invoice-field">
-
                                         <div class="invoice-label">
                                             Vencimiento
                                         </div>
@@ -852,175 +671,98 @@
                                         <div class="invoice-value-normal">
                                             {{ $invoice->due_date?->format('d/m/Y') ?? 'N/A' }}
                                         </div>
-
                                     </div>
 
-
-                                    {{-- Estado --}}
                                     <div class="invoice-field">
-
                                         <div class="invoice-label">
                                             Estado
                                         </div>
 
                                         @if ($invoice->payment_status === 'paid')
-
-                                            <span
-                                                class="invoice-status invoice-status-paid"
-                                            >
+                                            <span class="invoice-status invoice-status-paid">
                                                 Pagada
                                             </span>
-
                                         @else
-
-                                            <span
-                                                class="invoice-status invoice-status-pending"
-                                            >
+                                            <span class="invoice-status invoice-status-pending">
                                                 Pendiente
                                             </span>
-
                                         @endif
-
                                     </div>
 
                                 </div>
 
-
-                                {{-- ================================================== --}}
-                                {{-- IMPORTES --}}
-                                {{-- ================================================== --}}
-
                                 <div class="invoice-amounts">
 
-                                    {{-- Precio neto --}}
                                     <div class="invoice-field">
-
                                         <div class="invoice-label">
                                             Precio (NETO)
                                         </div>
 
                                         <div class="invoice-value">
-                                            ${{ number_format(
-                                                $price,
-                                                2,
-                                                ',',
-                                                '.'
-                                            ) }}
+                                            ${{ number_format($price, 2, ',', '.') }}
                                         </div>
-
                                     </div>
 
-
-                                    {{-- Precio vencido neto --}}
                                     <div class="invoice-field">
-
                                         <div class="invoice-label">
                                             Precio vencido (NETO)
                                         </div>
 
                                         <div class="invoice-value">
-                                            ${{ number_format(
-                                                $overduePrice,
-                                                2,
-                                                ',',
-                                                '.'
-                                            ) }}
+                                            ${{ number_format($overduePrice, 2, ',', '.') }}
                                         </div>
-
                                     </div>
 
-
-                                    {{-- Impuestos --}}
                                     <div class="invoice-field">
-
                                         <div class="invoice-label">
                                             Impuestos %
                                         </div>
 
                                         <div class="invoice-value">
-                                            {{ number_format(
-                                                $taxPercentage,
-                                                2,
-                                                ',',
-                                                '.'
-                                            ) }}%
+                                            {{ number_format($taxPercentage, 2, ',', '.') }}%
                                         </div>
-
                                     </div>
 
-
-                                    {{-- Neto + impuestos --}}
                                     <div class="invoice-field">
-
                                         <div class="invoice-label">
                                             Neto + Impuestos
                                         </div>
 
                                         <div class="invoice-value">
-                                            ${{ number_format(
-                                                $priceWithTax,
-                                                2,
-                                                ',',
-                                                '.'
-                                            ) }}
+                                            ${{ number_format($priceWithTax, 2, ',', '.') }}
                                         </div>
-
                                     </div>
 
-
-                                    {{-- Vencido + impuestos --}}
                                     <div class="invoice-field">
-
                                         <div class="invoice-label">
                                             Vencido + Impuestos
                                         </div>
 
                                         <div class="invoice-value">
-                                            ${{ number_format(
-                                                $overduePriceWithTax,
-                                                2,
-                                                ',',
-                                                '.'
-                                            ) }}
+                                            ${{ number_format($overduePriceWithTax, 2, ',', '.') }}
                                         </div>
-
                                     </div>
 
                                 </div>
 
-
                             </div>
-
-
-                            {{-- ================================================== --}}
-                            {{-- ACCIONES --}}
-                            {{-- ================================================== --}}
 
                             <div class="invoice-actions">
 
                                 <a
-                                    href="{{ route(
-                                        'admin.invoices.show',
-                                        $invoice
-                                    ) }}"
+                                    href="{{ route('admin.invoices.show', $invoice) }}"
                                     class="btn"
                                 >
                                     Ver
                                 </a>
 
-
                                 @if ($invoice->payment_status !== 'paid')
-
                                     <a
-                                        href="{{ route(
-                                            'admin.invoices.payment',
-                                            $invoice
-                                        ) }}"
+                                        href="{{ route('admin.invoices.payment', $invoice) }}"
                                         class="btn"
                                     >
                                         Registrar pago
                                     </a>
-
                                 @endif
 
                                 @if (
@@ -1034,15 +776,11 @@
                                     >
                                         @csrf
 
-                                        <button
-                                            type="submit"
-                                            class="btn"
-                                        >
+                                        <button type="submit" class="btn">
                                             Reintentar ARCA
                                         </button>
                                     </form>
                                 @endif
-
 
                                 @if (
                                     $invoice->payment_status !== 'paid'
@@ -1054,18 +792,12 @@
                                     <form
                                         method="POST"
                                         action="{{ route('admin.invoices.destroy', $invoice) }}"
-                                        onsubmit="return confirm(
-                                            '¿Eliminar esta factura? Esta acción no se puede deshacer.'
-                                        );"
+                                        onsubmit="return confirm('¿Eliminar esta factura? Esta acción no se puede deshacer.');"
                                     >
                                         @csrf
-
                                         @method('DELETE')
 
-                                        <button
-                                            type="submit"
-                                            class="btn"
-                                        >
+                                        <button type="submit" class="btn">
                                             Eliminar
                                         </button>
                                     </form>
@@ -1074,37 +806,22 @@
                             </div>
 
                         </div>
-
                     </div>
 
                 @empty
-
                     <div class="invoice-empty">
                         No hay facturas registradas.
                     </div>
-
                 @endforelse
 
             </div>
 
-
-            {{-- ================================================== --}}
-            {{-- Paginación --}}
-            {{-- ================================================== --}}
-
             <div class="mt-8">
-
                 {{ $invoices->links() }}
-
             </div>
 
         </div>
-
     </div>
-
-    {{-- ================================================== --}}
-    {{-- Tarjeta de confirmación: generar por lote --}}
-    {{-- ================================================== --}}
 
     <div
         id="batch-overlay"
@@ -1113,7 +830,6 @@
         aria-modal="true"
         aria-labelledby="batch-title"
     >
-
         <div class="batch-card">
 
             <div class="batch-card-header">
@@ -1137,42 +853,52 @@
                     </button>
                 </form>
 
-                <button type="button" id="batch-reject" class="btn btn-secondary">
+                <button
+                    type="button"
+                    id="batch-reject"
+                    class="btn btn-secondary"
+                >
                     Rechazar
                 </button>
 
             </div>
-
         </div>
-
     </div>
-
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-
             const openButton = document.getElementById('batch-open');
-            const overlay    = document.getElementById('batch-overlay');
-            const body       = document.getElementById('batch-body');
-            const form       = document.getElementById('batch-form');
-            const accept     = document.getElementById('batch-accept');
-            const reject     = document.getElementById('batch-reject');
+            const overlay = document.getElementById('batch-overlay');
+            const body = document.getElementById('batch-body');
+            const form = document.getElementById('batch-form');
+            const accept = document.getElementById('batch-accept');
+            const reject = document.getElementById('batch-reject');
 
             const previewUrl = @json(route('admin.invoices.generate.preview'));
 
-            // Estado propio de la tarjeta de lote.
-            const state = { loading: false, submitting: false };
+            const state = {
+                loading: false,
+                submitting: false
+            };
 
             function close() {
-                if (state.submitting) return;
+                if (state.submitting) {
+                    return;
+                }
+
                 overlay.classList.remove('is-open');
             }
 
             function showMessage(text, isError) {
                 body.innerHTML = '';
+
                 const p = document.createElement('p');
                 p.textContent = text;
-                if (isError) p.className = 'batch-error';
+
+                if (isError) {
+                    p.className = 'batch-error';
+                }
+
                 body.appendChild(p);
             }
 
@@ -1180,7 +906,11 @@
                 body.innerHTML = '';
 
                 if (!data.total) {
-                    showMessage('No hay facturas para generar en este momento.', false);
+                    showMessage(
+                        'No hay facturas para generar en este momento.',
+                        false
+                    );
+
                     accept.disabled = true;
                     return;
                 }
@@ -1211,19 +941,25 @@
 
                 const total = document.createElement('div');
                 total.className = 'batch-total';
-                total.textContent = 'Total: ' + data.total + ' factura(s)';
+                total.textContent =
+                    'Total: ' + data.total + ' factura(s)';
+
                 body.appendChild(total);
 
                 const note = document.createElement('p');
                 note.style.marginTop = '14px';
-                note.textContent = 'Se utilizarán los precios actuales de los servicios.';
+                note.textContent =
+                    'Se utilizarán los precios actuales de los servicios.';
+
                 body.appendChild(note);
 
                 accept.disabled = false;
             }
 
             async function openCard() {
-                if (state.loading || state.submitting) return;
+                if (state.loading || state.submitting) {
+                    return;
+                }
 
                 state.loading = true;
                 openButton.disabled = true;
@@ -1236,16 +972,21 @@
                     const response = await fetch(previewUrl, {
                         headers: {
                             'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                        },
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
                     });
 
-                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    if (!response.ok) {
+                        throw new Error('HTTP ' + response.status);
+                    }
 
                     renderPreview(await response.json());
 
                 } catch (error) {
-                    showMessage('No se pudo calcular el lote. Intentá de nuevo.', true);
+                    showMessage(
+                        'No se pudo calcular el lote. Intentá de nuevo.',
+                        true
+                    );
                 } finally {
                     state.loading = false;
                     openButton.disabled = false;
@@ -1256,14 +997,17 @@
             reject.addEventListener('click', close);
 
             overlay.addEventListener('click', function (event) {
-                if (event.target === overlay) close();
+                if (event.target === overlay) {
+                    close();
+                }
             });
 
             document.addEventListener('keydown', function (event) {
-                if (event.key === 'Escape') close();
+                if (event.key === 'Escape') {
+                    close();
+                }
             });
 
-            // Evita doble envío al aceptar.
             form.addEventListener('submit', function (event) {
                 if (state.submitting) {
                     event.preventDefault();
@@ -1276,12 +1020,12 @@
                 accept.textContent = 'Generando…';
             });
 
-            // Todo listo: recién ahora se habilita el botón.
             openButton.disabled = false;
         });
     </script>
 
     <script src="{{ asset('js/search-dropdown.js') }}"></script>
+
     <script>
         searchDropdown({
             inputId: 'search',
@@ -1298,7 +1042,7 @@
                         const small = document.createElement('small');
                         small.textContent = 'Cliente';
                         li.appendChild(small);
-                    },
+                    }
                 },
                 {
                     url: @json(route('admin.invoices.generate-manual.services')),
@@ -1311,9 +1055,9 @@
                         const small = document.createElement('small');
                         small.textContent = 'Servicio';
                         li.appendChild(small);
-                    },
-                },
-            ],
+                    }
+                }
+            ]
         });
     </script>
 

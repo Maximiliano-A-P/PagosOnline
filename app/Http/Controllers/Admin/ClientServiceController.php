@@ -45,23 +45,57 @@ class ClientServiceController extends Controller
      * a un cliente específico.
      *
      * El cliente ya viene seleccionado desde el index.
+     * Los servicios se buscan por autocompletado
+     * (ver searchServices).
      */
     public function create(Client $client)
     {
         /*
-        * Servicios disponibles para agregar.
-        */
-        $services = Service::orderBy('service')->get();
-
-        /*
-        * Servicios que el cliente ya tiene asignados.
-        */
+         * Servicios que el cliente ya tiene asignados.
+         */
         $client->load('services');
 
         return view(
             'admin.client-services.create',
-            compact('client', 'services')
+            compact('client')
         );
+    }
+
+    /**
+     * Sugerencias del buscador de servicios (JSON).
+     *
+     * Excluye los servicios que el cliente ya tiene asignados.
+     */
+    public function searchServices(
+        Request $request,
+        Client $client
+    ) {
+        $q = trim((string) $request->query('q', ''));
+
+        if ($q === '') {
+            return response()->json([]);
+        }
+
+        $query = Service::query()
+            ->whereNotIn(
+                'id',
+                $client->services()->pluck('services.id')
+            );
+
+        TextSearch::apply($query, $q, ['service']);
+
+        $services = $query
+            ->orderBy('service')
+            ->limit(8)
+            ->get()
+            ->map(fn ($service) => [
+                'id'     => $service->id,
+                'name'   => $service->service,
+                'price'  => (float) $service->price,
+                'period' => $service->period,
+            ]);
+
+        return response()->json($services);
     }
 
     /**
@@ -71,13 +105,23 @@ class ClientServiceController extends Controller
         Request $request,
         Client $client
     ) {
-        $validated = $request->validate([
-            'service_id' => [
-                'required',
-                'integer',
-                'exists:services,id',
+        $validated = $request->validate(
+            [
+                'service_id' => [
+                    'required',
+                    'integer',
+                    'exists:services,id',
+                ],
             ],
-        ]);
+            [
+                'service_id.required' =>
+                    'Buscá y seleccioná un servicio de la lista.',
+                'service_id.integer' =>
+                    'Buscá y seleccioná un servicio de la lista.',
+                'service_id.exists' =>
+                    'El servicio seleccionado no existe.',
+            ]
+        );
 
         /*
          * No elimina otros servicios que el cliente

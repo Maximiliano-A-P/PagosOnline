@@ -37,7 +37,8 @@ Laravel ◄── webhook (payment) ◄─────────────�
    ├── consulta el pago a MP (no confía en el body)
    ├── valida factura, estado e importe
    ├── marca la factura como pagada
-   └── emite la factura ante ARCA
+   ├── emite la factura ante ARCA
+   └── (si ARCA aprueba) envía la factura en PDF por correo
 
 
 /// 1. INICIAR EL PAGO (botón "Pagar") ///
@@ -63,6 +64,8 @@ redirige al usuario a init_point (Checkout Pro)
 /// 2. QUÉ SE LE COBRA (createPreference) ///
 
 ¿ahora es posterior a due_date?
+(Invoice::estaVencidaAl(now()): rige el precio vencido desde el día
+ siguiente al vencimiento)
    ↓ SÍ → base = overdue_price
    ↓ NO → base = price
         ↓
@@ -126,6 +129,9 @@ Marca la factura:
    mercadopago_payment_id = payment_id
    ↓
 Emite ante ARCA (try/catch: si falla solo se registra el error)
+   ↓ aprobada
+Envía el PDF con CAE y QR por correo, en segundo plano
+(ver ARCA-Laravel-detalle.txt)
    ↓
 200 "Pago procesado correctamente"
 
@@ -177,3 +183,9 @@ MERCADOPAGO_WEBHOOK_URL      https://<dominio>/mercadopago/webhook
   que se le mostró.
 - Cada vez que se pulsa "Pagar" se crea una Preference nueva y se
   pisa expected_amount y mercadopago_preference_id.
+- El pago manual del admin sigue la misma regla de importes, pero sin
+  Mercado Pago: el importe sale de la fecha de pago (normal hasta
+  due_date, vencido después). Ver admin-facturas.txt.
+- Cuando paga un cliente cuyo documento fue bloqueado o eliminado no
+  hay problema: la factura conserva sus propios datos y los usuarios
+  vinculan documentos (client_user), no clientes.

@@ -4,8 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Client extends Model
 {
@@ -14,6 +14,13 @@ class Client extends Model
         'document',
         'cuit',
         'arca_iva_condition',
+
+        // Datos fiscales del comprador extranjero.
+        'arca_destination_country',
+        'arca_cuit_pais_cliente',
+        'arca_id_impositivo',
+
+        // Contacto y estado.
         'phone',
         'email',
         'address',
@@ -24,27 +31,26 @@ class Client extends Model
     protected function casts(): array
     {
         return [
+            'arca_iva_condition' => 'integer',
+            'arca_destination_country' => 'integer',
             'blocked' => 'boolean',
             'blocked_at' => 'datetime',
         ];
     }
 
     /**
-     * Los clientes bloqueados quedan fuera de TODAS las consultas
-     * normales de la aplicación (listados, búsquedas, generación de
-     * facturas, binding de rutas, etc.). Solo se pueden ver desde la
-     * base de datos o usando withoutGlobalScopes().
+     * Los clientes bloqueados se excluyen de las consultas normales.
      */
     protected static function booted(): void
     {
         static::addGlobalScope('not_blocked', function (Builder $query) {
-            $query->where($query->getModel()->getTable() . '.blocked', false);
+            $query->where(
+                $query->getModel()->getTable() . '.blocked',
+                false
+            );
         });
     }
 
-    /**
-     * Servicios que tiene asignados el cliente.
-     */
     public function services(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -53,9 +59,6 @@ class Client extends Model
         );
     }
 
-    /**
-     * Asignaciones del cliente a servicios.
-     */
     public function clientServices(): HasMany
     {
         return $this->hasMany(ClientService::class);

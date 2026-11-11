@@ -1,3 +1,4 @@
+
 # ==========================================================
 # ETAPA 1
 # Compilación de assets frontend
@@ -5,13 +6,11 @@
 
 FROM node:22-bookworm-slim AS frontend
 
-
 # ==========================================================
 # Directorio de trabajo
 # ==========================================================
 
 WORKDIR /var/www/html
-
 
 # ==========================================================
 # Copiamos los archivos de npm
@@ -19,13 +18,11 @@ WORKDIR /var/www/html
 
 COPY package.json package-lock.json ./
 
-
 # ==========================================================
 # Instalamos dependencias frontend
 # ==========================================================
 
 RUN npm ci
-
 
 # ==========================================================
 # Copiamos los archivos necesarios para Vite
@@ -37,21 +34,28 @@ COPY vite.config.js ./
 COPY postcss.config.js ./
 COPY tailwind.config.js ./
 
-
 # ==========================================================
 # Compilamos los assets
 # ==========================================================
 
 RUN npm run build
 
-
 # ==========================================================
 # ETAPA 2
 # Aplicación Laravel
+# PHP 8.4.27: versión con las correcciones de seguridad
 # ==========================================================
 
-FROM php:8.4-fpm-bookworm
+FROM php:8.4.27-fpm-bookworm
 
+# ==========================================================
+# MITIGACIÓN DE SEGURIDAD
+# Desactiva el seguimiento de progreso de carga de sesiones
+# ==========================================================
+
+RUN printf '%s\n' \
+    'session.upload_progress.enabled=Off' \
+    > /usr/local/etc/php/conf.d/zz-security.ini
 
 # ==========================================================
 # Dependencias del sistema
@@ -76,7 +80,6 @@ RUN apt-get update \
         curl \
     && rm -rf /var/lib/apt/lists/*
 
-
 # ==========================================================
 # Extensiones PHP necesarias para Laravel
 # ==========================================================
@@ -96,13 +99,11 @@ RUN docker-php-ext-configure gd \
         gd \
         opcache
 
-
 # ==========================================================
 # Composer
 # ==========================================================
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
 
 # ==========================================================
 # Directorio de la aplicación
@@ -110,20 +111,14 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-
 # ==========================================================
 # Copiamos los archivos de Composer
 # ==========================================================
 
 COPY composer.json composer.lock ./
 
-
 # ==========================================================
 # Instalamos dependencias PHP sin ejecutar scripts
-#
-# Los scripts de Composer de Laravel necesitan que artisan
-# ya exista. Por eso primero instalamos las dependencias
-# y posteriormente copiamos la aplicación.
 # ==========================================================
 
 RUN composer install \
@@ -133,22 +128,18 @@ RUN composer install \
     --optimize-autoloader \
     --no-scripts
 
-
 # ==========================================================
 # Copiamos el proyecto Laravel
 # ==========================================================
 
 COPY . .
 
-
 # ==========================================================
-# Ejecutamos los scripts de Composer ahora que artisan
-# ya existe dentro del contenedor.
+# Ejecutamos los scripts de Composer
 # ==========================================================
 
 RUN composer dump-autoload \
     --optimize
-
 
 # ==========================================================
 # Copiamos los assets compilados por Vite
@@ -157,7 +148,6 @@ RUN composer dump-autoload \
 COPY --from=frontend \
     /var/www/html/public/build \
     /var/www/html/public/build
-
 
 # ==========================================================
 # Permisos de Laravel
@@ -176,7 +166,6 @@ RUN mkdir -p \
         storage \
         bootstrap/cache
 
-
 # ==========================================================
 # Configuración de NGINX
 # ==========================================================
@@ -184,14 +173,12 @@ RUN mkdir -p \
 COPY docker/nginx/default.conf \
     /etc/nginx/sites-available/default
 
-
 # ==========================================================
 # Configuración de Supervisor
 # ==========================================================
 
 COPY docker/supervisord.conf \
     /etc/supervisor/conf.d/supervisord.conf
-
 
 # ==========================================================
 # Script de inicio
@@ -202,13 +189,11 @@ COPY docker/start.sh \
 
 RUN chmod +x /usr/local/bin/start.sh
 
-
 # ==========================================================
 # Puerto de Render
 # ==========================================================
 
 EXPOSE 10000
-
 
 # ==========================================================
 # Inicio del contenedor

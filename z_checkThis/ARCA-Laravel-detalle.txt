@@ -9,9 +9,15 @@ ARCA — IMPLEMENTACIÓN DETALLADA EN EL PROYECTO LARAVEL
 
 app/Services/Arca/
    ├── WsaaClient.php          → autenticación contra WSAA (Token + Sign)
+   │                             para el servicio wsfe o wsfex
    ├── ComprobanteResolver.php → tipo de comprobante y documento del receptor
-   └── ArcaApiService.php      → arma el pedido, llama a la API ARCA,
-                                 guarda la respuesta, decide reintentos
+   └── ArcaApiService.php      → arma el pedido (nacional o exportación),
+                                 llama a la API ARCA, guarda la respuesta
+                                 y decide reintentos
+
+app/Services/InvoicePdfService.php     → PDF de la factura + QR de ARCA
+app/Services/InvoiceReceiptSender.php  → envío del PDF por correo
+app/Mail/InvoicePaidMail.php           → correo con el PDF adjunto
 
 app/Console/Commands/RetryPendingArcaInvoices.php
    → comando "php artisan arca:retry-pending" (reintentos automáticos)
@@ -28,46 +34,67 @@ config/arca.php
 .env (Render)                        Panel admin (/admin/arca)
    │                                       │
    ├── ARCA_AMBIENTE                       ├── condicion_iva  (emisor)
-   │   homologacion / produccion           └── punto_venta
-   ├── ARCA_CUIT
-   ├── ARCA_CERTIFICATE_CRT  (base64)     Tabla arca_config (la completa
-   ├── ARCA_PRIVATE_KEY      (base64)     el sistema, no se carga a mano)
-   ├── ARCA_API_URL                          ├── token
-   └── ARCA_API_KEY                          ├── sign
-                                             └── token_expires_at
+   │   homologacion / produccion           ├── tipo_factura_a (1 o 51)
+   ├── ARCA_CUIT                           ├── punto_venta
+   ├── ARCA_CERTIFICATE_CRT  (base64)      └── punto_venta_exportacion
+   ├── ARCA_PRIVATE_KEY      (base64)          (opcional; solo Factura E)
+   ├── ARCA_API_URL
+   └── ARCA_API_KEY                     Tabla arca_config (las completa
+                                        el sistema, no se cargan a mano)
+                                           ├── token, sign, token_expires_at
+                                           └── token_wsfex, sign_wsfex,
+                                               token_wsfex_expires_at
 
 El certificado y la clave NO se guardan en disco: se decodifican
 desde el .env y se escriben a archivos temporales solo mientras se
 firma cada ticket; después se borran.
-(certificate_path / private_key_path ya no existen en arca_config)
+(arca_config no tiene columnas de certificado ni de clave.)
+
+Panel /admin/arca (validaciones):
+   condicion_iva           obligatorio, código numérico
+   tipo_factura_a          obligatorio, 1 o 51
+   punto_venta             obligatorio, 1 a 99998
+   punto_venta_exportacion opcional, 1 a 99998
+Solo existe una fila de configuración (se crea o se actualiza).
+
+tipo_factura_a:
+   1  = Factura A
+   51 = Factura A con leyenda de retención
+   Debe coincidir con la autorización del CUIT emisor en ARCA.
+   El usuario final no lo elige.
 
 
 /// CUÁNDO SE EMITE ///
 
 Pago online (Mercado Pago)          Pago manual (admin)
         │                                   │
-   webhook confirma pago                    │
+   webhook confirma pago             admin registra el pago
         │                                   │
    invoice = paid                      invoice = paid
         │                                   │
-   emitir() AUTOMÁTICO                 NO emite sola
-   (dentro de try/catch)                    │
-        │                          Admin usa "Reintentar ARCA"
-        │                          en el detalle de la factura
-        └─────────────┬────────────────────┘
+   emitir() AUTOMÁTICO                 emitir() AUTOMÁTICO
+   (dentro de try/catch)               (dentro de try/catch)
+        │                                   │
+        └─────────────┬─────────────────────┘
                       ↓
                  emitir()
+                      ↓
+        si falla: queda "error: ..." y el admin
+        usa "Reintentar ARCA" (o el comando automático)
 
 Regla: se emite SIEMPRE después del pago, con el monto realmente
 cobrado (amount_paid), nunca antes.
-Un error de ARCA en el webhook no rompe el webhook: el pago queda
-registrado igual y el error queda guardado en arca_status.
+Un error de ARCA no rompe el webhook ni el registro del pago: el
+pago queda guardado igual y el error queda en arca_status.
+Las facturas históricas se cargan sin emitir.
 
 
 /// FLUJO DE emitir(invoice, automatico) ///
 
 emitir()
    ↓
+¿la factura está pagada?  NO → no hace nada
+   ↓ SÍ
 ¿ya tiene CAE o arca_status = aprobado?
    ↓ SÍ → no hace nada (nunca se emite dos veces)
    ↓ NO
@@ -79,15 +106,22 @@ guarda arca_last_attempt_at = ahora
 ¿existe ARCA_CUIT en el .env?
    ↓ NO → error permanente
    ↓ SÍ
-WsaaClient::obtenerCredenciales()  (Token + Sign)
+ComprobanteResolver → tipo de comprobante
+(condición del emisor + condición del cliente + tipo_factura_a)
+   ↓
+¿es de exportación (19)?
+   ├── SÍ → emitirExportacion()  (WSFEX, ver más abajo)
+   └── NO → emitirComprobanteNacional()  (WSFE)
+
+emitirComprobanteNacional()
+   ↓
+WsaaClient (wsfe) → obtenerCredenciales()  (Token + Sign)
    ↓
 ¿falló?
    ├── error transitorio → registrarFalloTransitorio() → fin
    └── otro error        → marcarError() → fin
    ↓ OK
-ComprobanteResolver → tipo de comprobante
-   ↓
-¿el comprobante pide CUIT (Factura A) y el cliente no tiene?
+¿el comprobante pide CUIT (Factura A / 51) y el cliente no tiene?
    ↓ SÍ → error permanente (no se reintenta)
    ↓ NO
 ComprobanteResolver → docTipo / docNro
@@ -102,14 +136,24 @@ POST {ARCA_API_URL}/wsfe/solicitar-cae
    ↓ NO
 procesarRespuesta()
    ├── exito = true  → arca_status = aprobado + CAE
+   │                   + envío del PDF por correo en segundo plano
    └── exito = false → marcarError() con el mensaje de ARCA
+
+La fecha del comprobante es el día de hoy en horario de Argentina
+(America/Argentina/Buenos_Aires).
 
 
 /// WSAA (WsaaClient) ///
 
+Se instancia con el servicio: "wsfe" (por defecto) o "wsfex".
+Cada servicio guarda su propio Token/Sign/vencimiento:
+
+   wsfe   → token, sign, token_expires_at
+   wsfex  → token_wsfex, sign_wsfex, token_wsfex_expires_at
+
 obtenerCredenciales()
    ↓
-¿hay token + sign guardados y token_expires_at es futuro?
+¿hay token + sign guardados y el vencimiento es futuro?
    ↓            ↓
   SÍ            NO
    ↓            ↓
@@ -119,16 +163,17 @@ guardados        ↓
               - uniqueId = timestamp
               - generationTime = ahora - 10 min
               - expirationTime = ahora + 10 min
-              - service = wsfe
+              - service = wsfe | wsfex
                  ↓
               firmar con certificado + clave (CMS/PKCS#7,
               NO detached, con archivos temporales)
                  ↓
               SoapClient → loginCms() en WSAA
+              (WSDL según ARCA_AMBIENTE)
                  ↓
               leer Token, Sign y expiración
                  ↓
-              guardar en arca_config
+              guardar en arca_config (columnas del servicio)
                  ↓
               devolver Token + Sign
 
@@ -138,25 +183,34 @@ cada factura.
 
 /// TIPO DE COMPROBANTE (ComprobanteResolver) ///
 
+Condición del CLIENTE = 9 (cliente del exterior)
+   → Factura E (código 19), sin importar la condición del emisor
+
+Si no, según el EMISOR:
+
 Condición del EMISOR      Condición del CLIENTE      Comprobante
 ────────────────────      ─────────────────────      ───────────
-1 Resp. Inscripto         1 Resp. Inscripto          A  (código 1)
+1 Resp. Inscripto         1 Resp. Inscripto          A  (código 1 o 51,
+                                                        según tipo_factura_a)
 1 Resp. Inscripto         cualquier otra / vacía     B  (código 6)
 otra (ej. Monotributo)    cualquiera                 C  (código 11)
 
 Cliente sin condición cargada = Consumidor Final (5).
 
 Documento del receptor:
-   Factura A        → CUIT (docTipo 80)
-   Factura B / C    → DNI  (docTipo 96)
-   sin DNI          → Consumidor Final (docTipo 99, nro 0)
+   Factura A / 51       → CUIT (docTipo 80)
+   Factura B / C        → DNI  (docTipo 96)
+   sin DNI              → Consumidor Final (docTipo 99, nro 0)
+   Factura E            → no lleva docTipo/docNro (se identifica con
+                          el identificador fiscal extranjero)
 
 IVA:
    A y B → se informa IVA discriminado (importeIva + alicuotasIva)
    C     → no discrimina IVA (importeIva = 0)
+   E     → no discrimina IVA
 
 
-/// IMPORTES QUE SE ENVÍAN ///
+/// IMPORTES QUE SE ENVÍAN (comprobantes nacionales) ///
 
 total = amount_paid (lo que realmente se cobró)
 
@@ -168,6 +222,7 @@ Factura A / B:
    neto = total / (1 + tax_percentage / 100)
    iva  = total - neto
    alicuotasIva = [{ id, baseImp = neto, importe = iva }]
+   (solo si el IVA es mayor a 0)
 
 Alícuotas (porcentaje → id de ARCA):
    0 → 3   |  10,5 → 4  |  21 → 5  |  27 → 6  |  5 → 8  |  2,5 → 9
@@ -175,10 +230,50 @@ Alícuotas (porcentaje → id de ARCA):
 
 Otros datos del pedido:
    concepto            = 2 (servicios)
+   condicionIvaReceptorId = condición IVA del cliente (5 si no tiene)
    fchServDesde/Hasta  = service_period_start / service_period_end
-   fchVtoPago          = due_date (si fuese anterior a issued_at,
-                         se usa issued_at porque ARCA no lo permite)
-   fecha comprobante   = issued_at
+                         (si faltan: inicio y fin del mes de emisión)
+   fchVtoPago          = due_date (si fuese anterior a la fecha del
+                         comprobante, se usa la fecha del comprobante
+                         porque ARCA no lo permite)
+   fecha comprobante   = hoy (horario de Argentina)
+
+
+/// FACTURA E — EXPORTACIÓN (WSFEX) ///
+
+Se usa cuando el cliente tiene condición IVA 9 (cliente del exterior).
+
+emitirExportacion()
+   ↓
+Validaciones (todas son errores permanentes, no se reintentan):
+   - país de destino y domicilio del cliente
+   - identificador fiscal extranjero (arca_cuit_pais_cliente o
+     arca_id_impositivo)
+   - nombre del comprador
+   - punto_venta_exportacion configurado (>= 1)
+   - importe pagado mayor a cero
+   ↓
+WsaaClient("wsfex") → Token + Sign propios de exportación
+   ↓
+Pedido:
+   tipoComprobante = 19, tipoExpo = 2 (servicios)
+   paisDestino, cliente (nombre), domicilioCliente
+   cuitPaisCliente / idImpositivo
+   monedaId = PES, monedaCotizacion = 1, idiomaComprobante = 1
+   importeTotal = amount_paid
+   formaPago = "Mercado Pago", fechaPago = paid_at
+   items = [ { descripción = service_name, cantidad 1,
+               unidad de medida 7, precio = total } ]
+   ↓
+POST {ARCA_API_URL}/wsfe/solicitar-cae
+(mismo endpoint, mismo manejo de errores y reintentos que el nacional)
+   ↓
+Guarda arca_point_of_sale = punto_venta_exportacion
+
+Datos del comprador extranjero (cliente, copiados a la factura al
+generarla): arca_destination_country, arca_cuit_pais_cliente,
+arca_id_impositivo y address. Son obligatorios si la condición IVA
+del cliente es 9.
 
 
 /// RESULTADO GUARDADO EN LA FACTURA ///
@@ -188,7 +283,7 @@ APROBADO
    arca_cae            = CAE devuelto
    arca_cae_expires_at = vencimiento del CAE
    arca_invoice_type   = tipo de comprobante usado
-   arca_point_of_sale  = punto de venta de arca_config
+   arca_point_of_sale  = punto de venta usado (nacional o exportación)
    arca_invoice_number = número de comprobante
    arca_retry_attempts = 0
    arca_retry_at       = null
@@ -200,6 +295,9 @@ ERROR
 SIN PROCESAR
    arca_status         = null (todavía no se intentó)
 
+arca_qr: la columna existe pero no se completa; el QR se genera al
+momento de armar el PDF (ver más abajo).
+
 
 /// ERRORES: TRANSITORIOS vs PERMANENTES ///
 
@@ -208,8 +306,8 @@ Error de conexión / HTTP 408 / 429 / 5xx / mensaje de WSAA con
         ↓
    TRANSITORIO → se programa reintento
 
-Falta CUIT en .env / cliente sin CUIT para Factura A /
-rechazo funcional de ARCA (datos inválidos)
+Falta CUIT en .env / cliente sin CUIT para Factura A / datos de
+exportación incompletos / rechazo funcional de ARCA (datos inválidos)
         ↓
    PERMANENTE → no se reintenta solo; se corrige el dato
                 y el admin usa "Reintentar ARCA"
@@ -244,7 +342,7 @@ Comando arca:retry-pending
 busca facturas con:
    payment_status = paid
    arca_cae = null
-   arca_retry_at <= ahora
+   arca_retry_at no nulo y <= ahora
    arca_retry_attempts < máximo
    ↓
 ordena por issued_at, id  → toma hasta max_per_run
@@ -255,6 +353,11 @@ Botón "Reintentar ARCA" (admin)
    - solo si la factura está pagada y sin CAE
    - ignora arca_retry_at (no espera el temporizador)
    - ruta: POST /admin/invoices/{invoice}/retry-arca
+   - el botón solo se muestra en facturas pagadas sin CAE; el texto
+     indica WSFEX si es una factura de exportación
+   - si la ruta recibe una factura ya autorizada (el botón no aparece
+     en ese caso), no vuelve a emitir: solo verifica si el correo
+     faltaba y lo envía en segundo plano
 
 
 /// ⚠ IMPORTANTE: EL COMANDO NO ESTÁ PROGRAMADO ///
@@ -271,17 +374,91 @@ funciona el botón manual.
 /// SNAPSHOT DE DATOS EN LA FACTURA ///
 
 Al generar la factura se copian del cliente y del servicio:
-   client_cuit, client_iva_condition, client_document_type (96)
-   service_period_start / service_period_end
-   tax_percentage
+   client_name, client_document, client_cuit,
+   client_iva_condition, client_document_type (96)
+   client_address, client_arca_destination_country,
+   client_arca_cuit_pais_cliente, client_arca_id_impositivo
+   service_name, service_period_start / service_period_end
+   price, overdue_price, tax_percentage
 
 Así, si el cliente o el servicio cambian después, la factura y lo
 que se declara a ARCA no se alteran.
 
 
-/// TODAVÍA NO IMPLEMENTADO (del plan del archivo "ARCA") ///
+/// PDF DE LA FACTURA (InvoicePdfService) ///
 
-- Generación del QR (la columna arca_qr existe, no se completa)
-- Generación del comprobante / PDF
-  (la ruta dashboard.invoices.pdf responde 501)
-- Envío del comprobante por email
+Se genera al momento (no se guarda en disco) con DomPDF a partir del
+estado actual de la factura:
+
+   pendiente              → comprobante sin CAE ni QR
+   pagada sin CAE         → marcada como pagada, sin CAE ni QR
+   pagada con CAE         → con CAE, número de comprobante y QR
+
+Importe del PDF = Invoice::montoACobrar():
+   pagada    → amount_paid
+   pendiente → precio normal o vencido de hoy, más impuestos
+
+Neto e IVA se calculan igual que al emitir (total / (1 + tasa)).
+En Factura E no se muestra IVA y el comprador se identifica con el
+identificador fiscal extranjero.
+Comprobantes 51 / 52 / 53 llevan la leyenda
+"OPERACIÓN SUJETA A RETENCIÓN".
+
+Nombre del archivo:
+   factura-00001-00000123.pdf   (punto de venta - número)
+   factura-<id>.pdf             (si todavía no tiene número ARCA)
+
+Quién lo descarga:
+   usuario → GET /dashboard/invoices/{invoice}/pdf
+             (solo facturas de sus documentos; si no, 403)
+   admin   → GET /admin/invoices/{invoice}/pdf
+
+
+/// QR DE ARCA ///
+
+Solo se arma si la factura está pagada, tiene CAE y existen: ARCA_CUIT,
+punto de venta, tipo, número y CAE.
+
+URL = https://www.afip.gob.ar/fe/qr/?p=<JSON en Base64>
+JSON = { ver:1, fecha, cuit, ptoVta, tipoCmp, nroCmp, importe,
+         moneda:"PES", ctz:1, tipoCodAut:"E", codAut: CAE }
+       + tipoDocRec / nroDocRec en comprobantes nacionales
+
+La fecha sale de arca_last_attempt_at (horario de Argentina); si no
+existe, de paid_at o issued_at. Se dibuja como PNG de 220 px dentro
+del PDF.
+
+
+/// ENVÍO POR CORREO (InvoiceReceiptSender) ///
+
+Cuando ARCA aprueba la factura:
+   ↓
+sendInBackground()
+(se ejecuta cuando Laravel termina de responder: ni el webhook ni el
+ admin esperan al correo)
+   ↓
+sendIfPending(): ¿pagada, con CAE y receipt_sent_at vacío?
+   ↓ NO → no hace nada
+   ↓ SÍ
+Destinatarios (sin repetir, solo emails válidos):
+   - usuarios que vincularon el documento del cliente (client_user)
+   - email de contacto del cliente (si el cliente todavía existe)
+   ↓
+¿hay destinatarios?  NO → se registra en el log y termina
+   ↓ SÍ
+"Reclamo" atómico: UPDATE receipt_sent_at = ahora
+WHERE receipt_sent_at IS NULL
+   ↓
+¿lo ganó este proceso?  NO → termina (el correo sale una sola vez
+   ↓ SÍ                     aunque coincidan webhook y reintento)
+Mail::to(destinatarios) → InvoicePaidMail
+   (asunto "Tu factura pagada: <servicio>", PDF adjunto)
+   ↓
+¿falló el envío?
+   ↓ SÍ → receipt_sent_at vuelve a NULL (se puede reintentar)
+          y se registra el error
+
+Si el correo no salió y la factura ya estaba autorizada, no hay botón
+para reenviarlo: la ruta POST /admin/invoices/{invoice}/retry-arca lo
+envía en segundo plano, pero el botón solo se muestra sin CAE.
+

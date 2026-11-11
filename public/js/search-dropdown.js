@@ -22,6 +22,11 @@
  *       }],
  *   });
  *
+ * Opciones opcionales:
+ *   onPick: function (item) { ... }  // si se pasa, al elegir NO se envía
+ *                                    // el formulario; se llama a esta función.
+ *   onType: function () { ... }      // se llama cada vez que se escribe.
+ *
  * Cada llamada crea su propio estado (temporizador, contador de pedidos,
  * AbortController, lista): nada se comparte entre buscadores, y una
  * respuesta vieja nunca pisa a una más nueva.
@@ -80,6 +85,12 @@
 
             input.value = entry.source.value(entry.item);
             close();
+
+            // Con onPick no se envía el formulario: lo maneja quien llama.
+            if (typeof options.onPick === 'function') {
+                options.onPick(entry.item);
+                return;
+            }
 
             if (form) {
                 form.submit();
@@ -181,6 +192,10 @@
         }
 
         input.addEventListener('input', function () {
+            if (typeof options.onType === 'function') {
+                options.onType();
+            }
+
             clearTimeout(timer);
             timer = setTimeout(search, delay);
         });

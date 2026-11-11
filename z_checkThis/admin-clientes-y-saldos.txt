@@ -5,30 +5,112 @@ Controladores (app/Http/Controllers/Admin/):
    ClientController, ServiceController, ClientServiceController
 
 
+/// BUSCADORES (comunes a todo el panel) ///
+
+Todos los buscadores usan app/Support/TextSearch.php:
+
+   - el texto se parte en palabras; TODAS tienen que coincidir
+     (cada una en cualquiera de las columnas indicadas)
+   - el orden de las palabras no importa:
+     "agustin" y "tomalto" encuentran a "Agustín Tomalto"
+   - no distingue mayúsculas ni tildes/ñ/ü
+   - coincide en cualquier parte del texto
+   - el documento se compara como texto e ignora puntos y guiones
+     ("30.123.456" encuentra 30123456)
+   - máximo 6 palabras por búsqueda
+   - pensado para PostgreSQL (usa translate(), sin extensión unaccent)
+
+Desplegable de sugerencias (public/js/search-dropdown.js):
+   - mientras se escribe aparece una lista debajo del campo
+   - flechas arriba/abajo navegan, Enter elige, Escape cierra
+   - al elegir una sugerencia se completa el campo y se envía el
+     formulario (el listado queda filtrado)
+   - Enter sin elegir envía lo escrito, igual que el botón "Buscar"
+   - una respuesta vieja nunca pisa a una más nueva
+   Lo usan: Clientes, Servicios, Clientes × Servicios, Facturas,
+   Generar factura manual y Cargar factura histórica.
+
+Endpoints JSON que alimentan los desplegables:
+   GET /admin/invoices/generate-manual/clients   → clientes
+   GET /admin/invoices/generate-manual/services  → servicios
+   GET /admin/client-services/{client}/services  → servicios que el
+                                                   cliente NO tiene
+
+
 /// CLIENTES ///
 
-   listar (con búsqueda) | crear | ver | editar | eliminar
+   listar (con búsqueda) | crear | ver | editar | bloquear
 
 Campos:
-   name                 nombre
-   document             DNI (numérico)
-   cuit                 11 dígitos (opcional)
-   arca_iva_condition   código de condición frente al IVA (opcional)
-                        1 Resp. Inscripto | 4 Exento |
-                        5 Consumidor Final | 6 Monotributo
-                        (sin cargar = se factura como Consumidor Final)
+   name                      nombre
+   document                  DNI (numérico)
+   cuit                      11 dígitos (opcional)
+   arca_iva_condition        código de condición frente al IVA (opcional)
+                             1 Resp. Inscripto | 4 Exento |
+                             5 Consumidor Final | 6 Monotributo |
+                             9 Cliente del exterior | otros
+                             (sin cargar = se factura como Consumidor Final)
+   phone, email, address     contacto (opcionales)
 
-Búsqueda: por nombre (sin importar mayúsculas) o documento.
-Listado: más recientes primero, de a 15.
+Solo para clientes del exterior (condición IVA 9):
+   arca_destination_country  código de país de destino (obligatorio)
+   address                   domicilio (obligatorio)
+   arca_cuit_pais_cliente    identificador fiscal en su país  ┐ al menos uno
+   arca_id_impositivo        identificador fiscal alternativo ┘ es obligatorio
 
-Eliminar cliente
+Estos datos se copian a cada factura al generarla (ver
+ARCA-Laravel-detalle.txt, "Snapshot").
+
+Listado:
+   - 15 por página
+   - orden: primero el que MÁS debe; con el mismo saldo, por nombre
+     (sin tildes ni mayúsculas)
+   - cada cliente se muestra en una tarjeta de 2 renglones con su
+     contacto y su saldo por cobrar a hoy
+   - los clientes bloqueados no aparecen
+
+Saldo por cobrar de cada cliente en el listado = suma de Invoice::saldoAl(hoy)
+de TODAS sus facturas. Es el mismo cálculo que usa el asiento
+"Saldos a fecha" del detalle, así que los dos valores coinciden.
+
+
+/// BLOQUEO DE CLIENTES (en lugar de eliminar) ///
+
+Por motivos legales los datos se conservan 5 años.
+
+Admin pulsa "Bloquear" (confirmación previa)
         ↓
-Quita sus relaciones con servicios (client_services)
+cliente.blocked = true, blocked_at = ahora
         ↓
-Elimina el cliente
+El cliente desaparece de la aplicación: Client tiene un global scope
+"not_blocked" que lo excluye de todas las consultas; solo se ve
+desde la base de datos
         ↓
-Las facturas permanecen intactas: tienen sus propios datos históricos
-(se vinculan al cliente por client_document, no por clave foránea)
+Aviso en tarjeta (con X): "El cliente «nombre» fue bloqueado ...
+se eliminará el dd/mm/aaaa" (dentro de 5 años)
+        ↓
+Pasados 5 años, el comando clients:purge-blocked borra
+SOLO el cliente y sus client_services
+
+Cada vez que el admin entra al listado de clientes se ejecuta
+clients:purge-blocked (si falla, solo se registra en el log).
+
+El borrado definitivo NUNCA toca:
+   - las facturas (guardan sus propios datos y deben conservarse)
+   - client_user (lista de documentos de cada usuario: sigue
+     mostrándole sus facturas)
+
+Efectos de un cliente bloqueado:
+   - no aparece en listados ni buscadores
+   - no se le pueden generar facturas (404)
+   - no se puede agregar su documento en el dashboard de un usuario
+   - no entra en la generación por lote
+   - sus facturas, el historial y los pagos de los usuarios que ya
+     tenían su documento siguen funcionando
+
+⚠ ESTADO EN develop: la ruta DELETE /admin/clients/{client} y el botón
+"Bloquear" existen, pero ClientController no tiene el método destroy()
+(sí lo tiene main). Hasta restituirlo, el bloqueo no se dispara.
 
 
 /// DETALLE DEL CLIENTE (show) ///
@@ -41,6 +123,8 @@ Tres tarjetas, en este orden:
       (primero las pendientes por vencimiento más próximo,
        luego las pagadas, más recientes primero)
 
+Las facturas se buscan por client_document (no por clave foránea).
+
 
 /// SALDOS A FECHA — ESTADO DE CUENTA ///
 
@@ -49,18 +133,26 @@ Filtro (GET, en la misma página):
    Hasta  → vacío = hasta hoy   (placeholder "Hasta hoy")
    validación: hasta >= desde
 
-Qué genera movimientos (las fechas son emisión y pago):
+Los movimientos salen de Invoice::movimientos() (un solo lugar para
+toda la regla contable). Las fechas son emisión, vencimiento y pago:
 
-   FACTURA emitida            DEBE   en issued_at
-                              (precio normal + impuestos)
-   PAGO recibido              HABER  en paid_at
-                              (amount_paid)
-   RECARGO POR MORA           DEBE   en paid_at
-                              solo si amount_paid > precio normal + IVA
-                              (diferencia entre lo pagado y lo normal)
+   FACTURA emitida              DEBE   en issued_at
+                                (precio normal + impuestos)
+   AUMENTO POR VENCIMIENTO      DEBE   el día siguiente a due_date
+                                (precio vencido + impuestos menos precio
+                                 normal + impuestos)
+                                solo si hay diferencia y, además:
+                                 - la factura sigue pendiente, o
+                                 - se pagó ese día o después
+                                (si se pagó dentro del plazo no hay aumento)
+   PAGO recibido                HABER  en paid_at
+                                (amount_paid)
 
    saldo = suma del DEBE - suma del HABER
    saldo positivo = el cliente debe
+   Una factura pagada en término termina en 0; una pagada vencida,
+   también (el aumento sube el DEBE y el pago por el valor vencido
+   lo cancela).
 
 Orden: por fecha; en la misma fecha primero DEBE y después HABER.
 
@@ -68,7 +160,7 @@ Armado del cálculo (ClientController::estadoDeCuenta):
 
 todas las facturas del cliente (por documento)
         ↓
-generar movimientos (debe / haber / mora)
+generar movimientos (debe / aumento / haber) con Invoice::movimientos()
         ↓
 ordenar cronológicamente
         ↓
@@ -78,7 +170,7 @@ saldo anterior = suma de los movimientos ANTERIORES a "desde"
 movimientos dentro del rango [desde ... hasta o hoy]
 con saldo acumulado partiendo del saldo anterior
         ↓
-saldo final = saldo tras el último movimiento del rango
+totales = suma de debe, suma de haber y saldo final del rango
         ↓
 saldo de hoy = todos los movimientos hasta hoy
 
@@ -86,20 +178,24 @@ Cómo se muestra:
 
    Saldo al <día anterior a "desde">          $ xxx      (si hay desde)
    fecha | detalle | debe | haber | saldo
-   01/09/2026  Factura #10 — Servicio   $ 1.210,00        $ 1.210,00
-   05/09/2026  Pago factura #10                 $ 1.210,00 $ 0,00
-   Totales                             $ debe   $ haber
-   Saldo al <hasta> (o "día de hoy")          $ xxx
-   Saldo al día de hoy                        $ xxx      (solo si
-                                                          "hasta" < hoy)
+   01/09/2026  Factura #10 — Servicio              $ 1.210,00        $ 1.210,00
+   11/09/2026  Aumento por vencimiento — Factura #10  $ 121,00      $ 1.331,00
+   15/09/2026  Pago factura #10                    $ 1.331,00        $ 0,00
+   Totales                             $ debe   $ haber   $ saldo
+   Saldo al <hasta> (o "día de hoy (fecha de hoy)")   $ xxx
+   Saldo al día de hoy (fecha de hoy)                 $ xxx   (solo si
+                                                               "hasta" < hoy)
 
-Una factura pendiente aparece solo en el DEBE (aún no hay pago).
-Una factura pagada aparece en DEBE (emisión) y en HABER (pago).
+Una factura pendiente aparece solo en el DEBE (más el aumento por
+vencimiento si ya pasó el plazo).
+Una factura pagada aparece en DEBE (emisión), eventualmente en el
+aumento por vencimiento, y en HABER (pago).
 
 
 /// SERVICIOS ///
 
-   listar | crear | editar | eliminar   (no hay vista de detalle)
+   listar (con búsqueda por nombre) | crear | editar | eliminar
+   (no hay vista de detalle)
 
 Campos:
    service         nombre
@@ -121,7 +217,8 @@ generarlas).
 
 Admin abre Clientes × Servicios
         ↓
-Listado de clientes (con búsqueda) y sus servicios
+Listado de clientes (15 por página, por nombre, con búsqueda
+y desplegable) y sus servicios
         ↓
 Selecciona un cliente
         ↓
@@ -129,11 +226,16 @@ Selecciona un cliente
    ↓                               ↓
 ASIGNAR                         QUITAR
    ↓                               ↓
-elige servicio                  elige servicio
-   ↓                               ↓
-valida que exista               valida que exista
-   ↓                               ↓
-syncWithoutDetaching            detach
+escribe el nombre del           elige servicio
+servicio: el desplegable           ↓
+sugiere solo los que el         valida que exista
+cliente todavía NO tiene           ↓
+(hay que elegir uno de          detach
+la lista)
+   ↓
+valida que exista
+   ↓
+syncWithoutDetaching
 (no duplica la relación)
    └───────────────┬───────────────┘
                    ↓
@@ -154,5 +256,6 @@ facturar a cada cliente.
 Panel admin
 
 Accesos del panel principal: Clientes, Servicios, Clientes × Servicios,
-Facturas, Cargar factura histórica y Configuración ARCA
-(/admin/arca: condición IVA y punto de venta del emisor).
+Facturas, Generar factura manual, Cargar factura histórica y
+Configuración ARCA (/admin/arca: condición IVA del emisor, tipo de
+Factura A y puntos de venta).

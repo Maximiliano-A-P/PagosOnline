@@ -1,14 +1,32 @@
 ==================================================================
-USUARIO — DASHBOARD, DOCUMENTOS, PAGO E HISTORIAL
+USUARIO — DASHBOARD, DOCUMENTOS, PAGO, PDF E HISTORIAL
 ==================================================================
 Controladores: DashboardController, DashboardInvoiceController
 Todas las rutas requieren login (middleware auth).
 
 Relación clave:
-   users ── client_user ── clients ── (documento) ── invoices
+   users ── client_user (user_id + document) ·· (documento) ·· invoices
 
-Un usuario NO ve todas las facturas: solo las de los clientes
-(documentos) que vinculó a su cuenta.
+Un usuario NO ve todas las facturas: solo las de los números de
+documento que vinculó a su cuenta.
+
+client_user guarda el NÚMERO de documento, no un client_id. Así, sus
+facturas pendientes y su historial siguen visibles aunque el cliente
+se bloquee o se elimine.
+
+
+/// CUENTA SIN VERIFICAR ///
+
+Dashboard
+   ↓
+¿el correo está verificado (email_verified_at)?
+   ↓ NO → pantalla del código de 6 dígitos
+   ↓ SÍ
+Dashboard normal
+
+Pagar además exige cuenta verificada (middleware account.verified):
+si no, vuelve a la verificación con el aviso
+"Tenés que verificar tu correo antes de pagar una factura."
 
 
 /// VINCULAR UN DOCUMENTO ///
@@ -16,23 +34,27 @@ Un usuario NO ve todas las facturas: solo las de los clientes
 Usuario en el Dashboard
         ↓
 Ingresa un número de documento
+(se aceptan solo los dígitos: "12.345.678" pasa a 12345678)
         ↓
-¿existe un cliente con ese documento?
+¿existe un cliente (no bloqueado) con ese documento?
    ↓ NO → error "no está registrado en el sistema"
    ↓ SÍ
 ¿ya estaba vinculado a este usuario?
    ↓ SÍ → error "ya has agregado este documento"
    ↓ NO
-Crea la relación en client_user
+Guarda el documento en client_user
+(la restricción única user_id + document cubre dos envíos simultáneos)
         ↓
 Vuelve al Dashboard (aparecen sus facturas)
 
-Desvincular: quita la relación (no borra el cliente ni facturas).
+Desvincular: quita el documento de la lista del usuario sin consultar
+a clients, así se puede quitar aunque el cliente ya no exista. No
+borra el cliente ni facturas.
 
 
 /// DASHBOARD ///
 
-documentos = clientes vinculados al usuario
+documentos = lista de documentos del usuario (client_user)
         ↓
 ¿tiene documentos?
    ↓ NO → sin facturas
@@ -43,9 +65,12 @@ facturas pendientes de esos documentos
 Por cada factura:
    ┌────────────┴────────────┐
    ↓                         ↓
-IMPRIMIR                   PAGAR
-(PDF — pendiente,          (Mercado Pago)
- hoy responde 501)         detalle en mercado-pago-implementacion.txt
+DESCARGAR PDF              PAGAR
+(PDF de la factura         (Mercado Pago)
+ tal como está hoy)        detalle en mercado-pago-implementacion.txt
+
+Cada tarjeta muestra, entre otros datos, los dos valores de la
+factura: Neto + Impuestos y Vencido + Impuestos.
 
 
 /// PAGAR ///
@@ -60,7 +85,31 @@ crear Preference en Mercado Pago
         ↓
 redirigir a Mercado Pago
         ↓
-el usuario paga → webhook → factura pagada → ARCA
+el usuario paga → webhook → factura pagada → ARCA → PDF por correo
+
+
+/// PDF DE LA FACTURA ///
+
+GET /dashboard/invoices/{invoice}/pdf
+        ↓
+¿la factura es de un documento del usuario?  NO → 403
+        ↓ SÍ
+Se genera el PDF al momento con el estado actual:
+   pendiente        → sin CAE ni QR
+   pagada con CAE   → con CAE, número de comprobante y código QR
+Se descarga como factura-<punto de venta>-<número>.pdf
+(o factura-<id>.pdf si todavía no tiene número ARCA)
+
+Detalle en: ARCA-Laravel-detalle.txt, "PDF de la factura".
+
+
+/// CORREO CON LA FACTURA ///
+
+Cuando ARCA aprueba el comprobante, se envía el PDF por correo a:
+   - todos los usuarios que vincularon el documento del cliente
+   - el email de contacto del cliente
+(sin repetir; solo una vez por factura, controlado por receipt_sent_at)
+Detalle en: ARCA-Laravel-detalle.txt, "Envío por correo".
 
 
 /// HISTORIAL ///
@@ -79,9 +128,3 @@ El texto "A tiempo" no se parte en dos líneas (badge con nowrap).
 Estado y aclaración del importe (se decide por la FECHA de pago):
    paid_at posterior a due_date → "Vencida"   (precio vencido)
    paid_at hasta due_date       → "A tiempo"  (precio normal)
-
-
-/// PENDIENTE ///
-
-- PDF de la factura (dashboard.invoices.pdf devuelve 501)
-- QR y comprobante ARCA, envío por email
